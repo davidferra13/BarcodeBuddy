@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+
+data/input/
+data/processing/
+data/output/
+data/rejected/
+data/logs/
+
+*.tmp
+.service.lock
+.journal/

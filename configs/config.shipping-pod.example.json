@@ -1,0 +1,17 @@
+{
+  "workflow_key": "shipping_pod",
+  "input_path": "../data/shipping-pod/input",
+  "processing_path": "../data/shipping-pod/processing",
+  "output_path": "../data/shipping-pod/output",
+  "rejected_path": "../data/shipping-pod/rejected",
+  "log_path": "../data/shipping-pod/logs",
+  "barcode_types": ["code128", "auto"],
+  "barcode_value_patterns": [],
+  "scan_all_pages": true,
+  "duplicate_handling": "timestamp",
+  "file_stability_delay_ms": 2000,
+  "max_pages_scan": 50,
+  "poll_interval_ms": 500,
+  "barcode_scan_dpi": 300,
+  "barcode_upscale_factor": 1.0
+}

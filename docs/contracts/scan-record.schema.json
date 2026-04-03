@@ -1,0 +1,581 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://danpack.local/barcodebuddy/contracts/scan-record.schema.json",
+  "title": "Scan Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scan_id",
+    "workflow_key",
+    "current_state",
+    "review_state",
+    "capture_context",
+    "timestamps",
+    "immutable_snapshot",
+    "processing_runs",
+    "artifacts",
+    "links",
+    "notes",
+    "attachments",
+    "mutable_enrichment",
+    "import_jobs",
+    "export_jobs",
+    "audit_events"
+  ],
+  "properties": {
+    "scan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "current_state": {
+      "type": "string",
+      "enum": ["pending", "processing", "routed", "rejected", "reprocessed", "archived"]
+    },
+    "review_state": {
+      "type": "string",
+      "enum": ["unreviewed", "in_review", "resolved", "blocked"]
+    },
+    "priority": {
+      "type": ["string", "null"],
+      "enum": ["low", "normal", "high", "urgent", null]
+    },
+    "canonical_barcode": {
+      "type": ["string", "null"]
+    },
+    "rejection_reason": {
+      "type": ["string", "null"]
+    },
+    "capture_context": {
+      "$ref": "#/$defs/capture_context"
+    },
+    "timestamps": {
+      "$ref": "#/$defs/timestamps"
+    },
+    "immutable_snapshot": {
+      "$ref": "#/$defs/immutable_snapshot"
+    },
+    "processing_runs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/processing_run"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/link"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/note"
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment"
+      }
+    },
+    "mutable_enrichment": {
+      "$ref": "#/$defs/mutable_enrichment"
+    },
+    "import_jobs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/io_job"
+      }
+    },
+    "export_jobs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/io_job"
+      }
+    },
+    "audit_events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/audit_event"
+      }
+    }
+  },
+  "$defs": {
+    "iso_datetime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor_type", "display_name"],
+      "properties": {
+        "actor_type": {
+          "type": "string",
+          "enum": ["system", "user", "integration", "device", "unknown"]
+        },
+        "actor_id": {
+          "type": ["string", "null"]
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "capture_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capture_channel", "device_id", "site_code", "site_name", "captured_by"],
+      "properties": {
+        "capture_channel": {
+          "type": "string"
+        },
+        "device_id": {
+          "type": ["string", "null"]
+        },
+        "device_label": {
+          "type": ["string", "null"]
+        },
+        "site_code": {
+          "type": ["string", "null"]
+        },
+        "site_name": {
+          "type": ["string", "null"]
+        },
+        "branch_code": {
+          "type": ["string", "null"]
+        },
+        "workstation_name": {
+          "type": ["string", "null"]
+        },
+        "source_ip": {
+          "type": ["string", "null"]
+        },
+        "captured_by": {
+          "$ref": "#/$defs/actor_ref"
+        }
+      }
+    },
+    "timestamps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_seen_at", "claimed_at", "last_modified_at"],
+      "properties": {
+        "first_seen_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "stabilized_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "claimed_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "last_modified_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "last_exported_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "immutable_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_filename",
+        "source_extension",
+        "source_size_bytes",
+        "page_count",
+        "barcode_matches_business_rule",
+        "raw_detection_count",
+        "candidate_values",
+        "eligible_candidate_values",
+        "page_one_eligible_values",
+        "derived_paths",
+        "config_snapshot"
+      ],
+      "properties": {
+        "original_filename": {
+          "type": "string"
+        },
+        "source_extension": {
+          "type": "string"
+        },
+        "source_size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_sha256": {
+          "type": ["string", "null"]
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_barcode": {
+          "type": ["string", "null"]
+        },
+        "barcode_format": {
+          "type": ["string", "null"]
+        },
+        "barcode_orientation_degrees": {
+          "type": ["integer", "null"]
+        },
+        "barcode_matches_business_rule": {
+          "type": ["boolean", "null"]
+        },
+        "raw_detection_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidate_values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "eligible_candidate_values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "page_one_eligible_values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "derived_paths": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_path", "output_path", "rejected_path"],
+          "properties": {
+            "source_path": {
+              "type": ["string", "null"]
+            },
+            "output_path": {
+              "type": ["string", "null"]
+            },
+            "rejected_path": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "config_snapshot": {
+          "type": "object"
+        }
+      }
+    },
+    "processing_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "processing_id",
+        "run_kind",
+        "result_state",
+        "started_at",
+        "completed_at",
+        "duration_ms",
+        "triggered_by"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "processing_id": {
+          "type": "string"
+        },
+        "run_kind": {
+          "type": "string",
+          "enum": ["initial", "reprocess"]
+        },
+        "result_state": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "reason": {
+          "type": ["string", "null"]
+        },
+        "stage": {
+          "type": ["string", "null"]
+        },
+        "started_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "triggered_by": {
+          "$ref": "#/$defs/actor_ref"
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "artifact_type", "label", "format", "created_at", "created_by", "immutable"],
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "artifact_type": {
+          "type": "string",
+          "enum": ["source", "output", "rejection_sidecar", "attachment", "import_manifest", "export_bundle"]
+        },
+        "label": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "size_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "sha256": {
+          "type": ["string", "null"]
+        },
+        "created_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "created_by": {
+          "$ref": "#/$defs/actor_ref"
+        },
+        "retention_class": {
+          "type": ["string", "null"]
+        },
+        "immutable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["link_id", "link_type", "target_system", "target_id", "display_label", "link_source", "created_at", "created_by"],
+      "properties": {
+        "link_id": {
+          "type": "string"
+        },
+        "link_type": {
+          "type": "string"
+        },
+        "target_system": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "display_label": {
+          "type": "string"
+        },
+        "is_primary": {
+          "type": "boolean"
+        },
+        "link_source": {
+          "type": "string",
+          "enum": ["manual", "imported", "upstream", "inferred"]
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "created_by": {
+          "$ref": "#/$defs/actor_ref"
+        },
+        "note": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "note": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["note_id", "note_type", "body", "pinned", "resolved", "created_at", "created_by"],
+      "properties": {
+        "note_id": {
+          "type": "string"
+        },
+        "note_type": {
+          "type": "string",
+          "enum": ["ops", "quality", "shipping", "compliance", "support", "owner"]
+        },
+        "body": {
+          "type": "string"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "resolved": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "updated_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "created_by": {
+          "$ref": "#/$defs/actor_ref"
+        }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attachment_id", "label", "created_at", "created_by"],
+      "properties": {
+        "attachment_id": {
+          "type": "string"
+        },
+        "note_id": {
+          "type": ["string", "null"]
+        },
+        "label": {
+          "type": "string"
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "format": {
+          "type": ["string", "null"]
+        },
+        "size_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "created_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "created_by": {
+          "$ref": "#/$defs/actor_ref"
+        }
+      }
+    },
+    "mutable_enrichment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner_user_id", "assignee_user_id", "business_status", "tags", "custom_fields"],
+      "properties": {
+        "owner_user_id": {
+          "type": ["string", "null"]
+        },
+        "assignee_user_id": {
+          "type": ["string", "null"]
+        },
+        "business_status": {
+          "type": ["string", "null"]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "custom_fields": {
+          "type": "object"
+        }
+      }
+    },
+    "io_job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "job_type", "format", "status", "requested_at", "requested_by"],
+      "properties": {
+        "job_id": {
+          "type": "string"
+        },
+        "job_type": {
+          "type": "string",
+          "enum": ["import", "export"]
+        },
+        "format": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "preview_ready", "applied", "completed", "failed"]
+        },
+        "requested_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "completed_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "requested_by": {
+          "$ref": "#/$defs/actor_ref"
+        },
+        "file_name": {
+          "type": ["string", "null"]
+        },
+        "item_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "summary": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "audit_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "event_type", "occurred_at", "actor", "summary"],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/iso_datetime"
+        },
+        "actor": {
+          "$ref": "#/$defs/actor_ref"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "before_value": {
+          "type": ["object", "array", "string", "number", "boolean", "null"]
+        },
+        "after_value": {
+          "type": ["object", "array", "string", "number", "boolean", "null"]
+        },
+        "reason": {
+          "type": ["string", "null"]
+        },
+        "metadata": {
+          "type": ["object", "null"]
+        }
+      }
+    }
+  }
+}

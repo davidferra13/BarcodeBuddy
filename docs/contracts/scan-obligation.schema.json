@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://danpack.local/barcodebuddy/contracts/scan-obligation.schema.json",
+  "title": "Scan Obligation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "obligation_id",
+    "workflow_key",
+    "site_code",
+    "status",
+    "priority",
+    "obligation_type",
+    "title",
+    "expected_scan_count",
+    "observed_scan_count",
+    "due_window",
+    "source_ref",
+    "assignment",
+    "matched_scan_ids",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "obligation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "site_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "due_soon",
+        "overdue",
+        "matched",
+        "partially_matched",
+        "waived",
+        "closed"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "urgent"]
+    },
+    "obligation_type": {
+      "type": "string",
+      "enum": ["receiving", "shipping_pod", "quality_compliance", "custom"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": ["string", "null"]
+    },
+    "expected_scan_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "observed_scan_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "due_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_at", "end_at"],
+      "properties": {
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_system", "reference_type", "reference_value"],
+      "properties": {
+        "source_system": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assigned_to", "assigned_team"],
+      "properties": {
+        "assigned_to": {
+          "type": ["string", "null"]
+        },
+        "assigned_team": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "matched_scan_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "waiver_reason": {
+      "type": ["string", "null"]
+    },
+    "closed_reason": {
+      "type": ["string", "null"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closed_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,357 @@
+{
+  "scan_id": "scan_20260403_00418",
+  "workflow_key": "shipping_pod",
+  "current_state": "routed",
+  "review_state": "in_review",
+  "priority": "normal",
+  "canonical_barcode": "6013796-00",
+  "rejection_reason": null,
+  "capture_context": {
+    "capture_channel": "network_hot_folder",
+    "device_id": "dock-03-fujitsu",
+    "device_label": "Dock Scanner 03",
+    "site_code": "BEV",
+    "site_name": "Beverly Warehouse",
+    "branch_code": "BEV",
+    "workstation_name": "shipdesk-03",
+    "source_ip": "10.24.8.33",
+    "captured_by": {
+      "actor_type": "unknown",
+      "actor_id": null,
+      "display_name": "Unknown operator"
+    }
+  },
+  "timestamps": {
+    "first_seen_at": "2026-04-03T14:58:12-04:00",
+    "stabilized_at": "2026-04-03T14:58:13-04:00",
+    "claimed_at": "2026-04-03T14:58:13-04:00",
+    "last_modified_at": "2026-04-03T15:11:02-04:00",
+    "last_exported_at": "2026-04-03T15:11:02-04:00"
+  },
+  "immutable_snapshot": {
+    "original_filename": "signed_pod_418.pdf",
+    "source_extension": ".pdf",
+    "source_size_bytes": 2459012,
+    "source_sha256": "a40efe21223344556677889900aabbccddeeff00112233445566778899aa91c2",
+    "page_count": 4,
+    "selected_barcode": "6013796-00",
+    "barcode_format": "code128",
+    "barcode_orientation_degrees": 0,
+    "barcode_matches_business_rule": true,
+    "raw_detection_count": 2,
+    "candidate_values": [
+      "6013796-00",
+      "1Z999AA10123456784"
+    ],
+    "eligible_candidate_values": [
+      "6013796-00"
+    ],
+    "page_one_eligible_values": [
+      "6013796-00"
+    ],
+    "derived_paths": {
+      "source_path": "C:\\Users\\david\\Documents\\BarcodeBuddy\\data\\processing\\signed_pod_418.pdf",
+      "output_path": "C:\\Users\\david\\Documents\\BarcodeBuddy\\data\\output\\2026\\04\\6013796-00.pdf",
+      "rejected_path": null
+    },
+    "config_snapshot": {
+      "workflow_key": "shipping_pod",
+      "barcode_types": [
+        "code128",
+        "auto"
+      ],
+      "barcode_value_patterns": [
+        "^\\d{7}-\\d{2}$"
+      ],
+      "scan_all_pages": true,
+      "duplicate_handling": "timestamp",
+      "barcode_scan_dpi": 300,
+      "barcode_upscale_factor": 1.0
+    }
+  },
+  "processing_runs": [
+    {
+      "run_id": "run_20260403_00418_01",
+      "processing_id": "0f6b58c6-9ee8-4ef6-89c2-f0a2f6dd3f25",
+      "run_kind": "initial",
+      "result_state": "success",
+      "reason": null,
+      "stage": "output",
+      "started_at": "2026-04-03T14:58:12-04:00",
+      "completed_at": "2026-04-03T14:58:17-04:00",
+      "duration_ms": 5104,
+      "triggered_by": {
+        "actor_type": "system",
+        "actor_id": "barcode_buddy",
+        "display_name": "Barcode Buddy"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "art_source_418",
+      "artifact_type": "source",
+      "label": "Original source PDF",
+      "format": "pdf",
+      "path": "C:\\Users\\david\\Documents\\BarcodeBuddy\\data\\archive\\source\\signed_pod_418.pdf",
+      "size_bytes": 2459012,
+      "sha256": "a40efe21223344556677889900aabbccddeeff00112233445566778899aa91c2",
+      "created_at": "2026-04-03T14:58:13-04:00",
+      "created_by": {
+        "actor_type": "system",
+        "actor_id": "barcode_buddy",
+        "display_name": "Barcode Buddy"
+      },
+      "retention_class": "scan_evidence",
+      "immutable": true
+    },
+    {
+      "artifact_id": "art_output_418",
+      "artifact_type": "output",
+      "label": "Routed output PDF",
+      "format": "pdf",
+      "path": "C:\\Users\\david\\Documents\\BarcodeBuddy\\data\\output\\2026\\04\\6013796-00.pdf",
+      "size_bytes": 2459012,
+      "sha256": "a40efe21223344556677889900aabbccddeeff00112233445566778899aa91c2",
+      "created_at": "2026-04-03T14:58:17-04:00",
+      "created_by": {
+        "actor_type": "system",
+        "actor_id": "barcode_buddy",
+        "display_name": "Barcode Buddy"
+      },
+      "retention_class": "routed_output",
+      "immutable": true
+    },
+    {
+      "artifact_id": "art_export_418_01",
+      "artifact_type": "export_bundle",
+      "label": "Carrier dispute evidence ZIP",
+      "format": "zip",
+      "path": "C:\\Users\\david\\Documents\\BarcodeBuddy\\data\\exports\\scan_20260403_00418_bundle.zip",
+      "size_bytes": 2503221,
+      "sha256": null,
+      "created_at": "2026-04-03T15:11:02-04:00",
+      "created_by": {
+        "actor_type": "user",
+        "actor_id": "u_mgrady",
+        "display_name": "M. Grady"
+      },
+      "retention_class": "export_bundle",
+      "immutable": false
+    }
+  ],
+  "links": [
+    {
+      "link_id": "link_shipment_418",
+      "link_type": "shipment",
+      "target_system": "erp",
+      "target_id": "SHP-992144",
+      "display_label": "Shipment SHP-992144",
+      "is_primary": true,
+      "link_source": "manual",
+      "verified": true,
+      "created_at": "2026-04-03T15:03:11-04:00",
+      "created_by": {
+        "actor_type": "user",
+        "actor_id": "u_rcollins",
+        "display_name": "R. Collins"
+      },
+      "note": "Matched against manifest and customer stop."
+    },
+    {
+      "link_id": "link_case_418",
+      "link_type": "support_case",
+      "target_system": "support",
+      "target_id": "CS-2214",
+      "display_label": "Support Case CS-2214",
+      "is_primary": false,
+      "link_source": "manual",
+      "verified": true,
+      "created_at": "2026-04-03T15:06:09-04:00",
+      "created_by": {
+        "actor_type": "user",
+        "actor_id": "u_rcollins",
+        "display_name": "R. Collins"
+      },
+      "note": "Opened because final signature page is partially obscured."
+    }
+  ],
+  "notes": [
+    {
+      "note_id": "note_418_01",
+      "note_type": "owner",
+      "body": "Use this as the canonical POD for the April 3 departure even if a cleaner rescan arrives later.",
+      "pinned": true,
+      "resolved": false,
+      "created_at": "2026-04-03T15:04:41-04:00",
+      "updated_at": null,
+      "created_by": {
+        "actor_type": "user",
+        "actor_id": "u_rcollins",
+        "display_name": "R. Collins"
+      }
+    },
+    {
+      "note_id": "note_418_02",
+      "note_type": "compliance",
+      "body": "Need corrected signature page from carrier before final compliance closeout.",
+      "pinned": false,
+      "resolved": false,
+      "created_at": "2026-04-03T15:05:03-04:00",
+      "updated_at": null,
+      "created_by": {
+        "actor_type": "user",
+        "actor_id": "u_mgrady",
+        "display_name": "M. Grady"
+      }
+    }
+  ],
+  "attachments": [
+    {
+      "attachment_id": "att_418_01",
+      "note_id": "note_418_02",
+      "label": "Carrier email screenshot",
+      "path": "C:\\Users\\david\\Documents\\BarcodeBuddy\\data\\attachments\\att_418_01.png",
+      "format": "png",
+      "size_bytes": 112033,
+      "created_at": "2026-04-03T15:05:50-04:00",
+      "created_by": {
+        "actor_type": "user",
+        "actor_id": "u_mgrady",
+        "display_name": "M. Grady"
+      }
+    }
+  ],
+  "mutable_enrichment": {
+    "owner_user_id": "u_rcollins",
+    "assignee_user_id": "u_mgrady",
+    "business_status": "awaiting_signature_correction",
+    "tags": [
+      "carrier-dispute",
+      "pod",
+      "medical-customer"
+    ],
+    "custom_fields": {
+      "customer_name": "Acme Motion Medical",
+      "route_code": "NE-03",
+      "review_deadline": "2026-04-05"
+    }
+  },
+  "import_jobs": [
+    {
+      "job_id": "imp_418_01",
+      "job_type": "import",
+      "format": "csv",
+      "status": "applied",
+      "requested_at": "2026-04-03T15:01:22-04:00",
+      "completed_at": "2026-04-03T15:01:28-04:00",
+      "requested_by": {
+        "actor_type": "integration",
+        "actor_id": "erp_sync",
+        "display_name": "ERP Sync"
+      },
+      "file_name": "shipment_sync_20260403.csv",
+      "item_count": 3,
+      "summary": "Imported shipment, customer, and stop metadata with no conflicts."
+    }
+  ],
+  "export_jobs": [
+    {
+      "job_id": "exp_418_01",
+      "job_type": "export",
+      "format": "zip",
+      "status": "completed",
+      "requested_at": "2026-04-03T15:11:00-04:00",
+      "completed_at": "2026-04-03T15:11:02-04:00",
+      "requested_by": {
+        "actor_type": "user",
+        "actor_id": "u_mgrady",
+        "display_name": "M. Grady"
+      },
+      "file_name": "scan_20260403_00418_bundle.zip",
+      "item_count": 6,
+      "summary": "Exported source, output, links, notes, attachments, and audit trail."
+    }
+  ],
+  "audit_events": [
+    {
+      "event_id": "evt_418_001",
+      "event_type": "SCAN_DETECTED",
+      "occurred_at": "2026-04-03T14:58:12-04:00",
+      "actor": {
+        "actor_type": "system",
+        "actor_id": "barcode_buddy",
+        "display_name": "Barcode Buddy"
+      },
+      "summary": "Scan detected in shipping POD hot folder.",
+      "before_value": null,
+      "after_value": {
+        "current_state": "processing"
+      },
+      "reason": null,
+      "metadata": {
+        "original_filename": "signed_pod_418.pdf"
+      }
+    },
+    {
+      "event_id": "evt_418_002",
+      "event_type": "BARCODE_ACCEPTED",
+      "occurred_at": "2026-04-03T14:58:14-04:00",
+      "actor": {
+        "actor_type": "system",
+        "actor_id": "barcode_buddy",
+        "display_name": "Barcode Buddy"
+      },
+      "summary": "One eligible barcode value selected for routing.",
+      "before_value": null,
+      "after_value": {
+        "selected_barcode": "6013796-00"
+      },
+      "reason": null,
+      "metadata": {
+        "candidate_values": [
+          "6013796-00",
+          "1Z999AA10123456784"
+        ]
+      }
+    },
+    {
+      "event_id": "evt_418_003",
+      "event_type": "LINK_CREATED",
+      "occurred_at": "2026-04-03T15:03:11-04:00",
+      "actor": {
+        "actor_type": "user",
+        "actor_id": "u_rcollins",
+        "display_name": "R. Collins"
+      },
+      "summary": "Primary shipment link added.",
+      "before_value": null,
+      "after_value": {
+        "target_id": "SHP-992144"
+      },
+      "reason": "Matched against manifest and customer stop.",
+      "metadata": {
+        "link_type": "shipment"
+      }
+    },
+    {
+      "event_id": "evt_418_004",
+      "event_type": "EXPORT_COMPLETED",
+      "occurred_at": "2026-04-03T15:11:02-04:00",
+      "actor": {
+        "actor_type": "user",
+        "actor_id": "u_mgrady",
+        "display_name": "M. Grady"
+      },
+      "summary": "Evidence bundle exported.",
+      "before_value": null,
+      "after_value": {
+        "file_name": "scan_20260403_00418_bundle.zip"
+      },
+      "reason": "Carrier dispute review.",
+      "metadata": {
+        "job_id": "exp_418_01"
+      }
+    }
+  ]
+}

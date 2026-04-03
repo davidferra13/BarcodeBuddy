@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Record Workbench</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --paper: rgba(255, 251, 244, 0.88);
+      --ink: #172126;
+      --muted: #5d696d;
+      --line: rgba(23, 33, 38, 0.12);
+      --shadow: 0 18px 40px rgba(23, 33, 38, 0.12);
+      --accent: #b34d21;
+      --accent-deep: #8f3813;
+      --signal: #0f7a68;
+      --signal-soft: rgba(15, 122, 104, 0.12);
+      --warn: #a55b10;
+      --cool: #234a69;
+      --header: linear-gradient(135deg, #10212b 0%, #16384a 48%, #21465f 100%);
+      --panel-glow: radial-gradient(circle at top right, rgba(179, 77, 33, 0.12), transparent 40%);
+      --font-ui: "Segoe UI Variable", "Trebuchet MS", "Franklin Gothic Medium", Arial, sans-serif;
+      --font-display: "Georgia", "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(179, 77, 33, 0.15), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(35, 74, 105, 0.18), transparent 30%),
+        linear-gradient(180deg, #f8f4ee 0%, #ede6da 100%);
+    }
+
+    .shell {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 20px auto 36px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      background: var(--header);
+      color: #f8f4ee;
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03));
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 24px;
+      padding: 28px;
+    }
+
+    .eyebrow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .pill,
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .pill.good {
+      background: rgba(15, 122, 104, 0.22);
+      border-color: rgba(15, 122, 104, 0.4);
+    }
+
+    .pill.warn {
+      background: rgba(165, 91, 16, 0.22);
+      border-color: rgba(250, 185, 104, 0.36);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 3vw, 3.4rem);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      max-width: 720px;
+      margin: 16px 0 0;
+      color: rgba(248, 244, 238, 0.86);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-self: end;
+    }
+
+    .hero-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .hero-card .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(248, 244, 238, 0.65);
+    }
+
+    .hero-card .value {
+      margin-top: 10px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1.55fr) minmax(320px, 0.95fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel-glow), var(--paper);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .actions {
+      position: sticky;
+      top: 20px;
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .actions h2,
+    .section h2 {
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    button,
+    .tab,
+    .link-chip {
+      border: 0;
+      border-radius: 16px;
+      font: inherit;
+    }
+
+    .action {
+      width: 100%;
+      text-align: left;
+      padding: 14px 14px 15px;
+      background: #fff9f1;
+      border: 1px solid rgba(23, 33, 38, 0.08);
+      color: var(--ink);
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(23, 33, 38, 0.08);
+      background: #fffcf7;
+    }
+
+    .action strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .action span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .action.primary {
+      background: linear-gradient(180deg, #d46837 0%, #b34d21 100%);
+      color: #fff7f2;
+    }
+
+    .action.primary span {
+      color: rgba(255, 247, 242, 0.82);
+    }
+
+    .main {
+      display: grid;
+      gap: 18px;
+    }
+
+    .section {
+      padding: 20px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      background: rgba(23, 33, 38, 0.04);
+    }
+
+    .tab.active {
+      color: #fff7f2;
+      background: var(--cool);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+    }
+
+    .preview {
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(241, 232, 220, 0.9)),
+        linear-gradient(45deg, rgba(23, 33, 38, 0.03) 25%, transparent 25%, transparent 50%, rgba(23, 33, 38, 0.03) 50%, rgba(23, 33, 38, 0.03) 75%, transparent 75%, transparent);
+      background-size: auto, 18px 18px;
+      padding: 18px;
+      min-height: 370px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview::before {
+      content: "SOURCE";
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .sheet {
+      width: min(88%, 460px);
+      margin: 26px auto 0;
+      background: #fffdfa;
+      border-radius: 10px;
+      border: 1px solid rgba(23, 33, 38, 0.12);
+      box-shadow: 0 16px 26px rgba(23, 33, 38, 0.08);
+      padding: 24px 22px 20px;
+      transform: rotate(-1.2deg);
+    }
+
+    .sheet h3 {
+      margin: 0 0 16px;
+      font-family: var(--font-display);
+      font-size: 25px;
+    }
+
+    .sheet .line {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(23, 33, 38, 0.08);
+      margin-bottom: 8px;
+    }
+
+    .sheet .line.short {
+      width: 58%;
+    }
+
+    .sheet .barcode {
+      margin: 22px 0 16px;
+      height: 92px;
+      border-radius: 8px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          #101820 0px,
+          #101820 3px,
+          #faf5eb 3px,
+          #faf5eb 7px,
+          #101820 7px,
+          #101820 9px,
+          #faf5eb 9px,
+          #faf5eb 15px
+        );
+      border: 1px solid rgba(23, 33, 38, 0.12);
+    }
+
+    .preview-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric,
+    .card,
+    .timeline-item,
+    .note,
+    .audit-row,
+    .artifact-row,
+    .link-row {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .metric {
+      padding: 14px;
+    }
+
+    .metric .k {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .metric .v {
+      margin-top: 9px;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .metric .sub {
+      margin-top: 7px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      padding: 14px;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .detail {
+      display: grid;
+      gap: 10px;
+    }
+
+    .detail div {
+      display: grid;
+      gap: 4px;
+    }
+
+    .detail span {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .detail strong {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 18px;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline-item,
+    .note,
+    .audit-row,
+    .artifact-row,
+    .link-row {
+      padding: 14px 15px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .time {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .timeline-item strong,
+    .note strong,
+    .artifact-row strong,
+    .audit-row strong,
+    .link-row strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .timeline-item p,
+    .note p,
+    .artifact-row p,
+    .audit-row p,
+    .link-row p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .link-row,
+    .artifact-row,
+    .audit-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .link-chip {
+      padding: 8px 10px;
+      background: rgba(35, 74, 105, 0.08);
+      color: var(--cool);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+    }
+
+    .note {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 245, 232, 0.92));
+    }
+
+    .rail {
+      display: grid;
+      gap: 18px;
+    }
+
+    .rail .section {
+      padding: 18px;
+    }
+
+    .score {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    .score strong {
+      font-size: 42px;
+      line-height: 1;
+      font-family: var(--font-display);
+      color: var(--accent-deep);
+    }
+
+    .bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar {
+      display: grid;
+      gap: 6px;
+    }
+
+    .bar span {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .track {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(23, 33, 38, 0.08);
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent) 0%, #d69a33 100%);
+    }
+
+    .callout {
+      padding: 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+      background: var(--signal-soft);
+      color: #13463d;
+      border: 1px solid rgba(15, 122, 104, 0.2);
+    }
+
+    .callout.warn {
+      background: rgba(165, 91, 16, 0.08);
+      color: #6e4312;
+      border-color: rgba(165, 91, 16, 0.2);
+    }
+
+    .rail-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .rail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .rail-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .rail-row span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .rail-row strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 1200px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        position: static;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .hero-grid,
+      .summary-grid,
+      .split,
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100vw - 18px, 100%);
+        margin: 10px auto 18px;
+      }
+
+      .hero-grid,
+      .section,
+      .rail .section,
+      .actions {
+        padding: 16px;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .data-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .link-row,
+      .artifact-row,
+      .audit-row,
+      .hero-meta {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">
+            <span class="pill good">Routed</span>
+            <span class="pill">Shipping POD</span>
+            <span class="pill warn">2 unresolved notes</span>
+            <span class="pill">Record completeness 96%</span>
+          </div>
+          <h1>Scan Record SR-2026-04-03-00418</h1>
+          <p>
+            One page for the entire life of a scan: source file, barcode interpretation, routing outcome,
+            linked business records, owner notes, imports, exports, and every action taken afterward.
+          </p>
+        </div>
+        <div class="hero-meta">
+          <div class="hero-card">
+            <div class="label">Canonical barcode</div>
+            <div class="value">6013796-00</div>
+          </div>
+          <div class="hero-card">
+            <div class="label">Scanned at</div>
+            <div class="value">2026-04-03 14:58</div>
+          </div>
+          <div class="hero-card">
+            <div class="label">Current owner</div>
+            <div class="value">R. Collins</div>
+          </div>
+          <div class="hero-card">
+            <div class="label">Primary site</div>
+            <div class="value">Beverly Dock 03</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="panel actions">
+        <h2>Primary Actions</h2>
+        <button class="action primary">
+          <strong>Add note</strong>
+          <span>Capture owner context, follow-up, or review outcome.</span>
+        </button>
+        <button class="action">
+          <strong>Link record</strong>
+          <span>Tie this scan to a PO, shipment, receipt, lot, or external case.</span>
+        </button>
+        <button class="action">
+          <strong>Reprocess</strong>
+          <span>Run the scan again under the selected workflow and preserve the audit trail.</span>
+        </button>
+        <button class="action">
+          <strong>Export package</strong>
+          <span>Bundle source, output, sidecar, links, notes, and audit as one ZIP.</span>
+        </button>
+        <button class="action">
+          <strong>Import metadata</strong>
+          <span>Merge JSON or CSV enrichment with preview before apply.</span>
+        </button>
+        <button class="action">
+          <strong>Compare rescans</strong>
+          <span>Inspect duplicate family and pick the canonical member.</span>
+        </button>
+      </aside>
+
+      <main class="main">
+        <section class="panel section">
+          <div class="section-head">
+            <h2>Overview</h2>
+            <div class="tabs">
+              <span class="tab active">Overview</span>
+              <span class="tab">Artifacts</span>
+              <span class="tab">Events</span>
+              <span class="tab">Links</span>
+              <span class="tab">Notes</span>
+              <span class="tab">Audit</span>
+              <span class="tab">Imports / Exports</span>
+              <span class="tab">Diagnostics</span>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="preview">
+              <div class="sheet">
+                <h3>Signed Delivery Receipt</h3>
+                <div class="line"></div>
+                <div class="line short"></div>
+                <div class="barcode"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line short"></div>
+              </div>
+              <div class="preview-footer">
+                <span class="mini-pill">Original PDF</span>
+                <span class="mini-pill">4 pages</span>
+                <span class="mini-pill">2.4 MB</span>
+                <span class="mini-pill">SHA-256 verified</span>
+              </div>
+            </div>
+
+            <div class="data-grid">
+              <div class="metric">
+                <div class="k">Who</div>
+                <div class="v">A. Mercer via Dock Scanner 03</div>
+                <div class="sub">Uploaded through network hot folder, later reviewed by R. Collins.</div>
+              </div>
+              <div class="metric">
+                <div class="k">What</div>
+                <div class="v">Proof of delivery packet</div>
+                <div class="sub">Selected barcode `6013796-00`, CODE128, 0 degrees.</div>
+              </div>
+              <div class="metric">
+                <div class="k">When</div>
+                <div class="v">14:58:12 to 14:58:17 ET</div>
+                <div class="sub">5.1 seconds from detection to routed output.</div>
+              </div>
+              <div class="metric">
+                <div class="k">Where</div>
+                <div class="v">Beverly warehouse, Door 3</div>
+                <div class="sub">Input `\\scan-share\\shipping-pod`, output `data/output/2026/04`.</div>
+              </div>
+              <div class="metric">
+                <div class="k">How</div>
+                <div class="v">Shipping POD workflow v3.4</div>
+                <div class="sub">All-pages scan, timestamp duplicates, regex policy `pod_doc_id_v2`.</div>
+              </div>
+              <div class="metric">
+                <div class="k">Status</div>
+                <div class="v">Routed, linked, export-ready</div>
+                <div class="sub">Two notes remain unresolved, no processing errors.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <div class="section-head">
+            <h2>Who / What / When / Where / How</h2>
+          </div>
+          <div class="matrix">
+            <article class="card">
+              <h3>Who</h3>
+              <div class="detail">
+                <div><span>Captured by</span><strong>A. Mercer</strong></div>
+                <div><span>Current owner</span><strong>R. Collins</strong></div>
+                <div><span>Last editor</span><strong>M. Grady at 15:12</strong></div>
+              </div>
+            </article>
+            <article class="card">
+              <h3>What</h3>
+              <div class="detail">
+                <div><span>Source</span><strong>signed_pod_418.pdf</strong></div>
+                <div><span>Barcode</span><strong>6013796-00 / CODE128</strong></div>
+                <div><span>Pages</span><strong>4 pages, routed output ready</strong></div>
+              </div>
+            </article>
+            <article class="card">
+              <h3>When</h3>
+              <div class="detail">
+                <div><span>Detected</span><strong>14:58:12</strong></div>
+                <div><span>Validated</span><strong>14:58:15</strong></div>
+                <div><span>Output committed</span><strong>14:58:17</strong></div>
+              </div>
+            </article>
+            <article class="card">
+              <h3>Where</h3>
+              <div class="detail">
+                <div><span>Site</span><strong>Beverly Dock 03</strong></div>
+                <div><span>Input path</span><strong>\\scan-share\\shipping-pod</strong></div>
+                <div><span>Output path</span><strong>data/output/2026/04/6013796-00.pdf</strong></div>
+              </div>
+            </article>
+            <article class="card">
+              <h3>How</h3>
+              <div class="detail">
+                <div><span>Workflow</span><strong>shipping_pod</strong></div>
+                <div><span>Policy</span><strong>All pages, timestamp duplicates</strong></div>
+                <div><span>Engine</span><strong>zxing-cpp 2.x, config snapshot 3.4</strong></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <div class="split">
+            <div>
+              <div class="section-head">
+                <h2>Relationship Graph</h2>
+              </div>
+              <div class="list">
+                <div class="link-row">
+                  <div>
+                    <strong>Shipment SHP-992144</strong>
+                    <p>Primary business link. Added manually by R. Collins after delivery confirmation.</p>
+                  </div>
+                  <span class="link-chip">Primary</span>
+                </div>
+                <div class="link-row">
+                  <div>
+                    <strong>Customer Acme Motion Medical</strong>
+                    <p>Inherited from shipment link package imported from ERP sync.</p>
+                  </div>
+                  <span class="link-chip">Imported</span>
+                </div>
+                <div class="link-row">
+                  <div>
+                    <strong>Support Case CS-2214</strong>
+                    <p>Opened because receiver signature was partially obscured on page 4.</p>
+                  </div>
+                  <span class="link-chip">Manual</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-head">
+                <h2>Notes</h2>
+              </div>
+              <div class="list">
+                <div class="note">
+                  <strong>Owner note pinned</strong>
+                  <p>Use this scan as the canonical POD for the April 3 truck departure. A cleaner rescan exists, but this one preserves the original timestamp chain.</p>
+                </div>
+                <div class="note">
+                  <strong>Compliance comment</strong>
+                  <p>Need a follow-up attachment showing the corrected signature page once the carrier sends it back.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <div class="split">
+            <div>
+              <div class="section-head">
+                <h2>Timeline Summary</h2>
+              </div>
+              <div class="list">
+                <div class="timeline-item">
+                  <div class="time">14:58:12</div>
+                  <div>
+                    <strong>File detected</strong>
+                    <p>Source entered the shipping POD hot folder from Dock Scanner 03.</p>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="time">14:58:13</div>
+                  <div>
+                    <strong>Claimed for processing</strong>
+                    <p>File stabilized and moved into `data/processing`.</p>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="time">14:58:14</div>
+                  <div>
+                    <strong>Barcode accepted</strong>
+                    <p>Candidate values found: `6013796-00`, `1Z999...`; business-rule filter kept one eligible value.</p>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="time">14:58:17</div>
+                  <div>
+                    <strong>Output committed</strong>
+                    <p>PDF written and record linked to shipment sync queue.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-head">
+                <h2>Artifacts</h2>
+              </div>
+              <div class="list">
+                <div class="artifact-row">
+                  <div>
+                    <strong>Original source PDF</strong>
+                    <p>2.4 MB, SHA-256 `A40E...91C2`, retained as immutable evidence.</p>
+                  </div>
+                  <span class="link-chip">Download</span>
+                </div>
+                <div class="artifact-row">
+                  <div>
+                    <strong>Routed output PDF</strong>
+                    <p>`data/output/2026/04/6013796-00.pdf`, created by system at 14:58:17.</p>
+                  </div>
+                  <span class="link-chip">Open</span>
+                </div>
+                <div class="artifact-row">
+                  <div>
+                    <strong>Export bundle</strong>
+                    <p>ZIP with source, output, note thread, links, and audit trail created at 15:11.</p>
+                  </div>
+                  <span class="link-chip">Export</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <div class="split">
+            <div>
+              <div class="section-head">
+                <h2>Imports / Exports</h2>
+              </div>
+              <div class="list">
+                <div class="audit-row">
+                  <div>
+                    <strong>ERP import preview</strong>
+                    <p>Shipment, customer, and stop metadata merged from `shipment_sync_20260403.csv` with no field conflicts.</p>
+                  </div>
+                  <span class="link-chip">Imported</span>
+                </div>
+                <div class="audit-row">
+                  <div>
+                    <strong>Evidence package ZIP</strong>
+                    <p>Created for carrier dispute review. Includes source PDF, output PDF, notes, links, and audit log slice.</p>
+                  </div>
+                  <span class="link-chip">Exported</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-head">
+                <h2>Audit Trail</h2>
+              </div>
+              <div class="list">
+                <div class="audit-row">
+                  <div>
+                    <strong>15:03 - Link created by R. Collins</strong>
+                    <p>Primary shipment changed from empty to `SHP-992144` with reason "delivery packet matched manifest".</p>
+                  </div>
+                  <span class="link-chip">Field change</span>
+                </div>
+                <div class="audit-row">
+                  <div>
+                    <strong>15:11 - Export executed by M. Grady</strong>
+                    <p>Evidence bundle created for support case `CS-2214`.</p>
+                  </div>
+                  <span class="link-chip">Export</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="rail">
+        <section class="panel section">
+          <div class="score">
+            <div>
+              <h2>Record Score</h2>
+              <p style="margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.45;">
+                Composite confidence that the record contains enough context for owner review without hunting through raw logs.
+              </p>
+            </div>
+            <strong>96</strong>
+          </div>
+          <div class="bars">
+            <div class="bar">
+              <span>Evidence completeness</span>
+              <div class="track"><div class="fill" style="width: 100%;"></div></div>
+            </div>
+            <div class="bar">
+              <span>Business linkage</span>
+              <div class="track"><div class="fill" style="width: 92%;"></div></div>
+            </div>
+            <div class="bar">
+              <span>Owner annotation</span>
+              <div class="track"><div class="fill" style="width: 81%;"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <h2>Quick Facts</h2>
+          <div class="rail-list">
+            <div class="rail-row">
+              <div>
+                <span>Processing ID</span>
+                <strong>0f6b58c6-9ee8-4ef6-89c2-f0a2f6dd3f25</strong>
+              </div>
+            </div>
+            <div class="rail-row">
+              <div>
+                <span>Duplicate policy</span>
+                <strong>Timestamp on collision</strong>
+              </div>
+            </div>
+            <div class="rail-row">
+              <div>
+                <span>Candidate values</span>
+                <strong>2 found, 1 eligible</strong>
+              </div>
+            </div>
+            <div class="rail-row">
+              <div>
+                <span>Last export</span>
+                <strong>15:11 by M. Grady</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <h2>Owner Attention</h2>
+          <div class="callout">
+            This record is operationally healthy. The remaining work is owner context: resolve the compliance note and attach the corrected signature page if it arrives.
+          </div>
+          <div style="height:10px;"></div>
+          <div class="callout warn">
+            Keep the original source artifact immutable even if a better rescan becomes the preferred downstream attachment.
+          </div>
+        </section>
+
+        <section class="panel section">
+          <h2>Related Scans</h2>
+          <div class="rail-list">
+            <div class="rail-row">
+              <div>
+                <span>SR-2026-04-03-00432</span>
+                <strong>Rescan from same shipment, better image quality</strong>
+              </div>
+              <span class="link-chip">Compare</span>
+            </div>
+            <div class="rail-row">
+              <div>
+                <span>SR-2026-04-01-00387</span>
+                <strong>Prior POD packet for same customer route</strong>
+              </div>
+              <span class="link-chip">Open</span>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

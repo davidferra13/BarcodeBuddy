@@ -1,0 +1,32 @@
+{
+  "obligation_id": "obl_ship_2026_04_03_017",
+  "workflow_key": "shipping_pod",
+  "site_code": "BEV",
+  "status": "overdue",
+  "priority": "high",
+  "obligation_type": "shipping_pod",
+  "title": "Signed POD expected for route TRK-2041",
+  "description": "Delivery completed but signed proof of delivery has not been scanned back into the workflow.",
+  "expected_scan_count": 1,
+  "observed_scan_count": 0,
+  "due_window": {
+    "start_at": "2026-04-03T08:00:00-04:00",
+    "end_at": "2026-04-03T15:00:00-04:00"
+  },
+  "source_ref": {
+    "source_system": "dispatch_board",
+    "reference_type": "route_id",
+    "reference_value": "TRK-2041"
+  },
+  "assignment": {
+    "assigned_to": "shipping-coordinator-1",
+    "assigned_team": "shipping"
+  },
+  "matched_scan_ids": [],
+  "labels": ["pod", "same_day", "carrier_follow_up"],
+  "waiver_reason": null,
+  "closed_reason": null,
+  "created_at": "2026-04-03T08:01:00-04:00",
+  "updated_at": "2026-04-03T17:30:00-04:00",
+  "closed_at": null
+}

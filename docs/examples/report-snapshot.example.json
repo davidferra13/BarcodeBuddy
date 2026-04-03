@@ -1,0 +1,89 @@
+{
+  "report_snapshot_id": "report_2026_04_03_tomorrow_bev_001",
+  "report_definition_id": "report_def_tomorrow_bev_default",
+  "report_key": "tomorrow",
+  "report_kind": "projection",
+  "status": "generated",
+  "version": 1,
+  "generated_at": "2026-04-03T18:10:00-04:00",
+  "timezone": "America/New_York",
+  "scope": {
+    "site_codes": ["BEV"],
+    "workflow_keys": ["receiving", "shipping_pod", "quality_compliance"]
+  },
+  "window": {
+    "start_at": "2026-04-04T00:00:00-04:00",
+    "end_at": "2026-04-04T23:59:59-04:00",
+    "label": "Tomorrow"
+  },
+  "comparison_window": {
+    "start_at": "2026-04-03T00:00:00-04:00",
+    "end_at": "2026-04-03T23:59:59-04:00",
+    "label": "Today"
+  },
+  "metrics": {
+    "documents_seen": 0,
+    "documents_succeeded": 0,
+    "documents_failed": 0,
+    "documents_incomplete": 0,
+    "backlog_open": 14,
+    "backlog_overdue": 3,
+    "success_rate": null
+  },
+  "obligation_summary": {
+    "open": 27,
+    "due_soon": 12,
+    "overdue": 3,
+    "matched": 0,
+    "partially_matched": 0,
+    "waived": 0,
+    "closed": 0
+  },
+  "top_exceptions": [
+    {
+      "reason": "Missing POD scan",
+      "count": 3
+    },
+    {
+      "reason": "Receiving slip overdue",
+      "count": 2
+    }
+  ],
+  "source_counters": {
+    "scan_records": 12483,
+    "processing_runs": 12941,
+    "activity_events": 84122,
+    "obligations": 27
+  },
+  "forecast": {
+    "confidence_label": "medium",
+    "expected_documents": 41,
+    "expected_carryover": 5,
+    "assumptions": [
+      "Uses open obligations due tomorrow.",
+      "Includes average Friday receiving volume from the prior 8 weeks.",
+      "Assumes unresolved overdue items remain open until matched or waived."
+    ]
+  },
+  "sections": [
+    {
+      "section_key": "header",
+      "title": "Tomorrow Planning Summary",
+      "section_kind": "meta",
+      "content": {
+        "site_label": "Beverly",
+        "generated_by": "planner_v1"
+      }
+    },
+    {
+      "section_key": "forecast",
+      "title": "Tomorrow Forecast",
+      "section_kind": "projection",
+      "content": {
+        "expected_documents": 41,
+        "largest_risk_workflow": "shipping_pod",
+        "recommended_focus": "Clear overdue POD obligations before 10:00."
+      }
+    }
+  ]
+}

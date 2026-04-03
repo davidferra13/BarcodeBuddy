@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://danpack.local/barcodebuddy/contracts/report-snapshot.schema.json",
+  "title": "Report Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_snapshot_id",
+    "report_key",
+    "report_kind",
+    "status",
+    "version",
+    "generated_at",
+    "timezone",
+    "scope",
+    "window",
+    "metrics",
+    "obligation_summary",
+    "top_exceptions",
+    "source_counters",
+    "sections"
+  ],
+  "properties": {
+    "report_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "report_definition_id": {
+      "type": ["string", "null"]
+    },
+    "report_key": {
+      "type": "string",
+      "enum": [
+        "hourly",
+        "morning",
+        "day",
+        "night",
+        "yesterday",
+        "tomorrow",
+        "quarterly",
+        "custom"
+      ]
+    },
+    "report_kind": {
+      "type": "string",
+      "enum": ["actual", "projection", "hybrid"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["generated", "partial", "failed"]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timezone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["site_codes", "workflow_keys"],
+      "properties": {
+        "site_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workflow_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_at", "end_at", "label"],
+      "properties": {
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "comparison_window": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["start_at", "end_at", "label"],
+      "properties": {
+        "start_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documents_seen",
+        "documents_succeeded",
+        "documents_failed",
+        "documents_incomplete",
+        "backlog_open",
+        "backlog_overdue",
+        "success_rate"
+      ],
+      "properties": {
+        "documents_seen": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "documents_succeeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "documents_failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "documents_incomplete": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backlog_open": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backlog_overdue": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "success_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "obligation_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "open",
+        "due_soon",
+        "overdue",
+        "matched",
+        "partially_matched",
+        "waived",
+        "closed"
+      ],
+      "properties": {
+        "open": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "due_soon": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "overdue": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partially_matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "waived": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "closed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "top_exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason", "count"],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "source_counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scan_records", "processing_runs", "activity_events", "obligations"],
+      "properties": {
+        "scan_records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "processing_runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activity_events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "obligations": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "forecast": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["confidence_label", "expected_documents", "expected_carryover"],
+      "properties": {
+        "confidence_label": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "expected_documents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_carryover": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["section_key", "title", "section_kind"],
+        "properties": {
+          "section_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section_kind": {
+            "type": "string",
+            "enum": ["actual", "projection", "hybrid", "meta"]
+          },
+          "content": {
+            "type": ["object", "array", "string", "number", "boolean", "null"]
+          }
+        }
+      }
+    }
+  }
+}

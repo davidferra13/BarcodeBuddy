@@ -1,0 +1,17 @@
+{
+  "workflow_key": "receiving",
+  "input_path": "../data/receiving/input",
+  "processing_path": "../data/receiving/processing",
+  "output_path": "../data/receiving/output",
+  "rejected_path": "../data/receiving/rejected",
+  "log_path": "../data/receiving/logs",
+  "barcode_types": ["code128", "auto"],
+  "barcode_value_patterns": [],
+  "scan_all_pages": true,
+  "duplicate_handling": "reject",
+  "file_stability_delay_ms": 2000,
+  "max_pages_scan": 50,
+  "poll_interval_ms": 500,
+  "barcode_scan_dpi": 300,
+  "barcode_upscale_factor": 1.0
+}
