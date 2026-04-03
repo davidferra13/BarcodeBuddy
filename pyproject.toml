@@ -1,0 +1,21 @@
+[project]
+name = "barcode-buddy"
+version = "2.0.0"
+description = "Deterministic hot-folder document ingestion service for Danpack"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "Pillow>=10.0.0,<13.0.0",
+    "PyMuPDF>=1.24.0,<2.0.0",
+    "zxing-cpp>=3.0.0,<4.0.0",
+    "opencv-python-headless>=4.9.0",
+    "watchfiles>=1.0.0",
+    "structlog>=24.0.0",
+    "pydantic>=2.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.30.0",
+    "apscheduler>=3.10.0,<5.0.0",
+]
+
+[project.scripts]
+barcode-buddy = "main:main"
+barcode-buddy-stats = "stats:main"

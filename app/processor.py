@@ -3,11 +3,15 @@ from __future__ import annotations
 import json
 import re
 import socket
+import threading
 import time
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from watchfiles import watch, Change
 
 from app.barcode import BarcodeMatch, BarcodeScanner
 from app.config import Settings
@@ -52,7 +56,7 @@ from app.documents import (
     move_file,
     save_processing_file_as_pdf,
 )
-from app.logging_utils import append_jsonl, write_json_atomically
+from app.logging_utils import append_jsonl, get_logger, write_json_atomically
 
 
 FILE_STABILITY_TIMEOUT_MS = 10_000
@@ -129,19 +133,56 @@ class BarcodeBuddyService:
         self.instance_id = str(uuid4())
         self._observations: dict[Path, FileObservation] = {}
         self._last_heartbeat_monotonic: float | None = None
+        self._stop_event = threading.Event()
+        self._scheduler: BackgroundScheduler | None = None
+        self._log = get_logger(
+            service="barcode_buddy",
+            instance_id=self.instance_id,
+            workflow=settings.workflow_key,
+        )
 
     def run_forever(self) -> None:
         self._emit_heartbeat(force=True)
+
+        self._scheduler = BackgroundScheduler(daemon=True)
+        self._scheduler.add_job(
+            self._scheduled_heartbeat,
+            "interval",
+            seconds=HEARTBEAT_INTERVAL_SECONDS,
+            id="heartbeat",
+            misfire_grace_time=HEARTBEAT_INTERVAL_SECONDS,
+        )
+        self._scheduler.start()
+
         try:
-            while True:
+            self.process_pending_files()
+
+            poll_interval_sec = self.settings.poll_interval_ms / 1000
+            for changes in watch(
+                str(self.settings.input_path),
+                stop_event=self._stop_event,
+                debounce=self.settings.poll_interval_ms,
+                step=max(100, self.settings.poll_interval_ms // 2),
+                recursive=False,
+                yield_on_timeout=True,
+            ):
                 self.process_pending_files()
-                self._emit_heartbeat()
-                time.sleep(self.settings.poll_interval_ms / 1000)
         finally:
+            if self._scheduler is not None:
+                self._scheduler.shutdown(wait=False)
             try:
                 self.log_service_event(SERVICE_EVENT_SHUTDOWN)
             except Exception:
                 pass
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def _scheduled_heartbeat(self) -> None:
+        try:
+            self._emit_heartbeat(force=True)
+        except Exception:
+            pass
 
     def recover_processing_files(self) -> None:
         referenced_processing_paths: set[str] = set()

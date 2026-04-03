@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app import __version__
 from app.config import ensure_runtime_directories, load_settings
+from app.logging_utils import configure_structlog
 from app.stats import serve_stats_page
 
 
@@ -48,6 +49,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    configure_structlog()
     args = parse_args()
     config_path = Path(args.config).resolve()
     settings = load_settings(config_path)
@@ -55,6 +57,7 @@ def main() -> None:
 
     print(f"Barcode Buddy v{__version__} stats page: http://{args.host}:{args.port}")
     print(f"Reading log file: {settings.log_file}")
+    print(f"API docs available at: http://{args.host}:{args.port}/docs")
     serve_stats_page(
         settings,
         host=args.host,

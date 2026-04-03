@@ -4,13 +4,15 @@ import hashlib
 import json
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from app.contracts import DEFAULT_WORKFLOW_KEY
 
 
-DEFAULT_CONFIG = {
+DEFAULT_CONFIG: dict[str, Any] = {
     "workflow_key": DEFAULT_WORKFLOW_KEY,
     "input_path": "./data/input",
     "processing_path": "./data/processing",
@@ -44,28 +46,89 @@ REQUIRED_KEYS = {
 ALLOWED_KEYS = frozenset(DEFAULT_CONFIG.keys())
 
 
-@dataclass(frozen=True)
-class Settings:
+class Settings(BaseModel):
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+
     input_path: Path
     processing_path: Path
     output_path: Path
     rejected_path: Path
     log_path: Path
     barcode_types: tuple[str, ...]
-    barcode_value_patterns: tuple[str, ...]
+    barcode_value_patterns: tuple[str, ...] = ()
     scan_all_pages: bool
     duplicate_handling: str
-    file_stability_delay_ms: int
-    max_pages_scan: int
-    poll_interval_ms: int
-    barcode_scan_dpi: int
-    barcode_upscale_factor: float
+    file_stability_delay_ms: int = Field(ge=500)
+    max_pages_scan: int = Field(ge=1)
+    poll_interval_ms: int = Field(default=500, ge=100)
+    barcode_scan_dpi: int = Field(default=300, ge=72)
+    barcode_upscale_factor: float = Field(default=1.0, ge=1.0)
     workflow_key: str = DEFAULT_WORKFLOW_KEY
     config_version: str = "unknown"
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def log_file(self) -> Path:
         return self.log_path / "processing_log.jsonl"
+
+    @model_validator(mode="after")
+    def _validate_workflow_key_pattern(self) -> Settings:
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", self.workflow_key):
+            raise ValueError(
+                "Config key 'workflow_key' must match ^[a-z0-9][a-z0-9_-]{0,63}$."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_barcode_types_nonempty(self) -> Settings:
+        if not self.barcode_types:
+            raise ValueError("Config key 'barcode_types' must contain at least one value.")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_duplicate_handling(self) -> Settings:
+        if self.duplicate_handling not in {"timestamp", "reject"}:
+            raise ValueError("Only 'timestamp' and 'reject' duplicate handling are supported.")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_barcode_value_patterns(self) -> Settings:
+        for pattern in self.barcode_value_patterns:
+            if not pattern:
+                raise ValueError("Config key 'barcode_value_patterns' cannot contain empty values.")
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ValueError(f"Invalid barcode value pattern: {pattern}") from exc
+        return self
+
+    @model_validator(mode="after")
+    def _validate_paths_distinct(self) -> Settings:
+        managed_paths = (
+            self.input_path,
+            self.processing_path,
+            self.output_path,
+            self.rejected_path,
+            self.log_path,
+        )
+        normalized_identities = {_normalize_path_identity(path) for path in managed_paths}
+        if len(normalized_identities) != len(managed_paths):
+            raise ValueError("Managed runtime paths must be distinct.")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_paths_same_volume(self) -> Settings:
+        managed_paths = (
+            self.input_path,
+            self.processing_path,
+            self.output_path,
+            self.rejected_path,
+            self.log_path,
+        )
+        device_identities = {_device_identity(path) for path in managed_paths}
+        if len(device_identities) != 1:
+            raise ValueError("Managed runtime paths must reside on the same filesystem volume.")
+        return self
 
 
 def _normalize_barcode_type(value: str) -> str:
@@ -129,64 +192,20 @@ def load_settings(config_path: Path) -> Settings:
 
     base_dir = config_path.parent.resolve()
     barcode_types = tuple(_normalize_barcode_type(item) for item in merged_config["barcode_types"])
-    if not barcode_types:
-        raise ValueError("Config key 'barcode_types' must contain at least one value.")
     workflow_key = _normalize_workflow_key(str(merged_config["workflow_key"]))
-    if not workflow_key:
-        raise ValueError("Config key 'workflow_key' must contain at least one value.")
-    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", workflow_key):
-        raise ValueError(
-            "Config key 'workflow_key' must match ^[a-z0-9][a-z0-9_-]{0,63}$."
-        )
     barcode_value_patterns = tuple(str(item).strip() for item in merged_config["barcode_value_patterns"])
-    for pattern in barcode_value_patterns:
-        if not pattern:
-            raise ValueError("Config key 'barcode_value_patterns' cannot contain empty values.")
-        try:
-            re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(f"Invalid barcode value pattern: {pattern}") from exc
-
     duplicate_handling = str(merged_config["duplicate_handling"]).strip().lower()
-    if duplicate_handling not in {"timestamp", "reject"}:
-        raise ValueError("Only 'timestamp' and 'reject' duplicate handling are supported.")
-
     file_stability_delay_ms = int(merged_config["file_stability_delay_ms"])
     max_pages_scan = int(merged_config["max_pages_scan"])
     poll_interval_ms = int(merged_config["poll_interval_ms"])
     barcode_scan_dpi = int(merged_config["barcode_scan_dpi"])
     barcode_upscale_factor = float(merged_config["barcode_upscale_factor"])
-    if file_stability_delay_ms < 500:
-        raise ValueError("'file_stability_delay_ms' must be at least 500.")
-    if max_pages_scan < 1:
-        raise ValueError("'max_pages_scan' must be at least 1.")
-    if poll_interval_ms < 100:
-        raise ValueError("'poll_interval_ms' must be at least 100.")
-    if barcode_scan_dpi < 72:
-        raise ValueError("'barcode_scan_dpi' must be at least 72.")
-    if barcode_upscale_factor < 1.0:
-        raise ValueError("'barcode_upscale_factor' must be at least 1.0.")
 
     input_path = _resolve_path(base_dir, merged_config["input_path"])
     processing_path = _resolve_path(base_dir, merged_config["processing_path"])
     output_path = _resolve_path(base_dir, merged_config["output_path"])
     rejected_path = _resolve_path(base_dir, merged_config["rejected_path"])
     log_path = _resolve_path(base_dir, merged_config["log_path"])
-
-    managed_paths = (
-        input_path,
-        processing_path,
-        output_path,
-        rejected_path,
-        log_path,
-    )
-    normalized_identities = {_normalize_path_identity(path) for path in managed_paths}
-    if len(normalized_identities) != len(managed_paths):
-        raise ValueError("Managed runtime paths must be distinct.")
-
-    device_identities = {_device_identity(path) for path in managed_paths}
-    if len(device_identities) != 1:
-        raise ValueError("Managed runtime paths must reside on the same filesystem volume.")
 
     effective_config = {
         "workflow_key": workflow_key,

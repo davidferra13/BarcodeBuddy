@@ -61,8 +61,8 @@ Start from those artifacts before widening the implementation.
 
 ### 1.1 What the code actually does today
 
-- `main.py` loads one JSON config file, ensures the runtime directories exist, recovers stranded files from `data/processing` back to `data/input`, then starts a polling loop.
-- `stats.py` loads the same JSON config file and serves a read-only local stats page plus `/api/stats` and `/health` endpoints from the active log plus any local daily archives.
+- `main.py` loads one JSON config file, configures structured logging, ensures the runtime directories exist, recovers stranded files from `data/processing` back to `data/input`, then starts monitoring the input directory via `watchfiles` with APScheduler-managed heartbeat.
+- `stats.py` loads the same JSON config file and serves a read-only local stats page via FastAPI plus `/api/stats` and `/health` endpoints from the active log plus any local daily archives.
 - The runtime is implemented as a single service class in `app/processor.py`.
 - The service polls `input_path`, waits for file stability, claims the file by moving it to `processing_path`, scans for routing barcode candidates, validates the selected result, writes a PDF to `output_path/YYYY/MM`, or moves the source file to `rejected_path`.
 - Every terminal and intermediate stage writes JSONL records to the active file `data/logs/processing_log.jsonl`, and prior days are archived locally as `data/logs/processing_log.YYYY-MM-DD.jsonl`.
@@ -107,11 +107,12 @@ Start from those artifacts before widening the implementation.
 
 ### 1.4 Current module boundary in practice
 
-- `app/config.py`: config loading and runtime directory creation
-- `app/processor.py`: watcher, processing orchestration, validation, duplicate handling, rejection handling, and logging payload assembly
+- `app/config.py`: Pydantic-based config loading with model validators, runtime directory creation
+- `app/processor.py`: watchfiles-based watcher, processing orchestration, validation, duplicate handling, rejection handling, and logging payload assembly
 - `app/documents.py`: file access checks, page counting, PDF rendering, file moves, PDF output writing
-- `app/barcode.py`: image preprocessing and barcode selection
-- `app/logging_utils.py`: JSONL append and atomic JSON writes
+- `app/barcode.py`: OpenCV-based image preprocessing and barcode selection via zxing-cpp
+- `app/logging_utils.py`: structlog configuration, fsync-backed JSONL append and atomic JSON writes
+- `app/contracts.py`: canonical log field names, error codes, and stage/status constants
 - `app/stats.py`: log aggregation plus HTML and JSON rendering for the local stats page
 
 ## 2. Reality Check Against The Architecture Spec

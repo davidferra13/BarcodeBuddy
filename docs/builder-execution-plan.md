@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-03.
 
-Version: 1.0.0
+Version: 2.0.0
 
 This is the dependency-aware execution order for the next builder. Follow the phases in order. Do not start a later phase until the exit criteria for the earlier phase are met.
 
@@ -11,9 +11,9 @@ This is the dependency-aware execution order for the next builder. Follow the ph
 Verified now:
 
 - config contract tests exist in `tests/test_config.py`
-- runtime and artifact tests pass with `py -B -m unittest discover -s tests -v`
+- runtime and artifact tests pass with `py -3.12 -B -m unittest discover -s tests -v`
 - end-to-end runtime contract coverage lives in `tests/test_service_runtime.py`
-- code compiles with `py -m compileall app tests main.py stats.py`
+- code compiles with `py -3.12 -m compileall app tests main.py stats.py`
 - config loader now rejects unknown keys, duplicate managed paths, and cross-volume path sets
 - config loader now emits normalized `workflow_key` plus deterministic `config_version`
 - log and sidecar payloads now include `schema_version`, `workflow`, `host`, `instance_id`, `config_version`, and `error_code`
@@ -216,13 +216,13 @@ Do not do these before Phases 1 through 3:
 Runtime:
 
 ```text
-py main.py
-py stats.py
+py -3.12 main.py
+py -3.12 stats.py
 ```
 
 Verification:
 
 ```text
-py -B -m unittest discover -s tests -v
-py -m compileall app tests main.py stats.py
+py -3.12 -B -m unittest discover -s tests -v
+py -3.12 -m compileall app tests main.py stats.py
 ```

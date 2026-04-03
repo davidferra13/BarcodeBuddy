@@ -1,3 +1,23 @@
+# --- Core ---
 Pillow>=10.0.0,<13.0.0
 PyMuPDF>=1.24.0,<2.0.0
 zxing-cpp>=3.0.0,<4.0.0
+
+# --- Image preprocessing ---
+opencv-python-headless>=4.9.0
+
+# --- File system watching ---
+watchfiles>=1.0.0
+
+# --- Structured logging ---
+structlog>=24.0.0
+
+# --- Config & validation ---
+pydantic>=2.0.0
+
+# --- Stats server ---
+fastapi>=0.110.0
+uvicorn>=0.30.0
+
+# --- Scheduling ---
+apscheduler>=3.10.0,<5.0.0

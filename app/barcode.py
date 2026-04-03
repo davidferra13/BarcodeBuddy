@@ -4,7 +4,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 import re
 
-from PIL import Image, ImageFilter, ImageOps
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
 import zxingcpp
 
 
@@ -115,14 +117,26 @@ class BarcodeScanner:
 
     def _prepare_image(self, image: Image.Image) -> Image.Image:
         grayscale = ImageOps.grayscale(image)
-        normalized = ImageOps.autocontrast(grayscale)
-        sharpened = normalized.filter(ImageFilter.SHARPEN)
-        if self.upscale_factor <= 1.0:
-            return sharpened
+        cv_image = np.array(grayscale, dtype=np.uint8)
 
-        width = max(1, int(round(sharpened.width * self.upscale_factor)))
-        height = max(1, int(round(sharpened.height * self.upscale_factor)))
-        return sharpened.resize((width, height), Image.Resampling.LANCZOS)
+        # OpenCV advanced preprocessing pipeline
+        cv_image = cv2.fastNlMeansDenoising(cv_image, h=10)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cv_image = clahe.apply(cv_image)
+        cv_image = cv2.adaptiveThreshold(
+            cv_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10
+        )
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        cv_image = cv2.morphologyEx(cv_image, cv2.MORPH_CLOSE, kernel)
+
+        processed = Image.fromarray(cv_image, mode="L")
+
+        if self.upscale_factor <= 1.0:
+            return processed
+
+        width = max(1, int(round(processed.width * self.upscale_factor)))
+        height = max(1, int(round(processed.height * self.upscale_factor)))
+        return processed.resize((width, height), Image.Resampling.LANCZOS)
 
     def _read_barcodes(
         self,

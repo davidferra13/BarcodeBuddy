@@ -1,4 +1,4 @@
-# Barcode Buddy v1.0.0
+# Barcode Buddy v2.0.0
 
 Barcode Buddy is a deterministic hot-folder document ingestion service for Danpack, a custom packaging and industrial supply company. It watches `data/input`, extracts a routing barcode from scanned PDFs or images, writes successful outputs as PDFs in `data/output/YYYY/MM`, and moves failures to `data/rejected` with JSONL audit logs and rejection sidecars.
 
@@ -28,7 +28,7 @@ The machine-readable config contract is in [config.schema.json](c:/Users/david/D
 
 ## Requirements
 
-- Python 3.9 or newer
+- Python 3.10 through 3.13 (3.14 is not yet supported by all native dependencies)
 - Windows or Linux
 
 ## Read This First
@@ -66,7 +66,7 @@ py main.py
 
 ## Stats Page
 
-Barcode Buddy now includes a dedicated read-only local stats page built from the active log `data/logs/processing_log.jsonl` plus any daily archives under `data/logs/processing_log.YYYY-MM-DD.jsonl`.
+Barcode Buddy includes a dedicated read-only local stats page served by FastAPI, built from the active log `data/logs/processing_log.jsonl` plus any daily archives under `data/logs/processing_log.YYYY-MM-DD.jsonl`.
 
 Run it in a separate terminal:
 
@@ -109,7 +109,7 @@ The page shows:
 ## Test
 
 ```bash
-py -B -m unittest discover -s tests -v
+py -3.12 -B -m unittest discover -s tests -v
 ```
 
 Workflow starter configs are in `configs/`. These are placeholders for deployment shape only. Keep `barcode_value_patterns` empty until Danpack sample documents confirm the actual routing formats.
@@ -262,10 +262,13 @@ Example value rules for a receiving workflow where the packing slip barcode shou
 - maximum processing time per file is `15 seconds`
 - every exception is caught, logged, and converted into a failure outcome
 - no completed file remains in `data/processing`
+- all JSONL log writes and journal writes are fsynced for durability
+- the service handles `SIGINT` and `SIGTERM` for graceful shutdown
+- input directory is monitored via `watchfiles` (OS-level file notifications) instead of pure polling
 
 ## Barcode Selection And Validation
 
-- barcode preprocessing converts to grayscale, normalizes contrast, sharpens, and then decodes
+- barcode preprocessing converts to grayscale, denoises, applies CLAHE contrast normalization, adaptive thresholding, and morphological cleanup via OpenCV, then decodes
 - barcode decoding retries in this order: `0`, `90`, `180`, `270` degrees
 - configured barcode types are preferred before `auto` fallback
 - page scan order is `Page 1 -> Page N`

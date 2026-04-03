@@ -1,9 +1,43 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
+import sys
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+
+import structlog
+
+
+def configure_structlog() -> None:
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(ensure_ascii=True),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+        cache_logger_on_first_use=True,
+    )
+
+
+def get_logger(**initial_context: Any) -> structlog.stdlib.BoundLogger:
+    return structlog.get_logger(**initial_context)
+
+
+def bind_context(**kwargs: Any) -> None:
+    structlog.contextvars.bind_contextvars(**kwargs)
+
+
+def clear_context() -> None:
+    structlog.contextvars.clear_contextvars()
 
 
 def append_jsonl(log_file: Path, payload: dict[str, Any]) -> None:
@@ -12,6 +46,8 @@ def append_jsonl(log_file: Path, payload: dict[str, Any]) -> None:
     with log_file.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, ensure_ascii=True))
         handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 def iter_jsonl_log_files(log_file: Path) -> list[Path]:
@@ -40,6 +76,8 @@ def write_json_atomically(destination: Path, payload: dict[str, Any]) -> None:
     with temp_path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=True, indent=2)
         handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
     temp_path.replace(destination)
 
 
