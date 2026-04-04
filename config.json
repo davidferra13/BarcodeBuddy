@@ -16,5 +16,5 @@
   "barcode_upscale_factor": 1.0,
   "server_host": "0.0.0.0",
   "server_port": 8080,
-  "secret_key": "NXiu_BbSJNNu96tMCXt07E3q7OND_G7O1cy2lwf3UK9sG2XvSpJB-hD41z1Ki4Pi"
+  "secret_key": ""
 }
