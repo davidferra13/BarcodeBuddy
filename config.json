@@ -13,5 +13,8 @@
   "max_pages_scan": 50,
   "poll_interval_ms": 500,
   "barcode_scan_dpi": 300,
-  "barcode_upscale_factor": 1.0
+  "barcode_upscale_factor": 1.0,
+  "server_host": "0.0.0.0",
+  "server_port": 8080,
+  "secret_key": ""
 }

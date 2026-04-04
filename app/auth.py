@@ -15,8 +15,16 @@ from app.database import User, UserSession, get_db
 
 # --- Configuration ---
 
-SECRET_KEY = secrets.token_hex(32)  # Generated on startup; sessions invalidate on restart
+_GENERATED_SECRET = secrets.token_hex(32)
+SECRET_KEY: str = _GENERATED_SECRET  # Overridden by configure_secret_key() if config provides one
 ALGORITHM = "HS256"
+
+
+def configure_secret_key(key: str) -> None:
+    """Set a persistent secret key from config. Sessions survive restarts."""
+    global SECRET_KEY
+    if key:
+        SECRET_KEY = key
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 COOKIE_NAME = "bb_session"
 

@@ -22,8 +22,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Barcode Buddy ingestion service.")
     parser.add_argument(
         "--config",
-        default="config.json",
-        help="Path to the JSON config file. Defaults to ./config.json",
+        default=os.environ.get("BB_CONFIG", "config.json"),
+        help="Path to the JSON config file. Defaults to BB_CONFIG env var or ./config.json",
     )
     return parser.parse_args()
 

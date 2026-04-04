@@ -28,6 +28,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "poll_interval_ms": 500,
     "barcode_scan_dpi": 300,
     "barcode_upscale_factor": 1.0,
+    "server_host": "0.0.0.0",
+    "server_port": 8080,
+    "secret_key": "",
 }
 
 REQUIRED_KEYS = {
@@ -63,6 +66,9 @@ class Settings(BaseModel):
     poll_interval_ms: int = Field(default=500, ge=100)
     barcode_scan_dpi: int = Field(default=300, ge=72)
     barcode_upscale_factor: float = Field(default=1.0, ge=1.0)
+    server_host: str = "0.0.0.0"
+    server_port: int = Field(default=8080, ge=1, le=65535)
+    secret_key: str = ""
     workflow_key: str = DEFAULT_WORKFLOW_KEY
     config_version: str = "unknown"
 
@@ -200,6 +206,9 @@ def load_settings(config_path: Path) -> Settings:
     poll_interval_ms = int(merged_config["poll_interval_ms"])
     barcode_scan_dpi = int(merged_config["barcode_scan_dpi"])
     barcode_upscale_factor = float(merged_config["barcode_upscale_factor"])
+    server_host = str(merged_config.get("server_host", "0.0.0.0")).strip()
+    server_port = int(merged_config.get("server_port", 8080))
+    secret_key = str(merged_config.get("secret_key", "")).strip()
 
     input_path = _resolve_path(base_dir, merged_config["input_path"])
     processing_path = _resolve_path(base_dir, merged_config["processing_path"])
@@ -249,6 +258,9 @@ def load_settings(config_path: Path) -> Settings:
         poll_interval_ms=poll_interval_ms,
         barcode_scan_dpi=barcode_scan_dpi,
         barcode_upscale_factor=barcode_upscale_factor,
+        server_host=server_host,
+        server_port=server_port,
+        secret_key=secret_key,
         config_version=config_version,
     )
 
