@@ -70,6 +70,13 @@ _ICONS: dict[str, str] = {
         '<path d="M12 14v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2"/>'
         '<path d="M16 7a4 4 0 00-8 0v3h8V7z"/><rect x="6" y="10" width="8" height="6" rx="1"/></svg>'
     ),
+    "scan-to-pdf": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/>'
+        '<line x1="7" y1="7" x2="7" y2="13"/><line x1="10" y1="7" x2="10" y2="13"/>'
+        '<line x1="13" y1="7" x2="13" y2="13"/><polyline points="7 15 10 13 13 15"/></svg>'
+    ),
 }
 
 
@@ -634,6 +641,7 @@ function guardUnsaved(formSel){let dirty=false;const form=document.querySelector
 _NAV_SECTIONS: list[tuple[str, list[tuple[str, str, str, str]]]] = [
     ("Inventory", [
         ("scan", "Scan", "/scan", "scan"),
+        ("scan-to-pdf", "Scan to PDF", "/scan-to-pdf", "scan-to-pdf"),
         ("items", "Items", "/inventory", "items"),
         ("calendar", "Calendar", "/calendar", "calendar"),
         ("new-item", "New Item", "/inventory/new", "new-item"),

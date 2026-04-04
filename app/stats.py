@@ -1031,6 +1031,7 @@ def create_stats_app(
     from app.database import User, UserSession, get_db, init_db
     from app.inventory_pages import router as inventory_pages_router
     from app.inventory_routes import router as inventory_router
+    from app.scan_to_pdf import router as scan_to_pdf_router
 
     # Initialize database
     db_path = settings.log_path / "barcode_buddy.db"
@@ -1145,6 +1146,7 @@ def create_stats_app(
     app.include_router(admin_router)
     app.include_router(inventory_router)
     app.include_router(inventory_pages_router)
+    app.include_router(scan_to_pdf_router)
 
     def _snapshot() -> dict[str, Any]:
         snapshot = build_stats_snapshot(
