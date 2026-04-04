@@ -639,3 +639,275 @@ init();
         role=user.role,
         head_extra=css,
     ))
+
+
+# ── Analytics ──────────────────────────────────────────────────────
+
+@router.get("/analytics", response_class=HTMLResponse)
+def analytics_page(user: User = Depends(require_user)) -> HTMLResponse:
+    css = """<style>
+    .ana-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;overflow-x:auto}
+    .ana-tab{padding:8px 16px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
+    .ana-tab:hover{background:rgba(44,54,63,.06);color:var(--text)}
+    .ana-tab.active{background:var(--sidebar-bg);color:#fff}
+    .ana-page{display:none;animation:anaIn .2s ease}
+    .ana-page.active{display:block}
+    @keyframes anaIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .ana-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+    .ana-card{padding:20px;border-radius:var(--radius);border:1px solid var(--line);background:var(--panel)}
+    .ana-card .val{font-size:28px;font-weight:700;line-height:1.1}
+    .ana-card .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-top:4px}
+    .reason-bar{display:flex;height:28px;border-radius:8px;overflow:hidden;margin-bottom:8px}
+    .reason-segment{transition:width .4s ease}
+    .reason-legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+    .reason-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+    .reason-dot{width:10px;height:10px;border-radius:3px}
+    .cat-row{display:grid;grid-template-columns:140px 1fr 80px 80px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+    .cat-row:last-child{border-bottom:none}
+    .cat-bar-track{height:10px;background:var(--track);border-radius:999px;overflow:hidden}
+    .cat-bar-fill{height:100%;border-radius:999px;transition:width .4s ease}
+    .vel-row{display:grid;grid-template-columns:1fr 60px 80px 100px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+    .vel-row:last-child{border-bottom:none}
+    .vel-bar{height:8px;border-radius:4px;transition:width .4s ease}
+    .stock-section{margin-bottom:20px}
+    .stock-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.04em}
+    .stock-badge.out{background:var(--failure-bg);color:var(--failure);border:1px solid var(--failure-border)}
+    .stock-badge.low{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(184,134,11,.18)}
+    .stock-badge.ok{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
+    .stock-badge.over{background:var(--info-bg);color:var(--info);border:1px solid var(--info-border)}
+    .stock-item{display:grid;grid-template-columns:1fr 100px 100px 120px;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+    .stock-item:last-child{border-bottom:none}
+    .trend-row{display:grid;grid-template-columns:90px 1fr 50px;gap:12px;align-items:center;font-size:13px;padding:4px 0}
+    .trend-bar-track{height:14px;background:var(--track);border-radius:999px;overflow:hidden;display:flex}
+    .period-select{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--text);font-size:13px;font-family:inherit}
+    </style>"""
+
+    body = """
+    <div class="page-header">
+      <div class="page-header-left">
+        <p class="page-desc" style="margin-bottom:0">Insights from your inventory data — transactions, valuation, velocity, and stock health.</p>
+      </div>
+      <select id="period" class="period-select" onchange="loadAll()">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="365">Last year</option>
+      </select>
+    </div>
+
+    <div class="ana-tabs">
+      <button class="ana-tab active" onclick="switchAna('txns',this)">Transactions</button>
+      <button class="ana-tab" onclick="switchAna('value',this)">Valuation</button>
+      <button class="ana-tab" onclick="switchAna('velocity',this)">Velocity</button>
+      <button class="ana-tab" onclick="switchAna('health',this)">Stock Health</button>
+    </div>
+
+    <!-- Transactions Tab -->
+    <div class="ana-page active" id="page-txns">
+      <div class="ana-grid" id="txn-cards"></div>
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Breakdown by Reason</h3>
+        <div class="reason-bar" id="reason-bar"></div>
+        <div class="reason-legend" id="reason-legend"></div>
+      </div>
+      <div class="panel" style="padding:20px;margin-top:16px">
+        <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Daily Activity</h3>
+        <div id="daily-trend"></div>
+      </div>
+    </div>
+
+    <!-- Valuation Tab -->
+    <div class="ana-page" id="page-value">
+      <div class="ana-grid" id="val-cards"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="panel" style="padding:20px">
+          <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Value by Category</h3>
+          <div id="cat-rows"></div>
+        </div>
+        <div class="panel" style="padding:20px">
+          <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Value by Location</h3>
+          <div id="loc-rows"></div>
+        </div>
+      </div>
+      <div class="panel" style="padding:20px;margin-top:16px">
+        <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Barcode Format Distribution</h3>
+        <div id="fmt-rows"></div>
+      </div>
+    </div>
+
+    <!-- Velocity Tab -->
+    <div class="ana-page" id="page-velocity">
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Most Active Items</h3>
+        <div style="font-size:12px;color:var(--muted);display:grid;grid-template-columns:1fr 60px 80px 100px;gap:12px;padding:0 0 8px;border-bottom:2px solid var(--line);font-weight:600;text-transform:uppercase;letter-spacing:.06em">
+          <div>Item</div><div style="text-align:right">Txns</div><div style="text-align:right">Volume</div><div>Activity</div>
+        </div>
+        <div id="vel-rows"></div>
+      </div>
+    </div>
+
+    <!-- Stock Health Tab -->
+    <div class="ana-page" id="page-health">
+      <div class="ana-grid" id="health-cards"></div>
+      <div id="health-sections"></div>
+    </div>"""
+
+    js = """<script>
+const REASON_COLORS={received:'#1a7a54',sold:'#2472a4',adjusted:'#b8860b',damaged:'#c0392b',returned:'#7c3aed',initial:'#64748b'};
+function switchAna(id,btn){document.querySelectorAll('.ana-page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');document.querySelectorAll('.ana-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
+function getDays(){return document.getElementById('period').value}
+
+async function loadAll(){
+  const[txn,val,vel,health]=await Promise.all([
+    fetch('/api/analytics/transactions?days='+getDays()).then(r=>r.json()),
+    fetch('/api/analytics/valuation').then(r=>r.json()),
+    fetch('/api/analytics/velocity?days='+getDays()).then(r=>r.json()),
+    fetch('/api/analytics/stock-health').then(r=>r.json())
+  ]);
+  renderTxn(txn);renderVal(val);renderVel(vel);renderHealth(health);
+}
+
+function renderTxn(d){
+  const cards=document.getElementById('txn-cards');
+  const reasons=Object.entries(d.by_reason);
+  const totalQty=Object.values(d.by_reason_quantity).reduce((a,b)=>a+b,0);
+  cards.innerHTML=`
+    <div class="ana-card"><div class="val">${d.total_transactions.toLocaleString()}</div><div class="lbl">Transactions</div></div>
+    <div class="ana-card"><div class="val">${reasons.length}</div><div class="lbl">Reason Types</div></div>
+    <div class="ana-card"><div class="val">${totalQty.toLocaleString()}</div><div class="lbl">Units Moved</div></div>
+    <div class="ana-card"><div class="val">${d.period_days}d</div><div class="lbl">Period</div></div>`;
+
+  // Reason bar
+  const bar=document.getElementById('reason-bar');
+  const legend=document.getElementById('reason-legend');
+  const total=d.total_transactions||1;
+  bar.innerHTML=reasons.map(([r,c])=>{
+    const pct=(c/total*100).toFixed(1);
+    const col=REASON_COLORS[r]||'#64748b';
+    return `<div class="reason-segment" style="width:${pct}%;background:${col}" title="${esc(r)}: ${c} (${pct}%)"></div>`;
+  }).join('');
+  legend.innerHTML=reasons.map(([r,c])=>{
+    const col=REASON_COLORS[r]||'#64748b';
+    return `<div class="reason-legend-item"><div class="reason-dot" style="background:${col}"></div>${esc(r)} (${c})</div>`;
+  }).join('');
+
+  // Daily trend
+  const trend=document.getElementById('daily-trend');
+  const daily=d.daily_trend;
+  if(!daily.length){trend.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">No transaction data for this period.</div>';return}
+  const maxDay=Math.max(...daily.map(day=>{let t=0;for(const[k,v]of Object.entries(day)){if(k!=='date')t+=v}return t}))||1;
+  trend.innerHTML=daily.map(day=>{
+    let t=0;for(const[k,v]of Object.entries(day)){if(k!=='date')t+=v}
+    const segments=Object.entries(day).filter(([k])=>k!=='date').map(([r,c])=>{
+      const col=REASON_COLORS[r]||'#64748b';
+      const pct=(c/maxDay*100).toFixed(1);
+      return `<div style="width:${pct}%;height:100%;background:${col}"></div>`;
+    }).join('');
+    return `<div class="trend-row"><div style="color:var(--muted);font-variant-numeric:tabular-nums">${day.date.slice(5)}</div><div class="trend-bar-track">${segments}</div><div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${t}</div></div>`;
+  }).join('');
+}
+
+function renderVal(d){
+  const cards=document.getElementById('val-cards');
+  cards.innerHTML=`
+    <div class="ana-card"><div class="val">$${d.total_value.toLocaleString(undefined,{minimumFractionDigits:2})}</div><div class="lbl">Total Value</div></div>
+    <div class="ana-card"><div class="val">${d.total_items}</div><div class="lbl">Active Items</div></div>
+    <div class="ana-card"><div class="val">${d.items_with_cost}</div><div class="lbl">Costed Items</div></div>
+    <div class="ana-card"><div class="val" style="color:${d.items_without_cost?'var(--warning)':'var(--success)'}">${d.items_without_cost}</div><div class="lbl">Missing Cost</div></div>`;
+
+  // Category rows
+  const maxCatVal=Math.max(...Object.values(d.by_category).map(c=>c.value))||1;
+  const catColors=['#1a7a54','#2472a4','#b8860b','#7c3aed','#c0392b','#0891b2','#d97706','#4f46e5'];
+  document.getElementById('cat-rows').innerHTML=Object.entries(d.by_category)
+    .sort((a,b)=>b[1].value-a[1].value)
+    .map(([cat,info],i)=>`<div class="cat-row">
+      <div style="font-weight:600">${esc(cat)}</div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(info.value/maxCatVal*100).toFixed(1)}%;background:${catColors[i%catColors.length]}"></div></div>
+      <div style="text-align:right;font-variant-numeric:tabular-nums">${info.items} items</div>
+      <div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">$${info.value.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
+    </div>`).join('')||'<div style="color:var(--muted);padding:16px;text-align:center">No category data.</div>';
+
+  // Location rows
+  const maxLocVal=Math.max(...Object.values(d.by_location).map(l=>l.value))||1;
+  const locColors=['#2472a4','#1a7a54','#d97706','#7c3aed','#c0392b','#0891b2'];
+  document.getElementById('loc-rows').innerHTML=Object.entries(d.by_location)
+    .sort((a,b)=>b[1].value-a[1].value)
+    .map(([loc,info],i)=>`<div class="cat-row">
+      <div style="font-weight:600">${esc(loc)}</div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(info.value/maxLocVal*100).toFixed(1)}%;background:${locColors[i%locColors.length]}"></div></div>
+      <div style="text-align:right;font-variant-numeric:tabular-nums">${info.items} items</div>
+      <div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">$${info.value.toLocaleString(undefined,{minimumFractionDigits:2})}</div>
+    </div>`).join('')||'<div style="color:var(--muted);padding:16px;text-align:center">No location data.</div>';
+
+  // Barcode format
+  const fmtColors=['#4f46e5','#0891b2','#d97706','#1a7a54','#c0392b'];
+  const maxFmt=Math.max(...Object.values(d.by_barcode_type))||1;
+  document.getElementById('fmt-rows').innerHTML=Object.entries(d.by_barcode_type)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([fmt,cnt],i)=>`<div class="cat-row">
+      <div style="font-weight:600">${esc(fmt)}</div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(cnt/maxFmt*100).toFixed(1)}%;background:${fmtColors[i%fmtColors.length]}"></div></div>
+      <div style="text-align:right;font-variant-numeric:tabular-nums">${cnt}</div>
+      <div></div>
+    </div>`).join('')||'<div style="color:var(--muted);padding:16px;text-align:center">No barcode data.</div>';
+}
+
+function renderVel(d){
+  const rows=document.getElementById('vel-rows');
+  if(!d.top_items.length){rows.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">No activity in this period.</div>';return}
+  const maxTxn=Math.max(...d.top_items.map(i=>i.transaction_count))||1;
+  rows.innerHTML=d.top_items.map(i=>`<div class="vel-row">
+    <div><a href="/inventory/${i.item_id}" style="color:var(--text);text-decoration:none;font-weight:600">${esc(i.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(i.sku)}${i.category?' · '+esc(i.category):''}</div></div>
+    <div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${i.transaction_count}</div>
+    <div style="text-align:right;font-variant-numeric:tabular-nums">${i.total_volume.toLocaleString()}</div>
+    <div><div class="vel-bar" style="width:${(i.transaction_count/maxTxn*100).toFixed(1)}%;background:linear-gradient(90deg,#2472a4,#0891b2)"></div></div>
+  </div>`).join('');
+}
+
+function renderHealth(d){
+  const cards=document.getElementById('health-cards');
+  cards.innerHTML=`
+    <div class="ana-card"><div class="val">${d.total}</div><div class="lbl">Total Items</div></div>
+    <div class="ana-card"><div class="val" style="color:var(--failure)">${d.out_of_stock.count}</div><div class="lbl">Out of Stock</div></div>
+    <div class="ana-card"><div class="val" style="color:var(--warning)">${d.low_stock.count}</div><div class="lbl">Low Stock</div></div>
+    <div class="ana-card"><div class="val" style="color:var(--success)">${d.healthy.count}</div><div class="lbl">Healthy</div></div>`;
+
+  const sections=document.getElementById('health-sections');
+  let html='';
+  if(d.out_of_stock.items.length){
+    html+=`<div class="stock-section panel" style="padding:20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span class="stock-badge out">Out of Stock (${d.out_of_stock.count})</span></div>
+      <div style="font-size:12px;color:var(--muted);display:grid;grid-template-columns:1fr 100px 100px 120px;gap:12px;padding-bottom:8px;border-bottom:2px solid var(--line);font-weight:600;text-transform:uppercase;letter-spacing:.06em"><div>Item</div><div style="text-align:right">Qty</div><div style="text-align:right">Min Qty</div><div>Location</div></div>
+      ${d.out_of_stock.items.map(i=>`<div class="stock-item"><div><a href="/inventory/${i.id}" style="color:var(--text);text-decoration:none;font-weight:600">${esc(i.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(i.sku)}</div></div><div style="text-align:right;color:var(--failure);font-weight:700">${i.quantity}</div><div style="text-align:right">${i.min_quantity}</div><div style="color:var(--muted)">${esc(i.location)||'-'}</div></div>`).join('')}
+    </div>`;
+  }
+  if(d.low_stock.items.length){
+    html+=`<div class="stock-section panel" style="padding:20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span class="stock-badge low">Low Stock (${d.low_stock.count})</span></div>
+      <div style="font-size:12px;color:var(--muted);display:grid;grid-template-columns:1fr 100px 100px 120px;gap:12px;padding-bottom:8px;border-bottom:2px solid var(--line);font-weight:600;text-transform:uppercase;letter-spacing:.06em"><div>Item</div><div style="text-align:right">Qty</div><div style="text-align:right">Min Qty</div><div>Location</div></div>
+      ${d.low_stock.items.map(i=>`<div class="stock-item"><div><a href="/inventory/${i.id}" style="color:var(--text);text-decoration:none;font-weight:600">${esc(i.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(i.sku)}</div></div><div style="text-align:right;color:var(--warning);font-weight:700">${i.quantity}</div><div style="text-align:right">${i.min_quantity}</div><div style="color:var(--muted)">${esc(i.location)||'-'}</div></div>`).join('')}
+    </div>`;
+  }
+  if(d.overstocked.items.length){
+    html+=`<div class="stock-section panel" style="padding:20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span class="stock-badge over">Overstocked (${d.overstocked.count})</span></div>
+      <div style="font-size:12px;color:var(--muted);display:grid;grid-template-columns:1fr 100px 100px 120px;gap:12px;padding-bottom:8px;border-bottom:2px solid var(--line);font-weight:600;text-transform:uppercase;letter-spacing:.06em"><div>Item</div><div style="text-align:right">Qty</div><div style="text-align:right">Min Qty</div><div>Location</div></div>
+      ${d.overstocked.items.map(i=>`<div class="stock-item"><div><a href="/inventory/${i.id}" style="color:var(--text);text-decoration:none;font-weight:600">${esc(i.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(i.sku)}</div></div><div style="text-align:right;color:var(--info);font-weight:700">${i.quantity}</div><div style="text-align:right">${i.min_quantity}</div><div style="color:var(--muted)">${esc(i.location)||'-'}</div></div>`).join('')}
+    </div>`;
+  }
+  if(!html)html='<div class="panel" style="padding:40px;text-align:center;color:var(--muted)">All items are at healthy stock levels.</div>';
+  sections.innerHTML=html;
+}
+
+loadAll();
+</script>"""
+
+    return HTMLResponse(content=render_shell(
+        title="Analytics",
+        active_nav="analytics",
+        body_html=body,
+        body_js=js,
+        display_name=user.display_name,
+        role=user.role,
+        head_extra=css,
+    ))

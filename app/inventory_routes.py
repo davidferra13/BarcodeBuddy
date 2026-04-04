@@ -80,7 +80,7 @@ class ItemUpdate(BaseModel):
     category: str | None = None
     tags: str | None = None
     notes: str | None = None
-    status: str | None = None
+    status: str | None = Field(default=None, pattern="^(active|archived)$")
     barcode_type: str | None = None
     min_quantity: int | None = None
     cost: float | None = None
@@ -669,14 +669,14 @@ def api_barcode_formats(
 # ── Bulk Operations ──────────────────────────────────────────────────
 
 class BulkDeleteRequest(BaseModel):
-    item_ids: list[str]
+    item_ids: list[str] = Field(min_length=1, max_length=500)
 
 
 class BulkUpdateRequest(BaseModel):
-    item_ids: list[str]
+    item_ids: list[str] = Field(min_length=1, max_length=500)
     location: str | None = None
     category: str | None = None
-    status: str | None = None
+    status: str | None = Field(default=None, pattern="^(active|archived)$")
     tags: str | None = None
 
 
@@ -722,3 +722,199 @@ def api_bulk_update(
             updated += 1
     db.commit()
     return JSONResponse(content={"updated": updated})
+
+
+# ── Analytics ──────────────────────────────────────────────────────
+
+@router.get("/api/analytics/transactions")
+def api_analytics_transactions(
+    days: int = Query(default=30, ge=1, le=365),
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Transaction breakdown by reason over time."""
+    target = _resolve_target_user_id(user, view_user)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    txns = db.query(InventoryTransaction).join(
+        InventoryItem, InventoryTransaction.item_id == InventoryItem.id
+    ).filter(
+        InventoryItem.user_id == target,
+        InventoryTransaction.created_at >= cutoff,
+    ).all()
+
+    # Aggregate by reason
+    by_reason: dict[str, int] = defaultdict(int)
+    by_reason_qty: dict[str, int] = defaultdict(int)
+    for t in txns:
+        reason = t.reason or "adjusted"
+        by_reason[reason] += 1
+        by_reason_qty[reason] += abs(t.quantity_change)
+
+    # Daily trend by reason
+    daily: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for t in txns:
+        day_key = t.created_at.strftime("%Y-%m-%d") if t.created_at else None
+        if day_key:
+            daily[day_key][t.reason or "adjusted"] += 1
+
+    daily_sorted = [
+        {"date": k, **v}
+        for k, v in sorted(daily.items())
+    ]
+
+    return JSONResponse(content={
+        "period_days": days,
+        "total_transactions": len(txns),
+        "by_reason": dict(by_reason),
+        "by_reason_quantity": dict(by_reason_qty),
+        "daily_trend": daily_sorted,
+    })
+
+
+@router.get("/api/analytics/valuation")
+def api_analytics_valuation(
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Inventory valuation breakdown by category and location."""
+    target = _resolve_target_user_id(user, view_user)
+    items = db.query(InventoryItem).filter(
+        InventoryItem.user_id == target, InventoryItem.status == "active",
+    ).all()
+
+    total_value = 0.0
+    by_category: dict[str, dict] = {}
+    by_location: dict[str, dict] = {}
+    by_barcode_type: dict[str, int] = defaultdict(int)
+    items_with_cost = 0
+    items_without_cost = 0
+
+    for i in items:
+        val = (i.cost or 0) * i.quantity
+        total_value += val
+        if i.cost:
+            items_with_cost += 1
+        else:
+            items_without_cost += 1
+
+        cat = i.category or "(uncategorized)"
+        if cat not in by_category:
+            by_category[cat] = {"items": 0, "quantity": 0, "value": 0.0}
+        by_category[cat]["items"] += 1
+        by_category[cat]["quantity"] += i.quantity
+        by_category[cat]["value"] += val
+
+        loc = i.location or "(no location)"
+        if loc not in by_location:
+            by_location[loc] = {"items": 0, "quantity": 0, "value": 0.0}
+        by_location[loc]["items"] += 1
+        by_location[loc]["quantity"] += i.quantity
+        by_location[loc]["value"] += val
+
+        by_barcode_type[i.barcode_type] += 1
+
+    # Round values
+    for v in by_category.values():
+        v["value"] = round(v["value"], 2)
+    for v in by_location.values():
+        v["value"] = round(v["value"], 2)
+
+    return JSONResponse(content={
+        "total_items": len(items),
+        "total_value": round(total_value, 2),
+        "items_with_cost": items_with_cost,
+        "items_without_cost": items_without_cost,
+        "by_category": by_category,
+        "by_location": by_location,
+        "by_barcode_type": dict(by_barcode_type),
+    })
+
+
+@router.get("/api/analytics/velocity")
+def api_analytics_velocity(
+    days: int = Query(default=30, ge=1, le=365),
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Item velocity — most active items by transaction count."""
+    target = _resolve_target_user_id(user, view_user)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    txns = db.query(
+        InventoryTransaction.item_id,
+        func.count(InventoryTransaction.id).label("txn_count"),
+        func.sum(func.abs(InventoryTransaction.quantity_change)).label("volume"),
+    ).join(
+        InventoryItem, InventoryTransaction.item_id == InventoryItem.id
+    ).filter(
+        InventoryItem.user_id == target,
+        InventoryTransaction.created_at >= cutoff,
+    ).group_by(InventoryTransaction.item_id).order_by(
+        func.count(InventoryTransaction.id).desc()
+    ).limit(20).all()
+
+    item_ids = [t[0] for t in txns]
+    items_map: dict[str, dict] = {}
+    if item_ids:
+        items = db.query(InventoryItem).filter(InventoryItem.id.in_(item_ids)).all()
+        items_map = {i.id: {"name": i.name, "sku": i.sku, "quantity": i.quantity, "category": i.category} for i in items}
+
+    velocity = []
+    for item_id, txn_count, volume in txns:
+        info = items_map.get(item_id, {"name": "(deleted)", "sku": "", "quantity": 0, "category": ""})
+        velocity.append({
+            "item_id": item_id,
+            "name": info["name"],
+            "sku": info["sku"],
+            "category": info["category"],
+            "current_quantity": info["quantity"],
+            "transaction_count": txn_count,
+            "total_volume": int(volume or 0),
+        })
+
+    return JSONResponse(content={
+        "period_days": days,
+        "top_items": velocity,
+    })
+
+
+@router.get("/api/analytics/stock-health")
+def api_analytics_stock_health(
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Stock health overview — distribution of stock levels."""
+    target = _resolve_target_user_id(user, view_user)
+    items = db.query(InventoryItem).filter(
+        InventoryItem.user_id == target, InventoryItem.status == "active",
+    ).all()
+
+    out_of_stock = []
+    low_stock = []
+    healthy = []
+    overstocked = []  # qty > 10x min_quantity (if min_quantity set)
+
+    for i in items:
+        entry = {"id": i.id, "name": i.name, "sku": i.sku, "quantity": i.quantity,
+                 "min_quantity": i.min_quantity, "location": i.location, "category": i.category}
+        if i.quantity == 0:
+            out_of_stock.append(entry)
+        elif i.min_quantity > 0 and i.quantity <= i.min_quantity:
+            low_stock.append(entry)
+        elif i.min_quantity > 0 and i.quantity > i.min_quantity * 10:
+            overstocked.append(entry)
+        else:
+            healthy.append(entry)
+
+    return JSONResponse(content={
+        "total": len(items),
+        "out_of_stock": {"count": len(out_of_stock), "items": out_of_stock[:20]},
+        "low_stock": {"count": len(low_stock), "items": low_stock[:20]},
+        "healthy": {"count": len(healthy)},
+        "overstocked": {"count": len(overstocked), "items": overstocked[:20]},
+    })
