@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import re
+import smtplib
+import ssl
 import time
 from collections import defaultdict
+from email.message import EmailMessage
 from threading import Lock
 
 from fastapi import APIRouter, Depends, Request
@@ -17,6 +21,9 @@ from app.auth import (
     create_access_token,
     create_reset_token,
     hash_password,
+  is_owner_email,
+  OWNER_EMAIL,
+  normalize_email,
     require_user,
     revoke_token,
     set_auth_cookie,
@@ -70,6 +77,53 @@ def _check_rate_limit(request: Request) -> JSONResponse | None:
     return None
 
 
+def _build_reset_url(request: Request, token: str) -> str:
+    host = request.headers.get("host", "")
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    scheme = "https" if forwarded_proto == "https" else request.url.scheme
+    if host:
+        return f"{scheme}://{host}/auth/reset?token={token}"
+    return f"/auth/reset?token={token}"
+
+
+def _send_reset_email(to_email: str, reset_url: str) -> bool:
+    """Best-effort SMTP delivery for password reset links."""
+    smtp_host = (os.environ.get("BB_SMTP_HOST") or "").strip()
+    smtp_port = int((os.environ.get("BB_SMTP_PORT") or "587").strip() or "587")
+    smtp_user = (os.environ.get("BB_SMTP_USER") or "").strip()
+    smtp_password = (os.environ.get("BB_SMTP_PASSWORD") or "").strip()
+    from_email = (os.environ.get("BB_RESET_FROM") or "").strip()
+    use_tls = (os.environ.get("BB_SMTP_USE_TLS") or "true").strip().lower() not in {"0", "false", "no"}
+
+    if not smtp_host or not from_email:
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = "Barcode Buddy password reset"
+    msg["From"] = from_email
+    msg["To"] = to_email
+    msg.set_content(
+        "A password reset was requested for your Barcode Buddy account.\n\n"
+        f"Use this link to set a new password: {reset_url}\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+
+    if use_tls:
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            server.starttls(context=context)
+            if smtp_user:
+                server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+        return True
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+        if smtp_user:
+            server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+    return True
+
+
 # --- Request Models ---
 
 class SignupRequest(BaseModel):
@@ -99,7 +153,8 @@ def api_signup(request: Request, body: SignupRequest, db: Session = Depends(get_
     blocked = _check_rate_limit(request)
     if blocked:
         return blocked
-    email = body.email.strip().lower()
+
+    email = normalize_email(body.email)
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         return JSONResponse(status_code=400, content={"error": "Invalid email address"})
 
@@ -107,14 +162,22 @@ def api_signup(request: Request, body: SignupRequest, db: Session = Depends(get_
     if existing:
         return JSONResponse(status_code=409, content={"error": "Email already registered"})
 
-    # First user becomes owner; subsequent users need open signup
+    # First user becomes owner; subsequent users need open signup.
     user_count = db.query(User).count()
     if user_count == 0:
+        if not is_owner_email(email):
+            return JSONResponse(
+                status_code=403,
+                content={"error": f"The owner account must be created with {OWNER_EMAIL}"},
+            )
         role = "owner"
     else:
         settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
         if settings and not settings.open_signup:
-            return JSONResponse(status_code=403, content={"error": "Signup is currently disabled. Contact an administrator."})
+            return JSONResponse(
+                status_code=403,
+                content={"error": "Signup is currently disabled. Contact an administrator."},
+            )
         role = "user"
 
     user = User(
@@ -129,7 +192,7 @@ def api_signup(request: Request, body: SignupRequest, db: Session = Depends(get_
 
     token = create_access_token(user, db)
     response = JSONResponse(content={"user": user.to_dict(), "redirect": "/"})
-    set_auth_cookie(response, token)
+    set_auth_cookie(response, token, request=request)
     return response
 
 
@@ -138,14 +201,15 @@ def api_login(request: Request, body: LoginRequest, db: Session = Depends(get_db
     blocked = _check_rate_limit(request)
     if blocked:
         return blocked
-    email = body.email.strip().lower()
+
+    email = normalize_email(body.email)
     user = db.query(User).filter(User.email == email, User.is_active == True).first()
     if not user or not verify_password(body.password, user.password_hash):
         return JSONResponse(status_code=401, content={"error": "Invalid email or password"})
 
     token = create_access_token(user, db)
     response = JSONResponse(content={"user": user.to_dict(), "redirect": "/"})
-    set_auth_cookie(response, token)
+    set_auth_cookie(response, token, request=request)
     return response
 
 
@@ -165,13 +229,35 @@ def api_reset_request(request: Request, body: ResetRequestModel, db: Session = D
     blocked = _check_rate_limit(request)
     if blocked:
         return blocked
-    email = body.email.strip().lower()
+
+    email = normalize_email(body.email)
     user = db.query(User).filter(User.email == email).first()
     if user:
         reset_token = create_reset_token(user, db)
         import structlog
-        structlog.get_logger().info("password_reset_requested", email=email, reset_url=f"/auth/reset?token={reset_token}")
-    return JSONResponse(content={"message": "If an account exists with that email, a reset link has been generated. Check the application log."})
+
+        reset_url = _build_reset_url(request, reset_token)
+        delivered = False
+        try:
+            delivered = _send_reset_email(email, reset_url)
+        except Exception as exc:
+            structlog.get_logger().warning(
+                "password_reset_email_delivery_failed",
+                email=email,
+                error=str(exc),
+            )
+
+        structlog.get_logger().info(
+            "password_reset_requested",
+            email=email,
+            reset_url=reset_url,
+            email_delivered=delivered,
+        )
+    return JSONResponse(
+        content={
+            "message": "If an account exists with that email, password reset instructions have been sent."
+        }
+    )
 
 
 @router.post("/api/reset-confirm")

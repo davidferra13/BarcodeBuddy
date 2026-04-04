@@ -208,7 +208,9 @@ def load_settings(config_path: Path) -> Settings:
     barcode_upscale_factor = float(merged_config["barcode_upscale_factor"])
     server_host = str(merged_config.get("server_host", "0.0.0.0")).strip()
     server_port = int(merged_config.get("server_port", 8080))
-    secret_key = str(merged_config.get("secret_key", "")).strip()
+    config_secret_key = str(merged_config.get("secret_key", "")).strip()
+    env_secret_key = (os.environ.get("BB_SECRET_KEY") or "").strip()
+    secret_key = env_secret_key or config_secret_key
 
     input_path = _resolve_path(base_dir, merged_config["input_path"])
     processing_path = _resolve_path(base_dir, merged_config["processing_path"])

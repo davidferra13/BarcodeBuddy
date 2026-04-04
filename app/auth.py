@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -25,6 +26,26 @@ ROLE_LEVELS: dict[str, int] = {
 
 VALID_ROLES = frozenset(ROLE_LEVELS.keys())
 ASSIGNABLE_ROLES = ("admin", "manager", "user")  # owner is never assignable via API
+DEFAULT_OWNER_EMAIL = "mferragamo@danpack.com"
+OWNER_EMAIL = (os.environ.get("BB_OWNER_EMAIL", DEFAULT_OWNER_EMAIL) or DEFAULT_OWNER_EMAIL).strip().lower()
+
+
+def normalize_email(email: str) -> str:
+    """Normalize email addresses for storage and identity checks."""
+    return email.strip().lower()
+
+
+def is_owner_email(email: str) -> bool:
+    """Return True when the email matches the reserved system owner identity."""
+    return normalize_email(email) == OWNER_EMAIL
+
+
+def configure_owner_email(email: str | None) -> None:
+    """Set the reserved owner identity from runtime configuration/environment."""
+    global OWNER_EMAIL
+    normalized = normalize_email(email or "")
+    if normalized:
+        OWNER_EMAIL = normalized
 
 
 def get_role_level(user: User) -> int:
@@ -194,9 +215,11 @@ def get_current_user(
     # Verify session not revoked
     jti = payload.get("jti")
     if jti:
+        now = datetime.now(timezone.utc)
         session = db.query(UserSession).filter(
             UserSession.token_hash == _hash_token(jti),
             UserSession.is_revoked == False,
+            UserSession.expires_at > now,
         ).first()
         if not session:
             return None
@@ -274,12 +297,30 @@ def _is_html_request(request: Request) -> bool:
     return "text/html" in accept
 
 
-def set_auth_cookie(response: Response, token: str) -> None:
+def _should_secure_cookie(request: Request | None = None) -> bool:
+    if request is None:
+        return False
+
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    if forwarded_proto == "https":
+        return True
+    return request.url.scheme.lower() == "https"
+
+
+def set_auth_cookie(
+    response: Response,
+    token: str,
+    *,
+    request: Request | None = None,
+    secure_override: bool | None = None,
+) -> None:
     """Set the authentication cookie on a response."""
+    secure_flag = _should_secure_cookie(request) if secure_override is None else secure_override
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
         httponly=True,
+        secure=secure_flag,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
         path="/",

@@ -11,7 +11,9 @@ from app.auth import (
     ASSIGNABLE_ROLES,
     ROLE_LEVELS,
     get_role_level,
+  is_owner_email,
     log_audit,
+  OWNER_EMAIL,
     require_admin,
     require_owner,
 )
@@ -158,6 +160,11 @@ def transfer_ownership(
     target = db.query(User).filter(User.id == body.target_user_id, User.is_active == True).first()
     if not target:
         return JSONResponse(status_code=404, content={"error": "Target user not found or inactive"})
+    if not is_owner_email(target.email):
+      return JSONResponse(
+        status_code=403,
+        content={"error": f"Ownership can only be transferred to {OWNER_EMAIL}"},
+      )
     old_owner_id = owner.id
     target.role = "owner"
     owner.role = "admin"
