@@ -21,7 +21,7 @@ from app.auth import (
     verify_reset_token,
     COOKIE_NAME,
 )
-from app.database import User, get_db
+from app.database import SystemSettings, User, get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,9 +60,15 @@ def api_signup(body: SignupRequest, db: Session = Depends(get_db)) -> JSONRespon
     if existing:
         return JSONResponse(status_code=409, content={"error": "Email already registered"})
 
-    # First user becomes admin
+    # First user becomes owner; subsequent users need open signup
     user_count = db.query(User).count()
-    role = "admin" if user_count == 0 else "user"
+    if user_count == 0:
+        role = "owner"
+    else:
+        settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
+        if settings and not settings.open_signup:
+            return JSONResponse(status_code=403, content={"error": "Signup is currently disabled. Contact an administrator."})
+        role = "user"
 
     user = User(
         email=email,

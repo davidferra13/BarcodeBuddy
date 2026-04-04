@@ -5,19 +5,51 @@ from __future__ import annotations
 import csv
 import io
 import uuid
-from datetime import datetime, timezone
+from calendar import monthrange
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.auth import require_user
+from app.auth import ROLE_LEVELS, get_role_level, require_user
 from app.barcode_generator import generate_barcode_bytes
 from app.database import InventoryItem, InventoryTransaction, User, get_db
 
 router = APIRouter(tags=["inventory"])
+
+
+# ── RBAC helpers ───────────────────────────────────────────────────
+
+def _resolve_target_user_id(user: User, view_user: str | None) -> str:
+    """Return the user_id to query against.
+
+    - Regular users always see their own data (view_user is ignored).
+    - Manager+ can pass view_user to see another user's data.
+    """
+    if not view_user or view_user == user.id:
+        return user.id
+    if get_role_level(user) >= ROLE_LEVELS["manager"]:
+        return view_user
+    return user.id
+
+
+def _can_write_for(user: User, target_user_id: str) -> bool:
+    """Return True if user can create/edit/delete items for target_user_id."""
+    if user.id == target_user_id:
+        return True
+    return get_role_level(user) >= ROLE_LEVELS["admin"]
+
+
+def _find_item(db: Session, item_id: str, user: User, view_user: str | None = None) -> InventoryItem | None:
+    """Look up an item. Manager+ can view cross-user items; admin+ can write."""
+    target = _resolve_target_user_id(user, view_user)
+    return db.query(InventoryItem).filter(
+        InventoryItem.id == item_id, InventoryItem.user_id == target
+    ).first()
 
 
 # ── Request Models ──────────────────────────────────────────────────
@@ -64,11 +96,13 @@ class QuantityAdjust(BaseModel):
 
 @router.get("/api/inventory/categories")
 def api_categories(
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    target = _resolve_target_user_id(user, view_user)
     items = db.query(InventoryItem.category).filter(
-        InventoryItem.user_id == user.id,
+        InventoryItem.user_id == target,
         InventoryItem.status == "active",
         InventoryItem.category != "",
     ).distinct().all()
@@ -77,11 +111,13 @@ def api_categories(
 
 @router.get("/api/inventory/locations")
 def api_locations(
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    target = _resolve_target_user_id(user, view_user)
     rows = db.query(InventoryItem.location).filter(
-        InventoryItem.user_id == user.id,
+        InventoryItem.user_id == target,
         InventoryItem.status == "active",
         InventoryItem.location != "",
     ).distinct().all()
@@ -90,11 +126,13 @@ def api_locations(
 
 @router.get("/api/inventory/summary")
 def api_summary(
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    target = _resolve_target_user_id(user, view_user)
     items = db.query(InventoryItem).filter(
-        InventoryItem.user_id == user.id, InventoryItem.status == "active",
+        InventoryItem.user_id == target, InventoryItem.status == "active",
     ).all()
     total_items = len(items)
     total_quantity = sum(i.quantity for i in items)
@@ -118,15 +156,146 @@ def api_summary(
     })
 
 
+# ── Calendar ──────────────────────────────────────────────────────
+
+@router.get("/api/calendar")
+def api_calendar_month(
+    year: int = Query(default=0, ge=0),
+    month: int = Query(default=0, ge=0, le=12),
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    today = date.today()
+    if year == 0:
+        year = today.year
+    if month == 0:
+        month = today.month
+    _, days_in_month = monthrange(year, month)
+    start = datetime(year, month, 1, tzinfo=timezone.utc)
+    end = datetime(year, month, days_in_month, 23, 59, 59, tzinfo=timezone.utc)
+
+    target = _resolve_target_user_id(user, view_user)
+
+    txns = db.query(InventoryTransaction).join(
+        InventoryItem, InventoryTransaction.item_id == InventoryItem.id
+    ).filter(
+        InventoryItem.user_id == target,
+        InventoryTransaction.created_at >= start,
+        InventoryTransaction.created_at <= end,
+    ).all()
+
+    # Build per-day buckets
+    days: dict[str, dict] = {}
+    for d in range(1, days_in_month + 1):
+        key = date(year, month, d).isoformat()
+        days[key] = {"transactions": 0, "received": 0, "sold": 0, "adjusted": 0,
+                     "damaged": 0, "returned": 0, "net_change": 0, "items": []}
+    seen_items: dict[str, set] = defaultdict(set)
+    for t in txns:
+        key = t.created_at.strftime("%Y-%m-%d") if t.created_at else None
+        if key and key in days:
+            bucket = days[key]
+            bucket["transactions"] += 1
+            reason = t.reason or "adjusted"
+            if reason in bucket:
+                bucket[reason] += 1
+            bucket["net_change"] += t.quantity_change
+            if t.item_id not in seen_items[key]:
+                seen_items[key].add(t.item_id)
+                bucket["items"].append(t.item_id)
+
+    # Items created this month
+    new_items = db.query(InventoryItem).filter(
+        InventoryItem.user_id == target,
+        InventoryItem.created_at >= start,
+        InventoryItem.created_at <= end,
+    ).all()
+    items_created: dict[str, int] = defaultdict(int)
+    for item in new_items:
+        if item.created_at:
+            key = item.created_at.strftime("%Y-%m-%d")
+            if key in days:
+                items_created[key] += 1
+
+    for key, count in items_created.items():
+        days[key]["items_created"] = count
+
+    return JSONResponse(content={
+        "year": year,
+        "month": month,
+        "days_in_month": days_in_month,
+        "today": today.isoformat(),
+        "days": days,
+    })
+
+
+@router.get("/api/calendar/day")
+def api_calendar_day(
+    d: str = Query(..., alias="date"),
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    try:
+        target_date = date.fromisoformat(d)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": "Invalid date format. Use YYYY-MM-DD."})
+
+    start = datetime(target_date.year, target_date.month, target_date.day, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+
+    target = _resolve_target_user_id(user, view_user)
+
+    txns = db.query(InventoryTransaction).join(
+        InventoryItem, InventoryTransaction.item_id == InventoryItem.id
+    ).filter(
+        InventoryItem.user_id == target,
+        InventoryTransaction.created_at >= start,
+        InventoryTransaction.created_at < end,
+    ).order_by(InventoryTransaction.created_at.desc()).all()
+
+    # Resolve item names
+    item_ids = list({t.item_id for t in txns})
+    items_map: dict[str, dict] = {}
+    if item_ids:
+        items = db.query(InventoryItem).filter(InventoryItem.id.in_(item_ids)).all()
+        items_map = {i.id: {"name": i.name, "sku": i.sku} for i in items}
+
+    transactions = []
+    for t in txns:
+        item_info = items_map.get(t.item_id, {"name": "(deleted)", "sku": ""})
+        transactions.append({
+            **t.to_dict(),
+            "item_name": item_info["name"],
+            "item_sku": item_info["sku"],
+        })
+
+    # Items created on this day
+    new_items = db.query(InventoryItem).filter(
+        InventoryItem.user_id == target,
+        InventoryItem.created_at >= start,
+        InventoryItem.created_at < end,
+    ).all()
+
+    return JSONResponse(content={
+        "date": target_date.isoformat(),
+        "transactions": transactions,
+        "items_created": [i.to_dict() for i in new_items],
+    })
+
+
 # ── Export CSV ──────────────────────────────────────────────────────
 
 @router.get("/api/inventory/export/csv")
 def api_export_csv(
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
+    target = _resolve_target_user_id(user, view_user)
     items = db.query(InventoryItem).filter(
-        InventoryItem.user_id == user.id, InventoryItem.status == "active"
+        InventoryItem.user_id == target, InventoryItem.status == "active"
     ).order_by(InventoryItem.name).all()
     output = io.StringIO()
     writer = csv.writer(output)
@@ -236,10 +405,12 @@ def api_list_items(
     sort: str = "updated_at", order: str = "desc",
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    query = db.query(InventoryItem).filter(InventoryItem.user_id == user.id)
+    target = _resolve_target_user_id(user, view_user)
+    query = db.query(InventoryItem).filter(InventoryItem.user_id == target)
     if status:
         query = query.filter(InventoryItem.status == status)
     if category:
@@ -308,12 +479,11 @@ def api_create_item(
 @router.get("/api/inventory/{item_id}")
 def api_get_item(
     item_id: str,
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    item = db.query(InventoryItem).filter(
-        InventoryItem.id == item_id, InventoryItem.user_id == user.id
-    ).first()
+    item = _find_item(db, item_id, user, view_user)
     if not item:
         return JSONResponse(status_code=404, content={"error": "Item not found"})
     txns = db.query(InventoryTransaction).filter(
@@ -327,11 +497,15 @@ def api_get_item(
 @router.put("/api/inventory/{item_id}")
 def api_update_item(
     item_id: str, body: ItemUpdate,
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    target = _resolve_target_user_id(user, view_user)
+    if not _can_write_for(user, target):
+        return JSONResponse(status_code=403, content={"error": "Admin access required to edit other users' items"})
     item = db.query(InventoryItem).filter(
-        InventoryItem.id == item_id, InventoryItem.user_id == user.id
+        InventoryItem.id == item_id, InventoryItem.user_id == target
     ).first()
     if not item:
         return JSONResponse(status_code=404, content={"error": "Item not found"})
@@ -345,7 +519,7 @@ def api_update_item(
         ))
     if "sku" in update_data and update_data["sku"] != item.sku:
         dup = db.query(InventoryItem).filter(
-            InventoryItem.user_id == user.id, InventoryItem.sku == update_data["sku"],
+            InventoryItem.user_id == target, InventoryItem.sku == update_data["sku"],
             InventoryItem.id != item_id, InventoryItem.status != "archived",
         ).first()
         if dup:
@@ -363,11 +537,15 @@ def api_update_item(
 @router.delete("/api/inventory/{item_id}")
 def api_delete_item(
     item_id: str,
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    target = _resolve_target_user_id(user, view_user)
+    if not _can_write_for(user, target):
+        return JSONResponse(status_code=403, content={"error": "Admin access required to delete other users' items"})
     item = db.query(InventoryItem).filter(
-        InventoryItem.id == item_id, InventoryItem.user_id == user.id
+        InventoryItem.id == item_id, InventoryItem.user_id == target
     ).first()
     if not item:
         return JSONResponse(status_code=404, content={"error": "Item not found"})
@@ -381,11 +559,15 @@ def api_delete_item(
 @router.post("/api/inventory/{item_id}/adjust")
 def api_adjust_quantity(
     item_id: str, body: QuantityAdjust,
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    target = _resolve_target_user_id(user, view_user)
+    if not _can_write_for(user, target):
+        return JSONResponse(status_code=403, content={"error": "Admin access required to adjust other users' items"})
     item = db.query(InventoryItem).filter(
-        InventoryItem.id == item_id, InventoryItem.user_id == user.id
+        InventoryItem.id == item_id, InventoryItem.user_id == target
     ).first()
     if not item:
         return JSONResponse(status_code=404, content={"error": "Item not found"})
@@ -410,19 +592,21 @@ def api_adjust_quantity(
 @router.get("/api/scan/lookup")
 def api_scan_lookup(
     code: str = "",
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     code = code.strip()
     if not code:
         return JSONResponse(status_code=400, content={"error": "No barcode value provided"})
+    target = _resolve_target_user_id(user, view_user)
     item = db.query(InventoryItem).filter(
-        InventoryItem.user_id == user.id, InventoryItem.barcode_value == code,
+        InventoryItem.user_id == target, InventoryItem.barcode_value == code,
         InventoryItem.status == "active",
     ).first()
     if not item:
         item = db.query(InventoryItem).filter(
-            InventoryItem.user_id == user.id, InventoryItem.sku == code,
+            InventoryItem.user_id == target, InventoryItem.sku == code,
             InventoryItem.status == "active",
         ).first()
     if not item:
@@ -436,12 +620,11 @@ def api_scan_lookup(
 def api_barcode_image(
     item_id: str,
     scale: int = Query(default=4, ge=1, le=20),
+    view_user: str | None = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    item = db.query(InventoryItem).filter(
-        InventoryItem.id == item_id, InventoryItem.user_id == user.id
-    ).first()
+    item = _find_item(db, item_id, user, view_user)
     if not item:
         return JSONResponse(status_code=404, content={"error": "Item not found"})
     try:

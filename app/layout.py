@@ -54,6 +54,16 @@ _ICONS: dict[str, str] = {
         '<rect x="2" y="11" width="7" height="4" rx="1.5"/>'
         '<rect x="11" y="8" width="7" height="7" rx="1.5"/></svg>'
     ),
+    "calendar": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<rect x="2" y="4" width="16" height="14" rx="2"/>'
+        '<line x1="2" y1="8" x2="18" y2="8"/>'
+        '<line x1="6" y1="2" x2="6" y2="6"/><line x1="14" y1="2" x2="14" y2="6"/>'
+        '<line x1="6" y1="8" x2="6" y2="18"/><line x1="10" y1="8" x2="10" y2="18"/>'
+        '<line x1="14" y1="8" x2="14" y2="18"/>'
+        '<line x1="2" y1="12" x2="18" y2="12"/><line x1="2" y1="16" x2="18" y2="16"/></svg>'
+    ),
     "admin": (
         '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
         ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
@@ -73,12 +83,19 @@ def _nav_item(icon_key: str, label: str, href: str, active: bool) -> str:
     )
 
 
+_ROLE_BADGE_COLORS: dict[str, tuple[str, str]] = {
+    "owner": ("#dc262633", "#fca5a5"),
+    "admin": ("#7c3aed33", "#a78bfa"),
+    "manager": ("#d9770633", "#fcd34d"),
+    "user": ("#3b82f633", "#93c5fd"),
+}
+
+
 def _user_section(display_name: str, role: str, is_admin: bool) -> str:
     initial = _E(display_name[0].upper()) if display_name else "?"
     name = _E(display_name)
     role_e = _E(role)
-    badge_bg = "#7c3aed33" if is_admin else "#3b82f633"
-    badge_color = "#a78bfa" if is_admin else "#93c5fd"
+    badge_bg, badge_color = _ROLE_BADGE_COLORS.get(role, _ROLE_BADGE_COLORS["user"])
     return f"""
     <div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -547,7 +564,9 @@ tbody tr:last-child td { border-bottom: none; }
   display: inline-block; padding: 3px 10px;
   border-radius: 6px; font-size: 12px; font-weight: 600;
 }
+.role-owner { background: rgba(220,38,38,0.12); color: #dc2626; }
 .role-admin { background: rgba(124,58,237,0.12); color: #7c3aed; }
+.role-manager { background: rgba(217,119,6,0.12); color: #d97706; }
 .role-user { background: var(--info-bg); color: var(--info); }
 .status-active { color: var(--success); }
 .status-inactive { color: var(--failure); }
@@ -616,6 +635,7 @@ _NAV_SECTIONS: list[tuple[str, list[tuple[str, str, str, str]]]] = [
     ("Inventory", [
         ("scan", "Scan", "/scan", "scan"),
         ("items", "Items", "/inventory", "items"),
+        ("calendar", "Calendar", "/calendar", "calendar"),
         ("new-item", "New Item", "/inventory/new", "new-item"),
         ("import", "Import CSV", "/inventory/import", "import"),
         ("export", "Export CSV", "/api/inventory/export/csv", "export"),
@@ -651,7 +671,7 @@ def render_shell(
     role:        Current user's role ("admin" or "user").
     head_extra:  Optional extra content for <head> (e.g. additional styles).
     """
-    is_admin = role == "admin"
+    is_admin = role in ("admin", "owner")
 
     # Build sidebar nav sections
     nav_html_parts: list[str] = []

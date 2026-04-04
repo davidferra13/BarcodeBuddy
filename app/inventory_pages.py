@@ -359,3 +359,283 @@ document.getElementById('csel').addEventListener('change',async e=>{if(scanning)
         display_name=user.display_name,
         role=user.role,
     ))
+
+
+# ── Calendar ─────────────────────────────────────────────────────
+
+@router.get("/calendar", response_class=HTMLResponse)
+def calendar_page(user: User = Depends(require_user)) -> HTMLResponse:
+    body = """
+  <p class="page-desc">View inventory activity across time — transactions, new items, and stock changes by date.</p>
+  <div class="panel" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <button class="btn btn-secondary" id="prev-btn" onclick="navMonth(-1)">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="12 4 6 10 12 16"/></svg>
+      </button>
+      <div style="text-align:center">
+        <div id="cal-title" style="font-size:20px;font-weight:700;"></div>
+        <div id="cal-sub" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="goToday()">Today</button>
+        <button class="btn btn-secondary" id="next-btn" onclick="navMonth(1)">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="8 4 14 10 8 16"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="padding:12px;overflow-x:auto">
+    <div class="cal-head">
+      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div class="panel" id="day-detail" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div id="detail-title" style="font-size:18px;font-weight:700"></div>
+        <div id="detail-sub" style="font-size:12px;color:var(--muted)"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="closeDetail()">Close</button>
+    </div>
+    <div id="detail-items-created" style="display:none;margin-bottom:16px">
+      <div class="form-section-title" style="margin-bottom:8px">Items Created</div>
+      <div id="items-created-list"></div>
+    </div>
+    <div class="form-section-title" style="margin-bottom:8px">Transactions</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Time</th><th>Item</th><th>Change</th><th>After</th><th>Reason</th><th>Notes</th></tr></thead>
+        <tbody id="detail-tbody"></tbody>
+      </table>
+    </div>
+  </div>"""
+
+    css = """<style>
+  .cal-head {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+    text-align: center; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    padding: 8px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 4px;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  }
+  .cal-cell {
+    min-height: 80px; border-radius: 10px; padding: 6px 8px;
+    border: 1px solid transparent; cursor: pointer;
+    transition: all 0.15s; position: relative; background: var(--paper);
+  }
+  .cal-cell:hover { border-color: var(--info); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .cal-cell.today { border-color: var(--info); background: var(--info-bg); }
+  .cal-cell.selected { border-color: var(--sidebar-accent); border-width: 2px; }
+  .cal-cell.empty { background: transparent; cursor: default; min-height: 40px; }
+  .cal-cell.empty:hover { border-color: transparent; box-shadow: none; }
+  .cal-cell .day-num {
+    font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px;
+  }
+  .cal-cell.today .day-num { color: var(--info); }
+  .cal-cell .cal-dots { display: flex; flex-wrap: wrap; gap: 3px; }
+  .cal-dot {
+    display: inline-flex; align-items: center; gap: 2px;
+    font-size: 10px; font-weight: 600; padding: 1px 5px;
+    border-radius: 4px; line-height: 1.4;
+  }
+  .cal-dot.txn { background: var(--info-bg); color: var(--info); }
+  .cal-dot.rcv { background: var(--success-bg); color: var(--success); }
+  .cal-dot.sold { background: rgba(124,58,237,0.1); color: #7c3aed; }
+  .cal-dot.neg { background: var(--failure-bg); color: var(--failure); }
+  .cal-dot.new-item { background: var(--warning-bg); color: var(--warning); }
+  .cal-summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px; margin-bottom: 12px;
+  }
+  .cal-stat {
+    text-align: center; padding: 10px; border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .cal-stat .v { font-size: 22px; font-weight: 700; }
+  .cal-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+  @media (max-width: 900px) {
+    .cal-cell { min-height: 56px; padding: 4px; }
+    .cal-cell .day-num { font-size: 11px; }
+    .cal-dot { font-size: 9px; padding: 0 3px; }
+  }
+  </style>"""
+
+    js = """<script>
+let curYear, curMonth, calData=null, selectedDate=null;
+
+function init(){
+  const now=new Date();
+  curYear=now.getFullYear();
+  curMonth=now.getMonth()+1;
+  loadMonth();
+}
+
+async function loadMonth(){
+  const r=await apiCall('GET',`/api/calendar?year=${curYear}&month=${curMonth}`);
+  if(!r.ok){showErr('Failed to load calendar');return}
+  calData=r.data;
+  renderMonth();
+}
+
+function renderMonth(){
+  const d=calData;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-title').textContent=months[d.month-1]+' '+d.year;
+
+  // Monthly summary
+  let totalTxn=0,totalRcv=0,totalSold=0,totalNew=0,totalNet=0;
+  Object.values(d.days).forEach(day=>{
+    totalTxn+=day.transactions;
+    totalRcv+=day.received||0;
+    totalSold+=day.sold||0;
+    totalNew+=day.items_created||0;
+    totalNet+=day.net_change||0;
+  });
+  const netColor=totalNet>0?'var(--success)':totalNet<0?'var(--failure)':'var(--text)';
+  const netSign=totalNet>0?'+':'';
+  document.getElementById('cal-sub').innerHTML=
+    `<span style="margin-right:12px">${totalTxn} transactions</span>`+
+    `<span style="color:var(--success);margin-right:12px">+${totalRcv} received</span>`+
+    `<span style="color:#7c3aed;margin-right:12px">${totalSold} sold</span>`+
+    (totalNew?`<span style="color:var(--warning);margin-right:12px">${totalNew} new items</span>`:'')+
+    `<span style="color:${netColor}">Net: ${netSign}${totalNet}</span>`;
+
+  // Render grid
+  const firstDay=new Date(d.year,d.month-1,1).getDay();
+  const grid=document.getElementById('cal-grid');
+  let html='';
+
+  // Empty cells for days before the 1st
+  for(let i=0;i<firstDay;i++) html+='<div class="cal-cell empty"></div>';
+
+  for(let day=1;day<=d.days_in_month;day++){
+    const key=d.year+'-'+String(d.month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const info=d.days[key]||{};
+    const isToday=key===d.today;
+    const isSel=key===selectedDate;
+    let cls='cal-cell';
+    if(isToday)cls+=' today';
+    if(isSel)cls+=' selected';
+
+    let dots='';
+    if(info.transactions>0){
+      dots+=`<span class="cal-dot txn">${info.transactions} txn</span>`;
+    }
+    if(info.received>0) dots+=`<span class="cal-dot rcv">+${info.received}</span>`;
+    if(info.sold>0) dots+=`<span class="cal-dot sold">${info.sold} sold</span>`;
+    if((info.damaged||0)+(info.returned||0)>0) dots+=`<span class="cal-dot neg">${(info.damaged||0)+(info.returned||0)} dmg/ret</span>`;
+    if(info.items_created>0) dots+=`<span class="cal-dot new-item">${info.items_created} new</span>`;
+
+    html+=`<div class="${cls}" onclick="selectDay('${key}')" data-date="${key}">`;
+    html+=`<div class="day-num">${day}</div>`;
+    html+=`<div class="cal-dots">${dots}</div>`;
+    html+='</div>';
+  }
+
+  // Trailing empty cells
+  const totalCells=firstDay+d.days_in_month;
+  const remainder=totalCells%7;
+  if(remainder>0) for(let i=0;i<7-remainder;i++) html+='<div class="cal-cell empty"></div>';
+
+  grid.innerHTML=html;
+}
+
+async function selectDay(key){
+  selectedDate=key;
+  // Re-render to show selection
+  document.querySelectorAll('.cal-cell').forEach(c=>{
+    c.classList.toggle('selected',c.dataset.date===key);
+  });
+
+  const detail=document.getElementById('day-detail');
+  const r=await apiCall('GET',`/api/calendar/day?date=${key}`);
+  if(!r.ok){detail.style.display='none';return}
+  detail.style.display='block';
+
+  const d=new Date(key+'T00:00:00');
+  const opts={weekday:'long',year:'numeric',month:'long',day:'numeric'};
+  document.getElementById('detail-title').textContent=d.toLocaleDateString(undefined,opts);
+
+  const txns=r.data.transactions;
+  const created=r.data.items_created||[];
+  document.getElementById('detail-sub').textContent=
+    txns.length+' transaction'+(txns.length!==1?'s':'')+
+    (created.length?' · '+created.length+' item'+(created.length!==1?'s':'')+' created':'');
+
+  // Items created
+  const icDiv=document.getElementById('detail-items-created');
+  const icList=document.getElementById('items-created-list');
+  if(created.length){
+    icDiv.style.display='block';
+    icList.innerHTML=created.map(i=>
+      `<a href="/inventory/${i.id}" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;background:var(--warning-bg);border:1px solid rgba(184,134,11,0.18);margin:3px;font-size:13px;text-decoration:none;color:var(--text)">
+        <strong>${esc(i.name)}</strong> <code style="color:var(--muted)">${esc(i.sku)}</code>
+      </a>`
+    ).join('');
+  }else{
+    icDiv.style.display='none';
+  }
+
+  // Transactions
+  const tbody=document.getElementById('detail-tbody');
+  if(!txns.length){
+    tbody.innerHTML='<tr><td colspan="6" class="empty">No transactions on this day</td></tr>';
+    return;
+  }
+  tbody.innerHTML=txns.map(t=>{
+    const time=t.created_at?new Date(t.created_at).toLocaleTimeString():'';
+    const chgColor=t.quantity_change>=0?'var(--success)':'var(--failure)';
+    const chgSign=t.quantity_change>=0?'+':'';
+    return `<tr>
+      <td style="white-space:nowrap">${esc(time)}</td>
+      <td><a href="/inventory/${t.item_id}"><strong>${esc(t.item_name)}</strong></a><br><code style="font-size:11px;color:var(--muted)">${esc(t.item_sku)}</code></td>
+      <td style="font-weight:700;color:${chgColor}">${chgSign}${t.quantity_change}</td>
+      <td>${t.quantity_after}</td>
+      <td><span class="badge bgr">${esc(t.reason)}</span></td>
+      <td style="color:var(--muted);font-size:12px">${esc(t.notes||'')}</td>
+    </tr>`;
+  }).join('');
+
+  // Scroll to detail
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function closeDetail(){
+  document.getElementById('day-detail').style.display='none';
+  selectedDate=null;
+  document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));
+}
+
+function navMonth(delta){
+  closeDetail();
+  curMonth+=delta;
+  if(curMonth>12){curMonth=1;curYear++}
+  if(curMonth<1){curMonth=12;curYear--}
+  loadMonth();
+}
+
+function goToday(){
+  closeDetail();
+  const now=new Date();
+  curYear=now.getFullYear();
+  curMonth=now.getMonth()+1;
+  loadMonth();
+}
+
+init();
+</script>"""
+
+    return HTMLResponse(content=render_shell(
+        title="Calendar",
+        active_nav="calendar",
+        body_html=body,
+        body_js=js,
+        display_name=user.display_name,
+        role=user.role,
+        head_extra=css,
+    ))

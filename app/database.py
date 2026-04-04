@@ -23,7 +23,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     display_name = Column(String(255), nullable=False)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False, default="user")  # "admin" or "user"
+    role = Column(String(20), nullable=False, default="user")  # "owner", "admin", "manager", "user"
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
@@ -143,6 +143,38 @@ class InventoryTransaction(Base):
         }
 
 
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    actor_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String(50), nullable=False)
+    target_id = Column(String(36), nullable=True)
+    detail = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+
+
+class SystemSettings(Base):
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+    open_signup = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+
+def _ensure_system_settings(session_factory: sessionmaker) -> None:
+    """Ensure the single system_settings row exists."""
+    db = session_factory()
+    try:
+        row = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
+        if not row:
+            db.add(SystemSettings(id=1, open_signup=True))
+            db.commit()
+    finally:
+        db.close()
+
+
 def init_db(db_path: Path) -> None:
     """Initialize the database engine and create tables."""
     global _engine, _SessionLocal
@@ -159,6 +191,7 @@ def init_db(db_path: Path) -> None:
 
     Base.metadata.create_all(bind=_engine)
     _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+    _ensure_system_settings(_SessionLocal)
 
 
 def get_db() -> Generator[Session, None, None]:

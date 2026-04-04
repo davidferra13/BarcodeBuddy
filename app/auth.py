@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -11,7 +12,25 @@ import jwt
 from fastapi import Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.database import User, UserSession, get_db
+from app.database import AuditLog, User, UserSession, get_db
+
+# --- Role Hierarchy ---
+
+ROLE_LEVELS: dict[str, int] = {
+    "owner": 40,
+    "admin": 30,
+    "manager": 20,
+    "user": 10,
+}
+
+VALID_ROLES = frozenset(ROLE_LEVELS.keys())
+ASSIGNABLE_ROLES = ("admin", "manager", "user")  # owner is never assignable via API
+
+
+def get_role_level(user: User) -> int:
+    """Return the numeric privilege level for a user's role."""
+    return ROLE_LEVELS.get(user.role, 0)
+
 
 # --- Configuration ---
 
@@ -134,6 +153,19 @@ def verify_reset_token(raw_token: str, db: Session) -> User | None:
     return db.query(User).filter(User.id == reset.user_id).first()
 
 
+# --- Audit Logging ---
+
+def log_audit(db: Session, actor: User, action: str, target_id: str | None = None, detail: dict | None = None) -> None:
+    """Write an entry to the audit log."""
+    db.add(AuditLog(
+        actor_id=actor.id,
+        action=action,
+        target_id=target_id,
+        detail=json.dumps(detail or {}, default=str),
+    ))
+    db.commit()
+
+
 # --- FastAPI Dependencies ---
 
 def _get_token_from_request(request: Request) -> str | None:
@@ -195,16 +227,44 @@ def require_user(
     return user
 
 
+def require_manager(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> User:
+    """Require manager or higher (manager, admin, owner)."""
+    user = require_user(request, db)
+    if get_role_level(user) < ROLE_LEVELS["manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager access required",
+        )
+    return user
+
+
 def require_admin(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    """Require an authenticated admin user."""
+    """Require admin or higher (admin, owner)."""
     user = require_user(request, db)
-    if user.role != "admin":
+    if get_role_level(user) < ROLE_LEVELS["admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
+        )
+    return user
+
+
+def require_owner(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> User:
+    """Require the system owner."""
+    user = require_user(request, db)
+    if user.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner access required",
         )
     return user
 
