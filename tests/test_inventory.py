@@ -10,6 +10,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Reset the global rate limiter between every test."""
+    from app.auth_routes import _reset_rate_limiter
+    _reset_rate_limiter()
+    yield
+    _reset_rate_limiter()
+
+
 @pytest.fixture()
 def db_path(tmp_path: Path) -> Path:
     return tmp_path / "test.db"
@@ -46,7 +55,18 @@ def auth_user(client: TestClient):
 
 
 @pytest.fixture()
-def second_user(client: TestClient):
+def second_user(client: TestClient, auth_user):
+    """Create a second user. Requires auth_user (owner) to enable signup first."""
+    from app.database import SystemSettings, get_db
+    db_gen = get_db()
+    db = next(db_gen)
+    try:
+        settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
+        if settings:
+            settings.open_signup = True
+            db.commit()
+    finally:
+        db.close()
     resp = client.post("/auth/api/signup", json={
         "email": "other@example.com",
         "password": "testpass123",

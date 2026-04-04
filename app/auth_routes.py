@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import re
+import time
+from collections import defaultdict
+from threading import Lock
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -24,6 +27,47 @@ from app.auth import (
 from app.database import SystemSettings, User, get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+# --- Rate Limiter ---
+
+class _RateLimiter:
+    """Simple in-memory sliding-window rate limiter per IP."""
+
+    def __init__(self, max_requests: int = 10, window_seconds: int = 60) -> None:
+        self._max = max_requests
+        self._window = window_seconds
+        self._hits: dict[str, list[float]] = defaultdict(list)
+        self._lock = Lock()
+
+    def is_allowed(self, key: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            hits = self._hits[key]
+            # Evict expired entries
+            cutoff = now - self._window
+            self._hits[key] = hits = [t for t in hits if t > cutoff]
+            if len(hits) >= self._max:
+                return False
+            hits.append(now)
+            return True
+
+
+_auth_limiter = _RateLimiter(max_requests=10, window_seconds=60)
+
+
+def _reset_rate_limiter() -> None:
+    """Reset rate limiter state. Intended for tests only."""
+    with _auth_limiter._lock:
+        _auth_limiter._hits.clear()
+
+
+def _check_rate_limit(request: Request) -> JSONResponse | None:
+    """Return a 429 response if the client IP exceeds the rate limit, else None."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not _auth_limiter.is_allowed(client_ip):
+        return JSONResponse(status_code=429, content={"error": "Too many requests. Please try again later."})
+    return None
 
 
 # --- Request Models ---
@@ -51,7 +95,10 @@ class ResetConfirmModel(BaseModel):
 # --- API Endpoints ---
 
 @router.post("/api/signup")
-def api_signup(body: SignupRequest, db: Session = Depends(get_db)) -> JSONResponse:
+def api_signup(request: Request, body: SignupRequest, db: Session = Depends(get_db)) -> JSONResponse:
+    blocked = _check_rate_limit(request)
+    if blocked:
+        return blocked
     email = body.email.strip().lower()
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         return JSONResponse(status_code=400, content={"error": "Invalid email address"})
@@ -87,7 +134,10 @@ def api_signup(body: SignupRequest, db: Session = Depends(get_db)) -> JSONRespon
 
 
 @router.post("/api/login")
-def api_login(body: LoginRequest, db: Session = Depends(get_db)) -> JSONResponse:
+def api_login(request: Request, body: LoginRequest, db: Session = Depends(get_db)) -> JSONResponse:
+    blocked = _check_rate_limit(request)
+    if blocked:
+        return blocked
     email = body.email.strip().lower()
     user = db.query(User).filter(User.email == email, User.is_active == True).first()
     if not user or not verify_password(body.password, user.password_hash):
@@ -110,16 +160,18 @@ def api_logout(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
 
 
 @router.post("/api/reset-request")
-def api_reset_request(body: ResetRequestModel, db: Session = Depends(get_db)) -> JSONResponse:
+def api_reset_request(request: Request, body: ResetRequestModel, db: Session = Depends(get_db)) -> JSONResponse:
     """Request a password reset. Always returns success to prevent email enumeration."""
+    blocked = _check_rate_limit(request)
+    if blocked:
+        return blocked
     email = body.email.strip().lower()
     user = db.query(User).filter(User.email == email).first()
     if user:
         reset_token = create_reset_token(user, db)
-        # In production, this would send an email. For now, log it.
-        print(f"[AUTH] Password reset token for {email}: {reset_token}")
-        print(f"[AUTH] Reset URL: /auth/reset?token={reset_token}")
-    return JSONResponse(content={"message": "If an account exists with that email, a reset link has been generated. Check server logs."})
+        import structlog
+        structlog.get_logger().info("password_reset_requested", email=email, reset_url=f"/auth/reset?token={reset_token}")
+    return JSONResponse(content={"message": "If an account exists with that email, a reset link has been generated. Check the application log."})
 
 
 @router.post("/api/reset-confirm")

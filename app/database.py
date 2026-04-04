@@ -158,7 +158,7 @@ class SystemSettings(Base):
     __tablename__ = "system_settings"
 
     id = Column(Integer, primary_key=True, default=1)
-    open_signup = Column(Boolean, nullable=False, default=True)
+    open_signup = Column(Boolean, nullable=False, default=False)
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 
@@ -169,7 +169,7 @@ def _ensure_system_settings(session_factory: sessionmaker) -> None:
     try:
         row = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
         if not row:
-            db.add(SystemSettings(id=1, open_signup=True))
+            db.add(SystemSettings(id=1, open_signup=False))
             db.commit()
     finally:
         db.close()

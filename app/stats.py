@@ -1041,6 +1041,31 @@ def create_stats_app(
 
     app = FastAPI(title="Barcode Buddy Stats", docs_url="/docs", redoc_url=None)
 
+    # --- Global Exception Handler ---
+    import structlog as _structlog
+
+    @app.exception_handler(Exception)
+    async def _global_exception_handler(request: Request, exc: Exception):
+        _structlog.get_logger().error(
+            "unhandled_exception",
+            path=str(request.url.path),
+            method=request.method,
+            error=str(exc),
+            exc_type=type(exc).__name__,
+        )
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            return HTMLResponse(
+                status_code=500,
+                content="<!DOCTYPE html><html><head><title>Error</title></head>"
+                "<body style='font-family:sans-serif;display:flex;align-items:center;"
+                "justify-content:center;min-height:100vh;background:#0f172a;color:#e2e8f0'>"
+                "<div style='text-align:center'><h1>Something went wrong</h1>"
+                "<p style='color:#94a3b8'>An unexpected error occurred. Please try again or contact support.</p>"
+                "<a href='/' style='color:#60a5fa'>Return to dashboard</a></div></body></html>",
+            )
+        return JSONResponse(status_code=500, content={"error": "Internal server error"})
+
     # --- Auth Middleware ---
     _PUBLIC_PREFIXES = ("/auth/", "/health", "/docs", "/openapi.json")
 
@@ -1092,6 +1117,28 @@ def create_stats_app(
             return await call_next(request)
 
     app.add_middleware(AuthMiddleware)
+
+    # --- CSRF Middleware ---
+    # Reject state-changing requests that lack a JSON or multipart content-type.
+    # Browsers won't send these content-types cross-origin without a CORS
+    # preflight, so requiring them is an effective CSRF mitigation.
+    _CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+    _CSRF_SAFE_CONTENT_TYPES = ("application/json", "multipart/form-data")
+    _CSRF_EXEMPT_PREFIXES = ("/docs", "/openapi.json")
+
+    class CsrfMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            if request.method in _CSRF_SAFE_METHODS:
+                return await call_next(request)
+            path = request.url.path
+            if any(path.startswith(p) for p in _CSRF_EXEMPT_PREFIXES):
+                return await call_next(request)
+            content_type = (request.headers.get("content-type") or "").lower()
+            if not any(content_type.startswith(ct) for ct in _CSRF_SAFE_CONTENT_TYPES):
+                return JSONResponse(status_code=403, content={"error": "Invalid content type"})
+            return await call_next(request)
+
+    app.add_middleware(CsrfMiddleware)
 
     # Include auth, admin, and inventory routers
     app.include_router(auth_router)

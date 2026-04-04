@@ -316,13 +316,18 @@ def api_export_csv(
 
 # ── Import CSV ──────────────────────────────────────────────────────
 
+_CSV_IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 @router.post("/api/inventory/import/csv")
 async def api_import_csv(
     file: UploadFile = File(...),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    content = await file.read()
+    content = await file.read(_CSV_IMPORT_MAX_BYTES + 1)
+    if len(content) > _CSV_IMPORT_MAX_BYTES:
+        return JSONResponse(status_code=400, content={"error": "CSV file too large. Maximum size is 10 MB."})
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
