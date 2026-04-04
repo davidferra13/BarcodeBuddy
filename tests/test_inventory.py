@@ -27,11 +27,13 @@ def db_path(tmp_path: Path) -> Path:
 @pytest.fixture()
 def app(db_path: Path):
     from fastapi import FastAPI
+    from app.auth import configure_secret_key
     from app.database import init_db
     from app.auth_routes import router as auth_router
     from app.inventory_routes import router as inventory_router
 
     init_db(db_path)
+    configure_secret_key("test-secret-key-for-inventory-testing")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(inventory_router)
@@ -43,10 +45,15 @@ def client(app) -> TestClient:
     return TestClient(app)
 
 
+def _owner_email() -> str:
+    from app.auth import OWNER_EMAIL
+    return OWNER_EMAIL
+
+
 @pytest.fixture()
 def auth_user(client: TestClient):
     resp = client.post("/auth/api/signup", json={
-        "email": "test@example.com",
+        "email": _owner_email(),
         "password": "testpass123",
         "display_name": "Test User",
     })
@@ -337,6 +344,12 @@ class TestBulkDelete:
         resp = client.get("/api/inventory", cookies=auth_user)
         assert resp.json()["total"] == 0
 
+    def test_bulk_delete_rejects_oversized_payload(self, client, auth_user):
+        resp = client.post("/api/inventory/bulk/delete", json={
+            "item_ids": [str(i) for i in range(501)],
+        }, cookies=auth_user)
+        assert resp.status_code == 422
+
 
 class TestBulkUpdate:
     def test_bulk_update_location(self, client, auth_user):
@@ -350,6 +363,13 @@ class TestBulkUpdate:
         assert resp.json()["updated"] == 2
         r = client.get(f"/api/inventory/{a['id']}", cookies=auth_user)
         assert r.json()["item"]["location"] == "Warehouse 2"
+
+    def test_bulk_update_rejects_oversized_payload(self, client, auth_user):
+        resp = client.post("/api/inventory/bulk/update", json={
+            "item_ids": [str(i) for i in range(501)],
+            "location": "Warehouse 2",
+        }, cookies=auth_user)
+        assert resp.status_code == 422
 
 
 # --- Import / Export ---

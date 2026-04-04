@@ -3,24 +3,22 @@
 import asyncio
 import csv
 import io
+import tempfile
+from pathlib import Path
 
 import httpx
 
+from app.auth import OWNER_EMAIL
 from app.config import load_settings, ensure_runtime_directories
 from app.stats import create_stats_app
-from pathlib import Path
-
-settings = load_settings(Path("config.json").resolve())
-ensure_runtime_directories(settings)
-app = create_stats_app(settings)
 
 
-async def run():
+async def run(app):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         # Setup: create admin user
         r = await c.post("/auth/api/signup", json={
-            "email": "admin@danpack.com",
+            "email": OWNER_EMAIL,
             "password": "securepass123",
             "display_name": "Danpack Admin",
         })
@@ -155,7 +153,11 @@ async def run():
         assert r.status_code == 404
         print("  5b. Scan archived: 404 (correct)")
 
-        r = await c.delete(f"/api/inventory/{bw['id']}", cookies=cookies)
+        r = await c.delete(
+            f"/api/inventory/{bw['id']}",
+            cookies=cookies,
+            headers={"Content-Type": "application/json"},
+        )
         assert r.status_code == 200
         print(f"  5c. Deleted: {bw['name']}")
 
@@ -204,6 +206,8 @@ async def run():
         print("  All HTML pages load: OK")
 
         # User isolation
+        r = await c.put("/admin/api/settings/signup", json={"open_signup": True}, cookies=cookies)
+        assert r.status_code == 200
         r2 = await c.post("/auth/api/signup", json={
             "email": "user2@danpack.com", "password": "userpass12345",
             "display_name": "User Two"
@@ -224,4 +228,31 @@ async def run():
         print("=" * 60)
 
 
-asyncio.run(run())
+def test_e2e_workflows():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        base_settings = load_settings(Path("config.json").resolve())
+        settings = base_settings.model_copy(
+            update={
+                "input_path": root / "input",
+                "processing_path": root / "processing",
+                "output_path": root / "output",
+                "rejected_path": root / "rejected",
+                "log_path": root / "logs",
+                "secret_key": "test-secret-key-for-e2e-0123456789abcdef",
+            }
+        )
+        ensure_runtime_directories(settings)
+        app = create_stats_app(settings)
+        try:
+            asyncio.run(run(app))
+        finally:
+            scheduler = getattr(app.state, "alert_scheduler", None)
+            if scheduler is not None:
+                try:
+                    scheduler.shutdown(wait=False)
+                except Exception:
+                    pass
+            from app.database import shutdown_db
+
+            shutdown_db()

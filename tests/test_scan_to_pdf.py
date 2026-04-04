@@ -25,12 +25,14 @@ def db_path(tmp_path: Path) -> Path:
 @pytest.fixture()
 def app(db_path: Path):
     from fastapi import FastAPI
+    from app.auth import configure_secret_key
     from app.database import init_db
     from app.auth_routes import router as auth_router
     from app.inventory_routes import router as inventory_router
     from app.scan_to_pdf import router as scan_to_pdf_router
 
     init_db(db_path)
+    configure_secret_key("test-secret-key-for-scan-pdf-testing")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(inventory_router)
@@ -43,10 +45,15 @@ def client(app) -> TestClient:
     return TestClient(app)
 
 
+def _owner_email() -> str:
+    from app.auth import OWNER_EMAIL
+    return OWNER_EMAIL
+
+
 @pytest.fixture()
 def auth_user(client: TestClient):
     resp = client.post("/auth/api/signup", json={
-        "email": "test@example.com",
+        "email": _owner_email(),
         "password": "testpass123",
         "display_name": "Test User",
     })

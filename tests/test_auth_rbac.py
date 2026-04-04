@@ -59,39 +59,55 @@ def _login(client: TestClient, email: str, password: str = "testpass123") -> dic
     return {"response": resp, "cookies": {"bb_session": resp.cookies.get("bb_session")}}
 
 
+def _owner_email() -> str:
+    from app.auth import OWNER_EMAIL
+
+    return OWNER_EMAIL
+
+
+def _enable_open_signup() -> None:
+    from app.database import SystemSettings, get_db
+
+    db_gen = get_db()
+    db = next(db_gen)
+    try:
+        settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
+        if settings:
+            settings.open_signup = True
+            db.commit()
+    finally:
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
+
+
 # ═══════════════════════════════════════════════════════════════════
 # AUTH: Signup
 # ═══════════════════════════════════════════════════════════════════
 
 class TestSignup:
     def test_first_user_becomes_owner(self, client):
-        r = _signup(client, "owner@test.com", "Owner")
+        r = _signup(client, _owner_email(), "Owner")
         assert r["response"].status_code == 200
         data = r["response"].json()
         assert data["user"]["role"] == "owner"
 
-    def test_second_user_becomes_regular_user(self, client):
-        from app.database import SystemSettings, get_db
+    def test_first_user_must_use_reserved_owner_email(self, client):
+        r = _signup(client, "owner@test.com", "Owner")
+        assert r["response"].status_code == 403
+        assert _owner_email() in r["response"].json()["error"]
 
-        owner = _signup(client, "owner@test.com")
-        # Enable signup in DB
-        db_gen = get_db()
-        db = next(db_gen)
-        try:
-            settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
-            if settings:
-                settings.open_signup = True
-                db.commit()
-        finally:
-            try:
-                next(db_gen)
-            except StopIteration:
-                pass
+    def test_second_user_becomes_regular_user(self, client):
+        _signup(client, _owner_email())
+        _enable_open_signup()
         r = _signup(client, "user2@test.com")
         assert r["response"].status_code == 200
         assert r["response"].json()["user"]["role"] == "user"
 
     def test_duplicate_email_rejected(self, client):
+        _signup(client, _owner_email())
+        _enable_open_signup()
         _signup(client, "dup@test.com")
         r = _signup(client, "dup@test.com")
         assert r["response"].status_code == 409
@@ -110,7 +126,7 @@ class TestSignup:
 
     def test_signup_disabled_blocks_new_users(self, client):
         """After owner creates account, signup is disabled by default."""
-        _signup(client, "owner@test.com")
+        _signup(client, _owner_email())
         r = _signup(client, "blocked@test.com")
         assert r["response"].status_code == 403
 
@@ -121,14 +137,14 @@ class TestSignup:
 
 class TestLogin:
     def test_valid_login(self, client):
-        _signup(client, "login@test.com")
-        r = _login(client, "login@test.com")
+        _signup(client, _owner_email())
+        r = _login(client, _owner_email())
         assert r["response"].status_code == 200
         assert r["cookies"]["bb_session"] is not None
 
     def test_wrong_password(self, client):
-        _signup(client, "login@test.com")
-        r = _login(client, "login@test.com", password="wrongpass123")
+        _signup(client, _owner_email())
+        r = _login(client, _owner_email(), password="wrongpass123")
         assert r["response"].status_code == 401
 
     def test_nonexistent_email(self, client):
@@ -136,7 +152,7 @@ class TestLogin:
         assert r["response"].status_code == 401
 
     def test_logout_invalidates_session(self, client):
-        r = _signup(client, "logout@test.com")
+        r = _signup(client, _owner_email())
         cookies = r["cookies"]
         assert cookies.get("bb_session"), "No session cookie set on signup"
         # Verify authenticated
@@ -150,17 +166,31 @@ class TestLogin:
         assert me2.status_code == 401
 
     def test_me_returns_user_info(self, client):
-        r = _signup(client, "me@test.com", "Me User")
+        r = _signup(client, _owner_email(), "Owner User")
         cookies = r["cookies"]
         assert cookies.get("bb_session"), "No session cookie set on signup"
         resp = client.get("/auth/api/me", cookies=cookies)
         assert resp.status_code == 200
-        assert resp.json()["user"]["email"] == "me@test.com"
-        assert resp.json()["user"]["display_name"] == "Me User"
+        assert resp.json()["user"]["email"] == _owner_email()
+        assert resp.json()["user"]["display_name"] == "Owner User"
 
     def test_me_unauthenticated(self, client):
         resp = client.get("/auth/api/me")
         assert resp.status_code == 401
+
+    def test_cookie_marked_secure_when_forwarded_https(self, client):
+        resp = client.post(
+            "/auth/api/signup",
+            json={
+                "email": _owner_email(),
+                "password": "testpass123",
+                "display_name": "Owner",
+            },
+            headers={"x-forwarded-proto": "https"},
+        )
+        assert resp.status_code == 200
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "Secure" in set_cookie
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -183,12 +213,12 @@ class TestPasswordReset:
         from app.auth import create_reset_token
         from app.database import User, get_db
 
-        _signup(client, "reset@test.com")
+        _signup(client, _owner_email())
         # Get token directly (simulating email delivery)
         db_gen = get_db()
         db = next(db_gen)
         try:
-            user = db.query(User).filter(User.email == "reset@test.com").first()
+            user = db.query(User).filter(User.email == _owner_email()).first()
             assert user is not None, "User should exist after signup"
             token = create_reset_token(user, db)
         finally:
@@ -201,22 +231,22 @@ class TestPasswordReset:
         assert resp.status_code == 200
 
         # Old password should no longer work
-        r = _login(client, "reset@test.com", "testpass123")
+        r = _login(client, _owner_email(), "testpass123")
         assert r["response"].status_code == 401
 
         # New password works
-        r = _login(client, "reset@test.com", "brandnew123")
+        r = _login(client, _owner_email(), "brandnew123")
         assert r["response"].status_code == 200
 
     def test_reset_token_single_use(self, client):
         from app.auth import create_reset_token
         from app.database import User, get_db
 
-        _signup(client, "singleuse@test.com")
+        _signup(client, _owner_email())
         db_gen = get_db()
         db = next(db_gen)
         try:
-            user = db.query(User).filter(User.email == "singleuse@test.com").first()
+            user = db.query(User).filter(User.email == _owner_email()).first()
             assert user is not None, "User should exist after signup"
             token = create_reset_token(user, db)
         finally:
@@ -241,24 +271,11 @@ class TestPasswordReset:
 
 def _setup_multi_user(client: TestClient) -> dict:
     """Create owner + enable signup + create admin, manager, user. Returns cookies dict."""
-    from app.database import SystemSettings, get_db
-
-    owner = _signup(client, "owner@test.com", "Owner")
+    owner = _signup(client, _owner_email(), "Owner")
     owner_cookies = owner["cookies"]
 
     # Enable signup directly in DB (owner is the only user, open_signup defaults to False)
-    db_gen = get_db()
-    db = next(db_gen)
-    try:
-        settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
-        if settings:
-            settings.open_signup = True
-            db.commit()
-    finally:
-        try:
-            next(db_gen)
-        except StopIteration:
-            pass
+    _enable_open_signup()
 
     admin = _signup(client, "admin@test.com", "Admin")
     manager = _signup(client, "manager@test.com", "Manager")
@@ -335,14 +352,14 @@ class TestAdminOperations:
 
     def test_cannot_change_own_role(self, client):
         ctx = _setup_multi_user(client)
-        owner_id = ctx["user_ids"]["owner@test.com"]
+        owner_id = ctx["user_ids"][_owner_email()]
         resp = client.put(f"/admin/api/users/{owner_id}/role",
                           json={"role": "user"}, cookies=ctx["owner"])
         assert resp.status_code == 400
 
     def test_cannot_modify_owner_role(self, client):
         ctx = _setup_multi_user(client)
-        owner_id = ctx["user_ids"]["owner@test.com"]
+        owner_id = ctx["user_ids"][_owner_email()]
         resp = client.put(f"/admin/api/users/{owner_id}/role",
                           json={"role": "admin"}, cookies=ctx["admin"])
         assert resp.status_code == 403
@@ -360,14 +377,14 @@ class TestAdminOperations:
 
     def test_cannot_deactivate_owner(self, client):
         ctx = _setup_multi_user(client)
-        owner_id = ctx["user_ids"]["owner@test.com"]
+        owner_id = ctx["user_ids"][_owner_email()]
         resp = client.put(f"/admin/api/users/{owner_id}/active",
                           json={"is_active": False}, cookies=ctx["admin"])
         assert resp.status_code == 403
 
     def test_cannot_delete_owner(self, client):
         ctx = _setup_multi_user(client)
-        owner_id = ctx["user_ids"]["owner@test.com"]
+        owner_id = ctx["user_ids"][_owner_email()]
         resp = client.delete(f"/admin/api/users/{owner_id}", cookies=ctx["admin"])
         assert resp.status_code == 403
 
@@ -399,17 +416,13 @@ class TestAdminOperations:
 # ═══════════════════════════════════════════════════════════════════
 
 class TestOwnershipTransfer:
-    def test_transfer_ownership(self, client):
+    def test_transfer_ownership_rejected_for_non_reserved_email(self, client):
         ctx = _setup_multi_user(client)
         admin_id = ctx["user_ids"]["admin@test.com"]
         resp = client.post("/admin/api/transfer-ownership",
                            json={"target_user_id": admin_id}, cookies=ctx["owner"])
-        assert resp.status_code == 200
-        # Verify new owner
-        assert resp.json()["user"]["role"] == "owner"
-        # Old owner should now be admin
-        me = client.get("/auth/api/me", cookies=ctx["owner"])
-        assert me.json()["user"]["role"] == "admin"
+        assert resp.status_code == 403
+        assert _owner_email() in resp.json()["error"]
 
     def test_non_owner_cannot_transfer(self, client):
         ctx = _setup_multi_user(client)
@@ -420,7 +433,7 @@ class TestOwnershipTransfer:
 
     def test_cannot_transfer_to_self(self, client):
         ctx = _setup_multi_user(client)
-        owner_id = ctx["user_ids"]["owner@test.com"]
+        owner_id = ctx["user_ids"][_owner_email()]
         resp = client.post("/admin/api/transfer-ownership",
                            json={"target_user_id": owner_id}, cookies=ctx["owner"])
         assert resp.status_code == 400
