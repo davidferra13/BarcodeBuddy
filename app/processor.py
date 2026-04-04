@@ -46,6 +46,7 @@ from app.contracts import (
     SERVICE_EVENT_STARTUP,
     normalize_error_code,
 )
+from app.image_quality import ImageQualityReport, assess_quality
 from app.documents import (
     DocumentError,
     FileLockedError,
@@ -109,6 +110,8 @@ class ProcessingResult:
     candidate_values: tuple[str, ...] | None = None
     eligible_candidate_values: tuple[str, ...] | None = None
     page_one_eligible_values: tuple[str, ...] | None = None
+    quality_score: float | None = None
+    quality_issues: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -119,6 +122,7 @@ class BarcodeDetectionSummary:
     candidate_values: tuple[str, ...]
     eligible_candidate_values: tuple[str, ...]
     page_one_eligible_values: tuple[str, ...]
+    quality_report: ImageQualityReport | None = None
 
 
 class BarcodeBuddyService:
@@ -349,6 +353,9 @@ class BarcodeBuddyService:
                 )
 
             detection = self._detect_barcode(processing_path, context)
+            qr = detection.quality_report
+            quality_score = qr.quality_score if qr is not None else None
+            quality_issues = tuple(qr.issues) if qr is not None and qr.issues else None
             if detection.status == "not_found":
                 return self._reject_file(
                     processing_path,
@@ -360,6 +367,8 @@ class BarcodeBuddyService:
                     candidate_values=detection.candidate_values,
                     eligible_candidate_values=detection.eligible_candidate_values,
                     page_one_eligible_values=detection.page_one_eligible_values,
+                    quality_score=quality_score,
+                    quality_issues=quality_issues,
                 )
             barcode = detection.selected_match
             if barcode is None:
@@ -373,6 +382,8 @@ class BarcodeBuddyService:
                     candidate_values=detection.candidate_values,
                     eligible_candidate_values=detection.eligible_candidate_values,
                     page_one_eligible_values=detection.page_one_eligible_values,
+                    quality_score=quality_score,
+                    quality_issues=quality_issues,
                 )
 
             processing_result = ProcessingResult(
@@ -390,6 +401,8 @@ class BarcodeBuddyService:
                 candidate_values=detection.candidate_values or None,
                 eligible_candidate_values=detection.eligible_candidate_values or None,
                 page_one_eligible_values=detection.page_one_eligible_values or None,
+                quality_score=quality_score,
+                quality_issues=quality_issues,
             )
             self._log_stage(processing_result)
 
@@ -409,6 +422,8 @@ class BarcodeBuddyService:
                     candidate_values=detection.candidate_values,
                     eligible_candidate_values=detection.eligible_candidate_values,
                     page_one_eligible_values=detection.page_one_eligible_values,
+                    quality_score=quality_score,
+                    quality_issues=quality_issues,
                 )
             if not BARCODE_ALLOWED_PATTERN.fullmatch(normalized_barcode):
                 return self._reject_file(
@@ -425,6 +440,8 @@ class BarcodeBuddyService:
                     candidate_values=detection.candidate_values,
                     eligible_candidate_values=detection.eligible_candidate_values,
                     page_one_eligible_values=detection.page_one_eligible_values,
+                    quality_score=quality_score,
+                    quality_issues=quality_issues,
                 )
 
             validation_result = ProcessingResult(
@@ -442,6 +459,8 @@ class BarcodeBuddyService:
                 candidate_values=detection.candidate_values or None,
                 eligible_candidate_values=detection.eligible_candidate_values or None,
                 page_one_eligible_values=detection.page_one_eligible_values or None,
+                quality_score=quality_score,
+                quality_issues=quality_issues,
             )
             self._log_stage(validation_result)
 
@@ -467,6 +486,8 @@ class BarcodeBuddyService:
                         candidate_values=detection.candidate_values,
                         eligible_candidate_values=detection.eligible_candidate_values,
                         page_one_eligible_values=detection.page_one_eligible_values,
+                        quality_score=quality_score,
+                        quality_issues=quality_issues,
                     )
 
             self._write_journal(
@@ -497,6 +518,8 @@ class BarcodeBuddyService:
                 candidate_values=detection.candidate_values or None,
                 eligible_candidate_values=detection.eligible_candidate_values or None,
                 page_one_eligible_values=detection.page_one_eligible_values or None,
+                quality_score=quality_score,
+                quality_issues=quality_issues,
             )
             self._log_stage(result)
             self._remove_journal(context.processing_id)
@@ -541,10 +564,16 @@ class BarcodeBuddyService:
         seen_eligible_candidate_values: set[str] = set()
         seen_page_one_eligible_values: set[str] = set()
         best_match: BarcodeMatch | None = None
+        quality_report: ImageQualityReport | None = None
 
         try:
             for page_index, image in enumerate(images, start=1):
                 self._ensure_within_timeout(context)
+                if page_index == 1:
+                    try:
+                        quality_report = assess_quality(image)
+                    except Exception:
+                        pass
                 page_candidates = self.scanner.scan_image_candidates(image)
                 self._ensure_within_timeout(context)
                 raw_detection_count += len(page_candidates)
@@ -590,6 +619,7 @@ class BarcodeBuddyService:
                 candidate_values=(),
                 eligible_candidate_values=(),
                 page_one_eligible_values=(),
+                quality_report=quality_report,
             )
 
         if not self.settings.barcode_value_patterns:
@@ -604,6 +634,7 @@ class BarcodeBuddyService:
             candidate_values=tuple(candidate_values),
             eligible_candidate_values=eligible_values,
             page_one_eligible_values=tuple(page_one_eligible_values),
+            quality_report=quality_report,
         )
     def _barcode_match_sort_key(
         self,
@@ -692,6 +723,8 @@ class BarcodeBuddyService:
         eligible_candidate_values: tuple[str, ...] | None = None,
         page_one_eligible_values: tuple[str, ...] | None = None,
         error: str | None = None,
+        quality_score: float | None = None,
+        quality_issues: tuple[str, ...] | None = None,
     ) -> ProcessingResult:
         rejected_path = self._build_collision_safe_path(
             self.settings.rejected_path / self._sanitize_filename(context.original_filename),
@@ -750,6 +783,8 @@ class BarcodeBuddyService:
             eligible_candidate_values=eligible_candidate_values,
             page_one_eligible_values=page_one_eligible_values,
             rejected_path=rejected_path if rejected_path.exists() else None,
+            quality_score=quality_score,
+            quality_issues=quality_issues,
         )
         self._log_stage(result, error=error)
         self._remove_journal(context.processing_id)
@@ -1173,6 +1208,10 @@ class BarcodeBuddyService:
             payload["output_path"] = str(result.output_path.resolve())
         if result.rejected_path is not None:
             payload["rejected_path"] = str(result.rejected_path.resolve())
+        if result.quality_score is not None:
+            payload["quality_score"] = round(result.quality_score, 1)
+        if result.quality_issues is not None:
+            payload["quality_issues"] = list(result.quality_issues)
         if error is not None:
             payload["error"] = error
         append_jsonl(self.settings.log_file, payload)

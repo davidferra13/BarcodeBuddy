@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import tempfile
@@ -38,10 +39,12 @@ class LoggingUtilsTests(unittest.TestCase):
 
         append_jsonl(self.log_file, new_payload)
 
-        archive_path = self.log_file.with_name("processing_log.2026-04-02.jsonl")
+        archive_path = self.log_file.with_name("processing_log.2026-04-02.jsonl.gz")
         self.assertTrue(archive_path.exists())
+        with gzip.open(archive_path, "rt", encoding="utf-8") as f:
+            archive_lines = f.read().splitlines()
         self.assertEqual(
-            archive_path.read_text(encoding="utf-8").splitlines(),
+            archive_lines,
             [json.dumps(prior_payload, ensure_ascii=True)],
         )
         self.assertEqual(
@@ -52,9 +55,10 @@ class LoggingUtilsTests(unittest.TestCase):
     def test_iter_jsonl_log_files_returns_archives_before_active_log(self) -> None:
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
         archive_one = self.log_file.with_name("processing_log.2026-04-01.jsonl")
-        archive_two = self.log_file.with_name("processing_log.2026-04-02.jsonl")
+        archive_two = self.log_file.with_name("processing_log.2026-04-02.jsonl.gz")
         archive_one.write_text("", encoding="utf-8")
-        archive_two.write_text("", encoding="utf-8")
+        with gzip.open(archive_two, "wt", encoding="utf-8") as f:
+            f.write("")
         self.log_file.write_text("", encoding="utf-8")
 
         files = iter_jsonl_log_files(self.log_file)

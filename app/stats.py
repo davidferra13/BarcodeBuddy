@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import html
 import json
 from collections import Counter
@@ -8,7 +9,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.config import Settings
@@ -39,7 +40,11 @@ def build_stats_snapshot(
     log_file = settings.log_file
     log_files = iter_jsonl_log_files(log_file)
     for log_path in log_files:
-        with log_path.open("r", encoding="utf-8") as handle:
+        if log_path.name.endswith(".gz"):
+            handle_ctx = gzip.open(log_path, "rt", encoding="utf-8")
+        else:
+            handle_ctx = log_path.open("r", encoding="utf-8")
+        with handle_ctx as handle:
             for line in handle:
                 global_ordinal += 1
                 total_lines += 1
@@ -184,7 +189,7 @@ def build_stats_snapshot(
     return snapshot
 
 
-def render_stats_html(snapshot: dict[str, Any]) -> str:
+def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] | None = None) -> str:
     document_stats = snapshot["documents"]
     last_day_stats = snapshot["last_24_hours"]
     daily_counts = snapshot["daily_counts"]
@@ -1086,6 +1091,22 @@ def render_stats_html(snapshot: dict[str, Any]) -> str:
 
     <div class="sidebar-nav">
       <div class="nav-section">
+        <div class="nav-section-label">Inventory</div>
+        <a class="nav-btn" href="/scan" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4V2h4"/><path d="M14 2h4v2"/><path d="M2 16v2h4"/><path d="M14 18h4v-2"/><line x1="6" y1="6" x2="6" y2="14"/><line x1="10" y1="6" x2="10" y2="14"/><line x1="14" y1="6" x2="14" y2="14"/></svg>
+          Scan
+        </a>
+        <a class="nav-btn" href="/inventory" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h16v4H2z"/><path d="M2 9h16v8H2z"/><line x1="8" y1="12" x2="12" y2="12"/></svg>
+          Items
+        </a>
+        <a class="nav-btn" href="/inventory/new" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><line x1="10" y1="6" x2="10" y2="14"/><line x1="6" y1="10" x2="14" y2="10"/></svg>
+          New Item
+        </a>
+      </div>
+
+      <div class="nav-section">
         <div class="nav-section-label">Monitor</div>
         <button class="nav-btn active" data-page="overview" onclick="switchPage('overview', this)">
           <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="4" rx="1.5"/><rect x="2" y="11" width="7" height="4" rx="1.5"/><rect x="11" y="8" width="7" height="7" rx="1.5"/></svg>
@@ -1130,6 +1151,8 @@ def render_stats_html(snapshot: dict[str, Any]) -> str:
         </span>
       </div>
     </div>
+
+    {_render_user_nav(current_user)}
 
     <div class="sidebar-footer">
       Barcode Buddy v1.0.0
@@ -1777,7 +1800,79 @@ def create_stats_app(
     history_days: int = 14,
     recent_limit: int = 25,
 ) -> FastAPI:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import RedirectResponse as StarletteRedirect
+
+    from app.admin_routes import router as admin_router
+    from app.auth import get_current_user, COOKIE_NAME, _get_token_from_request, _decode_token, _hash_token
+    from app.auth_routes import router as auth_router
+    from app.database import User, UserSession, get_db, init_db
+    from app.inventory_pages import router as inventory_pages_router
+    from app.inventory_routes import router as inventory_router
+
+    # Initialize database
+    db_path = settings.log_path / "barcode_buddy.db"
+    init_db(db_path)
+
     app = FastAPI(title="Barcode Buddy Stats", docs_url="/docs", redoc_url=None)
+
+    # --- Auth Middleware ---
+    _PUBLIC_PREFIXES = ("/auth/", "/health", "/docs", "/openapi.json")
+
+    class AuthMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            path = request.url.path
+            if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
+                return await call_next(request)
+            # Check authentication
+            token = _get_token_from_request(request)
+            if not token:
+                if "text/html" in request.headers.get("accept", ""):
+                    return StarletteRedirect(url="/auth/login", status_code=307)
+                return JSONResponse(status_code=401, content={"error": "Not authenticated"})
+            payload = _decode_token(token)
+            if not payload:
+                if "text/html" in request.headers.get("accept", ""):
+                    return StarletteRedirect(url="/auth/login", status_code=307)
+                return JSONResponse(status_code=401, content={"error": "Invalid token"})
+            # Verify session not revoked (quick check via DB)
+            jti = payload.get("jti")
+            if jti:
+                db_gen = get_db()
+                db = next(db_gen)
+                try:
+                    session = db.query(UserSession).filter(
+                        UserSession.token_hash == _hash_token(jti),
+                        UserSession.is_revoked == False,
+                    ).first()
+                    if not session:
+                        if "text/html" in request.headers.get("accept", ""):
+                            return StarletteRedirect(url="/auth/login", status_code=307)
+                        return JSONResponse(status_code=401, content={"error": "Session revoked"})
+                    user = db.query(User).filter(
+                        User.id == payload.get("sub"), User.is_active == True
+                    ).first()
+                    if not user:
+                        if "text/html" in request.headers.get("accept", ""):
+                            return StarletteRedirect(url="/auth/login", status_code=307)
+                        return JSONResponse(status_code=401, content={"error": "User not found"})
+                    # Store user info in request state for downstream use
+                    request.state.user = user
+                    request.state.user_dict = user.to_dict()
+                finally:
+                    try:
+                        next(db_gen)
+                    except StopIteration:
+                        pass
+            return await call_next(request)
+
+    app.add_middleware(AuthMiddleware)
+
+    # Include auth, admin, and inventory routers
+    app.include_router(auth_router)
+    app.include_router(admin_router)
+    app.include_router(inventory_router)
+    app.include_router(inventory_pages_router)
 
     def _snapshot() -> dict[str, Any]:
         snapshot = build_stats_snapshot(
@@ -1789,9 +1884,10 @@ def create_stats_app(
         return snapshot
 
     @app.get("/", response_class=HTMLResponse)
-    def stats_page() -> HTMLResponse:
+    def stats_page(request: Request) -> HTMLResponse:
         snapshot = _snapshot()
-        return HTMLResponse(content=render_stats_html(snapshot))
+        user_dict = getattr(request.state, "user_dict", None)
+        return HTMLResponse(content=render_stats_html(snapshot, current_user=user_dict))
 
     @app.get("/api/stats")
     def stats_json() -> JSONResponse:
@@ -1852,8 +1948,16 @@ def create_stats_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/inventory", response_class=HTMLResponse)
+    def inventory_page(request: Request) -> HTMLResponse:
+        from app.inventory_ui import render_inventory_app
+        user = getattr(request.state, "user", None)
+        if not user:
+            return HTMLResponse(content="<script>window.location='/auth/login'</script>")
+        return HTMLResponse(content=render_inventory_app(user))
+
     @app.get("/client", response_class=HTMLResponse)
-    def client_portal() -> HTMLResponse:
+    def client_portal(request: Request) -> HTMLResponse:
         snapshot = _snapshot()
         return HTMLResponse(content=render_client_html(snapshot))
 
@@ -1861,6 +1965,48 @@ def create_stats_app(
     def trigger_daily_report() -> JSONResponse:
         path = generate_daily_report(settings)
         return JSONResponse(content={"status": "ok", "path": str(path)})
+
+    # --- Prometheus metrics endpoint ---
+    @app.get("/metrics")
+    def prometheus_metrics() -> Response:
+        from prometheus_client import (
+            CollectorRegistry,
+            Gauge,
+            generate_latest,
+            CONTENT_TYPE_LATEST,
+        )
+
+        registry = CollectorRegistry()
+        snapshot = _snapshot()
+
+        docs = snapshot["documents"]
+        svc = snapshot["service"]
+        queues = snapshot["queues"]
+        latency = snapshot["latency_ms"]
+
+        Gauge("barcode_buddy_documents_seen_total", "Total documents seen", registry=registry).set(docs["seen"])
+        Gauge("barcode_buddy_documents_succeeded_total", "Succeeded documents", registry=registry).set(docs["succeeded"])
+        Gauge("barcode_buddy_documents_failed_total", "Failed documents", registry=registry).set(docs["failed"])
+        Gauge("barcode_buddy_documents_incomplete_total", "Incomplete documents", registry=registry).set(docs["incomplete"])
+        Gauge("barcode_buddy_success_rate_percent", "Success rate percentage", registry=registry).set(docs["success_rate"])
+        Gauge("barcode_buddy_avg_completion_ms", "Average completion time ms", registry=registry).set(docs["average_completion_ms"])
+
+        Gauge("barcode_buddy_latency_p50_ms", "P50 latency ms", registry=registry).set(latency["p50"])
+        Gauge("barcode_buddy_latency_p95_ms", "P95 latency ms", registry=registry).set(latency["p95"])
+        Gauge("barcode_buddy_latency_p99_ms", "P99 latency ms", registry=registry).set(latency["p99"])
+
+        Gauge("barcode_buddy_service_healthy", "1 if healthy, 0 otherwise", registry=registry).set(1 if svc["status"] == "healthy" else 0)
+        Gauge("barcode_buddy_heartbeat_age_seconds", "Seconds since last heartbeat", registry=registry).set(svc["heartbeat_age_seconds"])
+        Gauge("barcode_buddy_startups_24h", "Startups in last 24h", registry=registry).set(svc["startups_last_24h"])
+
+        Gauge("barcode_buddy_input_backlog_count", "Files in input queue", registry=registry).set(queues["input_backlog_count"])
+        Gauge("barcode_buddy_processing_count", "Files being processed", registry=registry).set(queues["processing_count"])
+        Gauge("barcode_buddy_journal_count", "Active journal entries", registry=registry).set(queues["journal_count"])
+
+        return Response(
+            content=generate_latest(registry),
+            media_type=CONTENT_TYPE_LATEST,
+        )
 
     return app
 
@@ -2275,6 +2421,53 @@ def _format_percentage(value: float | None) -> str:
 
 def _escape(value: Any) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _render_user_nav(current_user: dict[str, Any] | None) -> str:
+    if not current_user:
+        return ""
+    name = _escape(current_user.get("display_name", "User"))
+    role = _escape(current_user.get("role", "user"))
+    is_admin = current_user.get("role") == "admin"
+    admin_link = (
+        '<a href="/admin" style="display:block;padding:6px 20px;color:var(--sidebar-text);'
+        'text-decoration:none;font-size:13px;transition:color 0.2s;" '
+        'onmouseover="this.style.color=\'var(--sidebar-active)\'" '
+        'onmouseout="this.style.color=\'var(--sidebar-text)\'">'
+        '<svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" '
+        'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M12 14v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2"/>'
+        '<path d="M16 7a4 4 0 00-8 0v3h8V7z"/><rect x="6" y="10" width="8" height="6" rx="1"/>'
+        '</svg>Admin Panel</a>'
+    ) if is_admin else ""
+    role_badge_bg = "#7c3aed33" if is_admin else "#3b82f633"
+    role_badge_color = "#a78bfa" if is_admin else "#93c5fd"
+    return f"""
+    <div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;
+          align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f8fafc;">
+          {_escape(name[0].upper())}
+        </div>
+        <div>
+          <div style="font-size:13px;color:var(--sidebar-active);font-weight:600;">{name}</div>
+          <span style="font-size:10px;padding:1px 6px;border-radius:4px;
+            background:{role_badge_bg};color:{role_badge_color};font-weight:600;">
+            {role}
+          </span>
+        </div>
+      </div>
+      {admin_link}
+      <a href="#" onclick="fetch('/auth/api/logout',{{method:'POST'}}).then(()=>window.location.href='/auth/login');return false;"
+        style="display:block;padding:6px 20px;color:var(--sidebar-text);text-decoration:none;font-size:13px;
+        transition:color 0.2s;"
+        onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--sidebar-text)'">
+        <svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20"
+          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17H3a1 1 0 01-1-1V4a1 1 0 011-1h4"/><path d="M14 14l4-4-4-4"/><path d="M18 10H7"/>
+        </svg>Sign Out
+      </a>
+    </div>"""
 
 
 # ────────────────────────────────────────────────────────────────────

@@ -6,12 +6,16 @@ import signal
 from datetime import datetime, timezone
 from pathlib import Path
 
+from rich.console import Console
+
 from app import __version__
 from app.config import ensure_runtime_directories, load_settings
 from app.contracts import SERVICE_EVENT_STARTUP
 from app.logging_utils import configure_structlog
 from app.processor import BarcodeBuddyService
 from app.runtime_lock import ServiceLock, ServiceLockError
+
+console = Console(stderr=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,7 +50,7 @@ def main() -> None:
             service = BarcodeBuddyService(settings)
 
             def _handle_stop_signal(signum: int, frame: object) -> None:
-                print(f"Barcode Buddy received signal {signum}, shutting down...")
+                console.print(f"[yellow]Barcode Buddy received signal {signum}, shutting down...[/yellow]")
                 service.stop()
 
             signal.signal(signal.SIGINT, _handle_stop_signal)
@@ -54,12 +58,12 @@ def main() -> None:
 
             service.log_service_event(SERVICE_EVENT_STARTUP)
             service.recover_processing_files()
-            print(f"Barcode Buddy v{__version__} watching: {settings.input_path}")
+            console.print(f"[bold green]Barcode Buddy v{__version__}[/bold green] watching: [cyan]{settings.input_path}[/cyan]")
             service.run_forever()
     except ServiceLockError as exc:
         raise SystemExit(str(exc)) from exc
 
-    print("Barcode Buddy stopped.")
+    console.print("[dim]Barcode Buddy stopped.[/dim]")
 
 
 if __name__ == "__main__":

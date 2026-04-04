@@ -106,10 +106,65 @@ The page shows:
 - raw pipeline stage counts
 - recent document outcomes and durations
 
+## Inventory Management
+
+Barcode Buddy includes a full inventory management system accessible at `/inventory` on the stats server.
+
+### Features
+
+- **Create items** with name, SKU, quantity, location, category, tags, cost, and auto-generated barcodes
+- **Scan lookup** — type or scan a barcode/SKU to instantly find and act on an item
+- **Camera scanning** — use a device camera with the browser BarcodeDetector API
+- **Quick adjustments** — receive, issue, or adjust stock directly from scan results
+- **Full CRUD** — edit, archive, or delete items with complete transaction history
+- **Bulk import** — upload a CSV to create or update items in batch
+- **Bulk export** — download all items as CSV for backup or external editing
+- **Bulk actions** — select multiple items to update location, category, status, or delete
+- **Barcode generation** — each item gets a downloadable barcode image (Code128, QR, etc.)
+- **Dashboard** — overview with total items, units, value, low stock alerts, category/location breakdown
+- **Multi-user** — each user's inventory is isolated; first signup becomes admin
+
+### Accessing
+
+Start the stats server and navigate to:
+
+```text
+http://127.0.0.1:8080/inventory
+```
+
+First-time users will be prompted to create an account at `/auth/signup`.
+
+### API Endpoints
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| GET | `/api/inventory` | List items (search, filter, paginate) |
+| POST | `/api/inventory` | Create item |
+| GET | `/api/inventory/{id}` | Get item with transaction history |
+| PUT | `/api/inventory/{id}` | Update item |
+| DELETE | `/api/inventory/{id}` | Delete item |
+| POST | `/api/inventory/{id}/adjust` | Adjust quantity |
+| GET | `/api/scan/lookup?code=...` | Scan lookup by barcode or SKU |
+| GET | `/api/inventory/{id}/barcode.png` | Download barcode image |
+| GET | `/api/inventory/summary` | Dashboard summary data |
+| GET | `/api/inventory/categories` | List categories |
+| GET | `/api/inventory/locations` | List locations |
+| POST | `/api/inventory/import/csv` | Bulk import from CSV |
+| GET | `/api/inventory/export/csv` | Export all items as CSV |
+| POST | `/api/inventory/bulk/delete` | Bulk delete items |
+| POST | `/api/inventory/bulk/update` | Bulk update items |
+| GET | `/api/barcode/formats` | List supported barcode formats |
+
+### CSV Import Format
+
+Required columns: `name`, `sku`. Optional: `quantity`, `unit`, `location`, `category`, `tags`, `notes`, `barcode_type`, `barcode_value`, `cost`, `min_quantity`.
+
+If `barcode_value` is blank, one is auto-generated. If a SKU already exists, the row updates the existing item.
+
 ## Test
 
 ```bash
-py -3.12 -B -m unittest discover -s tests -v
+py -3.12 -m pytest tests/ -x -q
 ```
 
 Workflow starter configs are in `configs/`. These are placeholders for deployment shape only. Keep `barcode_value_patterns` empty until Danpack sample documents confirm the actual routing formats.

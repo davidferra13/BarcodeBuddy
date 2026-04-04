@@ -18,6 +18,21 @@ pydantic>=2.0.0
 # --- Stats server ---
 fastapi>=0.110.0
 uvicorn>=0.30.0
+python-multipart>=0.0.6
+
+# --- Authentication ---
+bcrypt>=4.0.0
+PyJWT>=2.8.0
+SQLAlchemy>=2.0.0
 
 # --- Scheduling ---
 apscheduler>=3.10.0,<5.0.0
+
+# --- Resilience ---
+tenacity>=8.0.0
+
+# --- Observability ---
+prometheus-client>=0.20.0
+
+# --- CLI output ---
+rich>=13.0.0

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
@@ -56,12 +57,17 @@ def iter_jsonl_log_files(log_file: Path) -> list[Path]:
         return []
 
     archive_pattern = f"{log_file.stem}.*{log_file.suffix}"
+    gz_archive_pattern = f"{log_file.stem}.*{log_file.suffix}.gz"
+    candidates = set()
+    for path in log_dir.glob(archive_pattern):
+        if path.is_file() and path != log_file:
+            candidates.add(path)
+    for path in log_dir.glob(gz_archive_pattern):
+        if path.is_file():
+            candidates.add(path)
+
     archived_files = sorted(
-        (
-            path
-            for path in log_dir.glob(archive_pattern)
-            if path.is_file() and path != log_file
-        ),
+        candidates,
         key=lambda path: _archive_sort_key(path, log_file),
     )
 
@@ -100,6 +106,23 @@ def _rotate_log_if_needed(log_file: Path, payload: dict[str, Any]) -> None:
         return
 
     log_file.replace(archive_path)
+    _compress_archive(archive_path)
+
+
+def _compress_archive(archive_path: Path) -> None:
+    """Gzip-compress an archived log file to save storage."""
+    gz_path = archive_path.with_name(archive_path.name + ".gz")
+    try:
+        with archive_path.open("rb") as f_in, gzip.open(gz_path, "wb") as f_out:
+            while True:
+                chunk = f_in.read(65536)
+                if not chunk:
+                    break
+                f_out.write(chunk)
+        archive_path.unlink()
+    except OSError:
+        # If compression fails, keep the uncompressed archive
+        gz_path.unlink(missing_ok=True)
 
 
 def _payload_log_date(payload: dict[str, Any]) -> date:
@@ -128,11 +151,19 @@ def _archive_sort_key(path: Path, active_log_file: Path) -> tuple[str, str]:
 
 def _archive_date_from_name(path: Path, active_log_file: Path) -> date | None:
     prefix = f"{active_log_file.stem}."
-    suffix = active_log_file.suffix
-    if not path.name.startswith(prefix) or not path.name.endswith(suffix):
+    name = path.name
+    # Handle both .jsonl and .jsonl.gz archives
+    if name.endswith(active_log_file.suffix + ".gz"):
+        suffix = active_log_file.suffix + ".gz"
+    elif name.endswith(active_log_file.suffix):
+        suffix = active_log_file.suffix
+    else:
         return None
 
-    date_text = path.name[len(prefix):-len(suffix)]
+    if not name.startswith(prefix):
+        return None
+
+    date_text = name[len(prefix):-len(suffix)]
     try:
         return date.fromisoformat(date_text)
     except ValueError:

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import shutil
-import time
 from io import BytesIO
 from pathlib import Path
 from typing import Iterator
 
 import fitz
 from PIL import Image, ImageOps
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 try:
     import fcntl
@@ -50,21 +50,28 @@ def is_supported_input(path: Path) -> bool:
 
 
 def ensure_exclusive_access(path: Path, retries: int, interval_seconds: float) -> None:
-    last_error: OSError | None = None
-    for attempt in range(retries):
+    @retry(
+        stop=stop_after_attempt(retries),
+        wait=wait_fixed(interval_seconds),
+        retry=retry_if_exception_type(OSError),
+        reraise=True,
+    )
+    def _try_lock() -> None:
         try:
             with path.open("rb") as handle:
                 _lock_handle(handle)
                 _unlock_handle(handle)
-                return
         except FileNotFoundError:
             raise
-        except OSError as exc:
-            last_error = exc
-            if attempt < retries - 1:
-                time.sleep(interval_seconds)
+        except OSError:
+            raise
 
-    raise FileLockedError(f"Unable to acquire exclusive access to {path.name}") from last_error
+    try:
+        _try_lock()
+    except FileNotFoundError:
+        raise
+    except OSError as exc:
+        raise FileLockedError(f"Unable to acquire exclusive access to {path.name}") from exc
 
 
 def get_page_count(path: Path) -> int:

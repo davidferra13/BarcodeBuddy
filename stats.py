@@ -3,10 +3,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from rich.console import Console
+
 from app import __version__
 from app.config import ensure_runtime_directories, load_settings
 from app.logging_utils import configure_structlog
 from app.stats import serve_stats_page
+
+console = Console(stderr=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -55,9 +59,9 @@ def main() -> None:
     settings = load_settings(config_path)
     ensure_runtime_directories(settings)
 
-    print(f"Barcode Buddy v{__version__} stats page: http://{args.host}:{args.port}")
-    print(f"Reading log file: {settings.log_file}")
-    print(f"API docs available at: http://{args.host}:{args.port}/docs")
+    console.print(f"[bold green]Barcode Buddy v{__version__}[/bold green] stats page: [link=http://{args.host}:{args.port}]http://{args.host}:{args.port}[/link]")
+    console.print(f"Reading log file: [cyan]{settings.log_file}[/cyan]")
+    console.print(f"API docs: [link=http://{args.host}:{args.port}/docs]http://{args.host}:{args.port}/docs[/link]")
     serve_stats_page(
         settings,
         host=args.host,
@@ -72,4 +76,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("Barcode Buddy stats page stopped.")
+        console.print("[dim]Barcode Buddy stats page stopped.[/dim]")
