@@ -64,6 +64,19 @@ _ICONS: dict[str, str] = {
         '<line x1="14" y1="8" x2="14" y2="18"/>'
         '<line x1="2" y1="12" x2="18" y2="12"/><line x1="2" y1="16" x2="18" y2="16"/></svg>'
     ),
+    "analytics": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<polyline points="2 16 6 10 10 13 14 6 18 2"/>'
+        '<polyline points="14 2 18 2 18 6"/>'
+        '<line x1="2" y1="18" x2="18" y2="18"/></svg>'
+    ),
+    "alerts": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M10 2a6 6 0 00-6 6c0 3-1.5 5-2 6h16c-.5-1-2-3-2-6a6 6 0 00-6-6z"/>'
+        '<path d="M8 16a2 2 0 004 0"/></svg>'
+    ),
     "admin": (
         '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
         ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
@@ -632,6 +645,12 @@ function autosaveClear(key){try{localStorage.removeItem('bb_autosave_'+key)}catc
 
 /* Unsaved changes guard */
 function guardUnsaved(formSel){let dirty=false;const form=document.querySelector(formSel);if(!form)return;form.querySelectorAll('input,textarea,select').forEach(el=>{el.addEventListener('input',()=>{dirty=true})});window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});return{markClean:()=>{dirty=false},markDirty:()=>{dirty=true}}}
+
+/* Alert badge polling */
+(function(){
+  function pollAlerts(){fetch('/api/alerts/count').then(r=>r.json()).then(d=>{const b=document.getElementById('alert-badge');if(b){if(d.unread_count>0){b.textContent=d.unread_count;b.style.display=''}else{b.style.display='none'}}}).catch(()=>{});setTimeout(pollAlerts,30000)}
+  setTimeout(pollAlerts,2000);
+})();
 </script>"""
 
 
@@ -650,6 +669,8 @@ _NAV_SECTIONS: list[tuple[str, list[tuple[str, str, str, str]]]] = [
     ]),
     ("Monitor", [
         ("monitor", "Dashboard", "/", "monitor"),
+        ("analytics", "Analytics", "/analytics", "analytics"),
+        ("alerts", "Alerts", "/alerts", "alerts"),
     ]),
     ("System", [
         ("admin", "Admin Panel", "/admin", "admin"),
@@ -731,7 +752,14 @@ def render_shell(
   <div class="main">
     <header class="topbar">
       <div class="topbar-title">{_E(title)}</div>
-      <div class="topbar-meta"></div>
+      <div class="topbar-meta" style="display:flex;align-items:center;gap:12px;">
+        <a href="/alerts" id="alert-bell" style="position:relative;color:var(--muted);text-decoration:none;display:flex;align-items:center;transition:color .2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2a6 6 0 00-6 6c0 3-1.5 5-2 6h16c-.5-1-2-3-2-6a6 6 0 00-6-6z"/><path d="M8 16a2 2 0 004 0"/>
+          </svg>
+          <span id="alert-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--failure);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;text-align:center;line-height:16px;padding:0 4px"></span>
+        </a>
+      </div>
     </header>
     <div class="content">
       {body_html}

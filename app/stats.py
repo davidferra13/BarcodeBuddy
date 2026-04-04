@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import html
 import json
+import os
 from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -123,6 +124,35 @@ def build_stats_snapshot(
 
     hourly_throughput = _build_hourly_throughput(latest_events, generated_at)
 
+    # ── Quality & format analytics from JSONL ──
+    quality_scores: list[float] = []
+    quality_issue_counts: Counter[str] = Counter()
+    barcode_format_counts: Counter[str] = Counter()
+    for event in latest_events:
+        qs = event.get("quality_score")
+        if qs is not None:
+            quality_scores.append(qs)
+        for issue in event.get("quality_issues", []):
+            quality_issue_counts[issue] += 1
+        bf = event.get("barcode_format")
+        if bf:
+            barcode_format_counts[bf] += 1
+
+    quality_analytics = {
+        "total_scanned": len(quality_scores),
+        "avg_score": round(mean(quality_scores), 1) if quality_scores else None,
+        "min_score": round(min(quality_scores), 1) if quality_scores else None,
+        "max_score": round(max(quality_scores), 1) if quality_scores else None,
+        "issues": [
+            {"issue": k, "count": v}
+            for k, v in sorted(quality_issue_counts.items(), key=lambda x: -x[1])
+        ],
+    }
+    format_analytics = [
+        {"format": k, "count": v}
+        for k, v in sorted(barcode_format_counts.items(), key=lambda x: -x[1])
+    ]
+
     documents_block = {
         "seen": len(latest_events),
         "completed": len(completed_events),
@@ -179,6 +209,8 @@ def build_stats_snapshot(
         "stage_counts": stage_summary,
         "recent_documents": recent_documents,
         "hourly_throughput": hourly_throughput,
+        "quality_analytics": quality_analytics,
+        "format_analytics": format_analytics,
     }
 
     # Derived metrics that depend on the base snapshot
@@ -295,6 +327,36 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
             f'</div>'
         )
 
+    # Quality & format analytics
+    qa = snapshot.get("quality_analytics", {"total_scanned": 0, "avg_score": None, "min_score": None, "max_score": None, "issues": []})
+    fa = snapshot.get("format_analytics", [])
+
+    qa_avg = qa["avg_score"]
+    qa_avg_display = f'{qa_avg}' if qa_avg is not None else "n/a"
+    qa_min_display = f'{qa["min_score"]}' if qa["min_score"] is not None else "n/a"
+    qa_max_display = f'{qa["max_score"]}' if qa["max_score"] is not None else "n/a"
+    qa_ring_pct = min(100, qa_avg) if qa_avg is not None else 0
+    qa_ring_dash = round(qa_ring_pct * 2.51, 1)
+    qa_ring_class = "good" if qa_ring_pct >= 70 else "warn" if qa_ring_pct >= 40 else "bad"
+
+    # Quality issue rows
+    quality_issue_rows = "\n".join(
+        f'<tr><td>{_escape(item["issue"])}</td><td>{item["count"]}</td></tr>'
+        for item in qa["issues"]
+    ) or '<tr><td colspan="2" class="empty-cell">No quality issues recorded.</td></tr>'
+
+    # Format distribution rows
+    max_fmt_count = max((f["count"] for f in fa), default=1) or 1
+    fmt_colors = ["var(--info)", "var(--success)", "var(--warning)", "#7c3aed", "var(--failure)"]
+    format_rows_html = "\n".join(
+        f'<div style="display:grid;grid-template-columns:120px 1fr 60px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;">'
+        f'<div style="font-weight:600">{_escape(f["format"])}</div>'
+        f'<div style="height:10px;background:var(--track);border-radius:999px;overflow:hidden;">'
+        f'<div style="height:100%;width:{round(f["count"]/max_fmt_count*100,1)}%;background:{fmt_colors[i%len(fmt_colors)]};border-radius:999px;"></div></div>'
+        f'<div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums;">{f["count"]}</div></div>'
+        for i, f in enumerate(fa)
+    ) or '<div class="empty-cell">No barcode format data recorded.</div>'
+
     # Build success rate ring for overview
     success_rate = document_stats["success_rate"]
     ring_pct = success_rate if success_rate is not None else 0
@@ -399,6 +461,7 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
           <button class="dash-tab active" data-page="overview" onclick="switchPage('overview', this)">Overview</button>
           <button class="dash-tab" data-page="documents" onclick="switchPage('documents', this)">Documents</button>
           <button class="dash-tab" data-page="analytics" onclick="switchPage('analytics', this)">Analytics</button>
+          <button class="dash-tab" data-page="quality" onclick="switchPage('quality', this)">Quality</button>
           <button class="dash-tab" data-page="achievements" onclick="switchPage('achievements', this)">Achievements</button>
           <button class="dash-tab" data-page="service" onclick="switchPage('service', this)">Service</button>
           <button class="dash-tab" data-page="config" onclick="switchPage('config', this)">Configuration</button>
@@ -630,6 +693,63 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
               </table>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ═══ QUALITY ═══ -->
+      <div class="page" id="page-quality">
+        <div class="hero-row" style="grid-template-columns:180px 1fr 1fr;">
+          <!-- Quality score ring -->
+          <div class="hero-card ring-container">
+            <h3 style="text-align:center;width:100%;">Avg Quality</h3>
+            <div class="ring-chart">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle class="ring-track" cx="50" cy="50" r="40"/>
+                <circle class="ring-fill {qa_ring_class}" cx="50" cy="50" r="40"
+                  stroke-dasharray="{qa_ring_dash} 251" />
+              </svg>
+              <div class="ring-label">{_escape(qa_avg_display)}</div>
+            </div>
+            <div class="ring-caption">{qa['total_scanned']} scans</div>
+          </div>
+
+          <!-- Quality KPIs -->
+          <div class="hero-card">
+            <h3>Scan Quality Metrics</h3>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;text-align:center;">
+              <div>
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Average</div>
+                <div style="font-size:24px;font-weight:700;">{_escape(qa_avg_display)}</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Min</div>
+                <div style="font-size:24px;font-weight:700;color:var(--failure);">{_escape(qa_min_display)}</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Max</div>
+                <div style="font-size:24px;font-weight:700;color:var(--success);">{_escape(qa_max_display)}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quality issues -->
+          <div class="hero-card">
+            <h3>Quality Issues</h3>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>Issue</th><th>Count</th></tr></thead>
+                <tbody>{quality_issue_rows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:20px;">
+          <div class="panel-header">
+            <span class="panel-title">Barcode Format Distribution</span>
+            <span style="font-size:12px;color:var(--muted);">Formats detected across all processed documents</span>
+          </div>
+          {format_rows_html}
         </div>
       </div>
 
@@ -1026,9 +1146,18 @@ def create_stats_app(
     from starlette.responses import RedirectResponse as StarletteRedirect
 
     from app.admin_routes import router as admin_router
-    from app.auth import get_current_user, COOKIE_NAME, _get_token_from_request, _decode_token, _hash_token, configure_secret_key
+    from app.alerts import router as alerts_router, check_stock_alerts
+    from app.auth import (
+      get_current_user,
+      COOKIE_NAME,
+      _get_token_from_request,
+      _decode_token,
+      _hash_token,
+      configure_owner_email,
+      configure_secret_key,
+    )
     from app.auth_routes import router as auth_router
-    from app.database import User, UserSession, get_db, init_db
+    from app.database import User, UserSession, backup_database, get_db, init_db, revoke_expired_sessions
     from app.inventory_pages import router as inventory_pages_router
     from app.inventory_routes import router as inventory_router
     from app.scan_to_pdf import router as scan_to_pdf_router
@@ -1039,6 +1168,7 @@ def create_stats_app(
 
     # Use persistent secret key from config (if provided)
     configure_secret_key(settings.secret_key)
+    configure_owner_email(os.environ.get("BB_OWNER_EMAIL"))
 
     app = FastAPI(title="Barcode Buddy Stats", docs_url="/docs", redoc_url=None)
 
@@ -1141,12 +1271,53 @@ def create_stats_app(
 
     app.add_middleware(CsrfMiddleware)
 
-    # Include auth, admin, and inventory routers
+    # Include auth, admin, inventory, and alerts routers
     app.include_router(auth_router)
     app.include_router(admin_router)
     app.include_router(inventory_router)
     app.include_router(inventory_pages_router)
     app.include_router(scan_to_pdf_router)
+    app.include_router(alerts_router)
+
+    # ── APScheduler: periodic stock alert checks ──
+    from apscheduler.schedulers.background import BackgroundScheduler as _BGScheduler
+
+    def _run_stock_alerts():
+        db_gen = get_db()
+        db = next(db_gen)
+        try:
+            check_stock_alerts(db)
+        except Exception as e:
+            _structlog.get_logger().warning("stock_alert_check_failed", error=str(e))
+        finally:
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
+
+    _alert_scheduler = _BGScheduler()
+    _alert_scheduler.add_job(_run_stock_alerts, "interval", minutes=5, id="stock_alerts")
+    _alert_scheduler.add_job(
+      lambda: backup_database(settings.log_path / "backups", max_backups=14),
+      "cron",
+      hour=0,
+      minute=15,
+      id="db_backup",
+      replace_existing=True,
+    )
+    _alert_scheduler.add_job(
+      revoke_expired_sessions,
+      "interval",
+      hours=1,
+      id="revoke_expired_sessions",
+      replace_existing=True,
+    )
+    app.state.alert_scheduler = _alert_scheduler
+    _alert_scheduler.start()
+
+    @app.on_event("shutdown")
+    def _shutdown_alert_scheduler():
+        _alert_scheduler.shutdown(wait=False)
 
     def _snapshot() -> dict[str, Any]:
         snapshot = build_stats_snapshot(
@@ -1481,6 +1652,8 @@ def _normalize_event(payload: dict[str, Any], line_number: int) -> dict[str, Any
         "rejected_path": rejected_path,
         "recovery_action": recovery_action,
         "pages": _coerce_int(payload.get("pages")),
+        "quality_score": _coerce_float(payload.get("quality_score")),
+        "quality_issues": payload.get("quality_issues") if isinstance(payload.get("quality_issues"), list) else [],
         "ordinal": line_number,
     }
 
@@ -1583,6 +1756,15 @@ def _coerce_int(value: Any) -> int | None:
         if value is None or value == "":
             return None
         return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_float(value: Any) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
     except (TypeError, ValueError):
         return None
 
