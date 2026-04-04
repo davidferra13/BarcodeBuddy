@@ -300,881 +300,119 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
     ring_pct = success_rate if success_rate is not None else 0
     ring_dash = round(ring_pct * 2.51, 1)  # circumference ~251 for r=40
 
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Barcode Buddy</title>
-  <style>
-    :root {{
-      --bg: #f0ebe3;
-      --sidebar-bg: #1e2530;
-      --sidebar-text: #a0aab4;
-      --sidebar-active: #ffffff;
-      --sidebar-hover: rgba(255,255,255,0.08);
-      --sidebar-accent: #e8a04c;
-      --paper: rgba(255, 251, 245, 0.92);
-      --panel: rgba(255, 255, 255, 0.82);
-      --line: rgba(44, 54, 63, 0.10);
-      --text: #1a1f26;
-      --muted: #68737d;
-      --accent: #885529;
-      --accent-soft: rgba(136, 85, 41, 0.08);
-      --success: #1a7a54;
-      --success-bg: rgba(26, 122, 84, 0.08);
-      --success-border: rgba(26, 122, 84, 0.18);
-      --failure: #c0392b;
-      --failure-bg: rgba(192, 57, 43, 0.08);
-      --failure-border: rgba(192, 57, 43, 0.18);
-      --warning: #b8860b;
-      --warning-bg: rgba(184, 134, 11, 0.08);
-      --warning-border: rgba(184, 134, 11, 0.18);
-      --info: #2472a4;
-      --info-bg: rgba(36, 114, 164, 0.08);
-      --info-border: rgba(36, 114, 164, 0.18);
-      --track: #e0dbd2;
-      --radius: 16px;
-      --sidebar-width: 230px;
-    }}
+    from app.layout import render_shell
 
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    display_name = "User"
+    user_role = "user"
+    if current_user:
+        display_name = current_user.get("display_name", "User")
+        user_role = current_user.get("role", "user")
 
-    body {{
-      display: flex;
-      min-height: 100vh;
-      color: var(--text);
-      background: var(--bg);
-      font-family: "Segoe UI Variable", "Segoe UI", "Aptos", system-ui, sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-    }}
+    # Stats-specific CSS that isn't in the shared layout
+    stats_css = f"""<style>
+    .page {{ display: none; animation: fadeIn 0.2s ease; }}
+    .page.active {{ display: block; }}
+    @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(6px); }} to {{ opacity: 1; transform: translateY(0); }} }}
 
-    /* ── Sidebar ── */
-    .sidebar {{
-      width: var(--sidebar-width);
-      min-height: 100vh;
-      background: var(--sidebar-bg);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 100;
-      transition: transform 0.25s ease;
-    }}
+    .hero-row {{ display: grid; grid-template-columns: 1fr 1fr 180px 180px; gap: 20px; margin-bottom: 24px; }}
+    .hero-card {{ padding: 24px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); }}
+    .hero-card h3 {{ font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 16px; font-weight: 600; }}
 
-    .sidebar-brand {{
-      padding: 24px 20px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }}
+    .health-display {{ display: flex; align-items: center; gap: 14px; }}
+    .health-icon {{ width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }}
+    .health-icon.healthy {{ background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success); }}
+    .health-icon.stopped {{ background: var(--failure-bg); border: 1px solid var(--failure-border); color: var(--failure); }}
+    .health-icon.stale, .health-icon.unknown {{ background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning); }}
+    .health-label {{ font-size: 24px; font-weight: 700; line-height: 1.1; }}
+    .health-detail {{ font-size: 12px; color: var(--muted); margin-top: 2px; }}
 
-    .sidebar-brand h1 {{
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.02em;
-      line-height: 1.2;
-    }}
-
-    .sidebar-brand .brand-sub {{
-      font-size: 11px;
-      color: var(--sidebar-text);
-      margin-top: 4px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }}
-
-    .sidebar-nav {{
-      padding: 12px 10px;
-      flex: 1;
-    }}
-
-    .nav-section {{
-      margin-bottom: 8px;
-    }}
-
-    .nav-section-label {{
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: rgba(255,255,255,0.28);
-      padding: 12px 12px 6px;
-      font-weight: 600;
-    }}
-
-    .nav-btn {{
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      width: 100%;
-      padding: 10px 14px;
-      border: none;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--sidebar-text);
-      font-size: 13.5px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      text-align: left;
-      position: relative;
-    }}
-
-    .nav-btn:hover {{
-      background: var(--sidebar-hover);
-      color: #d0d6dc;
-    }}
-
-    .nav-btn.active {{
-      background: rgba(232, 160, 76, 0.14);
-      color: var(--sidebar-active);
-    }}
-
-    .nav-btn.active::before {{
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 3px;
-      height: 20px;
-      background: var(--sidebar-accent);
-      border-radius: 0 4px 4px 0;
-    }}
-
-    .nav-icon {{
-      width: 20px;
-      height: 20px;
-      opacity: 0.7;
-      flex-shrink: 0;
-    }}
-
-    .nav-btn.active .nav-icon {{
-      opacity: 1;
-    }}
-
-    .sidebar-status {{
-      padding: 16px 20px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-    }}
-
-    .status-indicator {{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-    }}
-
-    .status-dot {{
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }}
-
-    .status-dot.healthy {{
-      background: #2ecc71;
-      box-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
-    }}
-
-    .status-dot.stopped {{
-      background: var(--failure);
-    }}
-
-    .status-dot.stale, .status-dot.unknown {{
-      background: var(--warning);
-    }}
-
-    .sidebar-footer {{
-      padding: 14px 20px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      font-size: 11px;
-      color: rgba(255,255,255,0.2);
-    }}
-
-    /* ── Mobile hamburger ── */
-    .hamburger {{
-      display: none;
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 200;
-      width: 40px;
-      height: 40px;
-      border: none;
-      border-radius: 10px;
-      background: var(--sidebar-bg);
-      color: #fff;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-    }}
-
-    .sidebar-overlay {{
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 90;
-    }}
-
-    /* ── Main content ── */
-    .main {{
-      margin-left: var(--sidebar-width);
-      flex: 1;
-      min-height: 100vh;
-    }}
-
-    .topbar {{
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 28px;
-      background: rgba(255,251,245,0.8);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--line);
-      position: sticky;
-      top: 0;
-      z-index: 50;
-    }}
-
-    .topbar-title {{
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text);
-    }}
-
-    .topbar-meta {{
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--muted);
-    }}
-
-    .refresh-badge {{
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: var(--info-bg);
-      color: var(--info);
-      font-size: 11px;
-      font-weight: 600;
-      border: 1px solid var(--info-border);
-    }}
-
-    .content {{
-      padding: 24px 28px;
-    }}
-
-    /* ── Pages ── */
-    .page {{
-      display: none;
-      animation: fadeIn 0.2s ease;
-    }}
-
-    .page.active {{
-      display: block;
-    }}
-
-    @keyframes fadeIn {{
-      from {{ opacity: 0; transform: translateY(6px); }}
-      to {{ opacity: 1; transform: translateY(0); }}
-    }}
-
-    /* ── Cards ── */
-    .kpi-grid {{
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }}
-
-    .kpi {{
-      padding: 20px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--panel);
-      transition: box-shadow 0.15s ease, transform 0.15s ease;
-    }}
-
-    .kpi:hover {{
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-      transform: translateY(-1px);
-    }}
-
-    .kpi-label {{
-      font-size: 11.5px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
-      font-weight: 600;
-    }}
-
-    .kpi-value {{
-      font-size: 32px;
-      line-height: 1;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }}
-
-    .kpi-sub {{
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 6px;
-    }}
-
-    .kpi.accent-green {{ border-left: 3px solid var(--success); }}
-    .kpi.accent-red {{ border-left: 3px solid var(--failure); }}
-    .kpi.accent-amber {{ border-left: 3px solid var(--warning); }}
-    .kpi.accent-blue {{ border-left: 3px solid var(--info); }}
-
-    .color-success {{ color: var(--success); }}
-    .color-failure {{ color: var(--failure); }}
-    .color-warning {{ color: var(--warning); }}
-    .color-info {{ color: var(--info); }}
-
-    /* ── Panels ── */
-    .panel {{
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--panel);
-      padding: 20px;
-      margin-bottom: 20px;
-    }}
-
-    .panel-header {{
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }}
-
-    .panel-title {{
-      font-size: 16px;
-      font-weight: 600;
-    }}
-
-    .panel-badge {{
-      font-size: 11px;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-weight: 600;
-    }}
-
-    .panel-desc {{
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 16px;
-    }}
-
-    .split {{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }}
-
-    /* ── Overview hero row ── */
-    .hero-row {{
-      display: grid;
-      grid-template-columns: 1fr 1fr 180px 180px;
-      gap: 20px;
-      margin-bottom: 24px;
-    }}
-
-    .hero-card {{
-      padding: 24px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--panel);
-    }}
-
-    .hero-card h3 {{
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 16px;
-      font-weight: 600;
-    }}
-
-    /* ── Service health badge ── */
-    .health-display {{
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }}
-
-    .health-icon {{
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }}
-
-    .health-icon.healthy {{
-      background: var(--success-bg);
-      border: 1px solid var(--success-border);
-      color: var(--success);
-    }}
-
-    .health-icon.stopped {{
-      background: var(--failure-bg);
-      border: 1px solid var(--failure-border);
-      color: var(--failure);
-    }}
-
-    .health-icon.stale, .health-icon.unknown {{
-      background: var(--warning-bg);
-      border: 1px solid var(--warning-border);
-      color: var(--warning);
-    }}
-
-    .health-label {{
-      font-size: 24px;
-      font-weight: 700;
-      line-height: 1.1;
-    }}
-
-    .health-detail {{
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-    }}
-
-    /* ── Ring chart ── */
-    .ring-container {{
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }}
-
-    .ring-chart {{
-      position: relative;
-      width: 100px;
-      height: 100px;
-    }}
-
-    .ring-chart svg {{
-      transform: rotate(-90deg);
-    }}
-
-    .ring-track {{
-      fill: none;
-      stroke: var(--track);
-      stroke-width: 8;
-    }}
-
-    .ring-fill {{
-      fill: none;
-      stroke-width: 8;
-      stroke-linecap: round;
-      transition: stroke-dasharray 0.6s ease;
-    }}
-
+    .ring-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; }}
+    .ring-chart {{ position: relative; width: 100px; height: 100px; }}
+    .ring-chart svg {{ transform: rotate(-90deg); }}
+    .ring-track {{ fill: none; stroke: var(--track); stroke-width: 8; }}
+    .ring-fill {{ fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }}
     .ring-fill.good {{ stroke: var(--success); }}
     .ring-fill.warn {{ stroke: var(--warning); }}
     .ring-fill.bad {{ stroke: var(--failure); }}
+    .ring-label {{ position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }}
+    .ring-caption {{ font-size: 11px; color: var(--muted); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }}
 
-    .ring-label {{
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: 700;
-    }}
-
-    .ring-caption {{
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 600;
-    }}
-
-    /* ── Tables ── */
-    table {{
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13.5px;
-    }}
-
-    th, td {{
-      padding: 10px 12px;
-      text-align: left;
-      vertical-align: top;
-    }}
-
-    thead th {{
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-weight: 600;
-      border-bottom: 2px solid var(--line);
-      padding-bottom: 8px;
-    }}
-
-    tbody td {{
-      border-bottom: 1px solid var(--line);
-    }}
-
-    tbody tr:hover {{
-      background: rgba(0,0,0,0.015);
-    }}
-
-    tbody tr:last-child td {{
-      border-bottom: none;
-    }}
-
-    /* ── Status pills ── */
-    .pill {{
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 4px 12px;
-      font-size: 11.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      border: 1px solid transparent;
-    }}
-
-    .pill-dot {{
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }}
-
-    .pill.success {{
-      color: var(--success);
-      background: var(--success-bg);
-      border-color: var(--success-border);
-    }}
+    .pill {{ display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 12px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border: 1px solid transparent; }}
+    .pill-dot {{ width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }}
+    .pill.success {{ color: var(--success); background: var(--success-bg); border-color: var(--success-border); }}
     .pill.success .pill-dot {{ background: var(--success); }}
-
-    .pill.failure {{
-      color: var(--failure);
-      background: var(--failure-bg);
-      border-color: var(--failure-border);
-    }}
+    .pill.failure {{ color: var(--failure); background: var(--failure-bg); border-color: var(--failure-border); }}
     .pill.failure .pill-dot {{ background: var(--failure); }}
-
-    .pill.incomplete {{
-      color: var(--warning);
-      background: var(--warning-bg);
-      border-color: var(--warning-border);
-    }}
+    .pill.incomplete {{ color: var(--warning); background: var(--warning-bg); border-color: var(--warning-border); }}
     .pill.incomplete .pill-dot {{ background: var(--warning); }}
 
-    /* ── Volume bars ── */
-    .history {{
-      display: grid;
-      gap: 8px;
-    }}
-
-    .day-row {{
-      display: grid;
-      grid-template-columns: 90px 1fr 50px;
-      gap: 12px;
-      align-items: center;
-      font-size: 13px;
-    }}
-
-    .day-row .date-label {{
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-    }}
-
-    .bar-track {{
-      height: 14px;
-      background: var(--track);
-      border-radius: 999px;
-      overflow: hidden;
-      display: flex;
-    }}
-
+    .history {{ display: grid; gap: 8px; }}
+    .day-row {{ display: grid; grid-template-columns: 90px 1fr 50px; gap: 12px; align-items: center; font-size: 13px; }}
+    .day-row .date-label {{ color: var(--muted); font-variant-numeric: tabular-nums; }}
+    .bar-track {{ height: 14px; background: var(--track); border-radius: 999px; overflow: hidden; display: flex; }}
     .bar-success {{ background: linear-gradient(90deg, #34c47c, #1a7a54); }}
     .bar-failure {{ background: linear-gradient(90deg, #e74c3c, #c0392b); }}
     .bar-incomplete {{ background: linear-gradient(90deg, #f0c040, #b8860b); }}
+    .day-row .count {{ text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }}
 
-    .day-row .count {{
-      text-align: right;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }}
-
-    /* ── Volume legend ── */
-    .chart-legend {{
-      display: flex;
-      gap: 20px;
-      margin-bottom: 16px;
-    }}
-
-    .legend-item {{
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }}
-
-    .legend-dot {{
-      width: 10px;
-      height: 10px;
-      border-radius: 3px;
-    }}
-
+    .chart-legend {{ display: flex; gap: 20px; margin-bottom: 16px; }}
+    .legend-item {{ display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }}
+    .legend-dot {{ width: 10px; height: 10px; border-radius: 3px; }}
     .legend-dot.success {{ background: var(--success); }}
     .legend-dot.failure {{ background: var(--failure); }}
     .legend-dot.incomplete {{ background: var(--warning); }}
 
-    /* ── Config path cards ── */
-    .path-grid {{
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 14px;
-    }}
+    .path-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }}
+    .path-card {{ border-radius: var(--radius); padding: 16px; border: 1px solid var(--line); background: var(--panel); }}
+    .path-card-label {{ display: flex; align-items: center; gap: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 8px; }}
+    .path-card-label .folder-color {{ width: 8px; height: 8px; border-radius: 3px; }}
+    .path-card code {{ font-family: "Cascadia Mono","Consolas",monospace; font-size: 12.5px; word-break: break-all; color: var(--text); line-height: 1.5; }}
 
-    .path-card {{
-      border-radius: var(--radius);
-      padding: 16px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-    }}
+    .info-table {{ width: 100%; }}
+    .info-table th {{ text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; padding: 10px 16px 10px 0; width: 180px; border-bottom: 1px solid var(--line); }}
+    .info-table td {{ padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }}
+    .info-table tr:last-child th, .info-table tr:last-child td {{ border-bottom: none; }}
 
-    .path-card-label {{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }}
+    .empty-cell {{ color: var(--muted); padding: 20px 12px; text-align: center; font-size: 13px; }}
+    .detail {{ color: var(--muted); font-size: 12px; }}
 
-    .path-card-label .folder-color {{
-      width: 8px;
-      height: 8px;
-      border-radius: 3px;
-    }}
+    .split {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
 
-    .path-card code {{
-      font-family: "Cascadia Mono", "Consolas", monospace;
-      font-size: 12.5px;
-      word-break: break-all;
-      color: var(--text);
-      line-height: 1.5;
-    }}
+    /* ── Dashboard tab bar ── */
+    .dash-tabs {{ display: flex; gap: 4px; margin-bottom: 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px; overflow-x: auto; }}
+    .dash-tab {{ padding: 8px 16px; border-radius: 8px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; white-space: nowrap; }}
+    .dash-tab:hover {{ background: rgba(44,54,63,0.06); color: var(--text); }}
+    .dash-tab.active {{ background: var(--sidebar-bg); color: #fff; }}
 
-    /* ── Info table (key-value) ── */
-    .info-table {{
-      width: 100%;
-    }}
+    .refresh-badge {{ display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--info-bg); color: var(--info); font-size: 11px; font-weight: 600; border: 1px solid var(--info-border); }}
 
-    .info-table th {{
-      text-align: left;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 600;
-      padding: 10px 16px 10px 0;
-      width: 180px;
-      border-bottom: 1px solid var(--line);
-    }}
-
-    .info-table td {{
-      padding: 10px 0;
-      border-bottom: 1px solid var(--line);
-      font-size: 14px;
-    }}
-
-    .info-table tr:last-child th,
-    .info-table tr:last-child td {{
-      border-bottom: none;
-    }}
-
-    /* ── Empty state ── */
-    .empty-cell {{
-      color: var(--muted);
-      padding: 20px 12px;
-      text-align: center;
-      font-size: 13px;
-    }}
-
-    .detail {{
-      color: var(--muted);
-      font-size: 12px;
-    }}
-
-    code {{
-      font-family: "Cascadia Mono", "Consolas", monospace;
-      font-size: 13px;
-      word-break: break-word;
-    }}
-
-    /* ── Responsive ── */
     @media (max-width: 900px) {{
-      .sidebar {{
-        transform: translateX(-100%);
-      }}
-
-      .sidebar.open {{
-        transform: translateX(0);
-      }}
-
-      .sidebar-overlay.open {{
-        display: block;
-      }}
-
-      .hamburger {{
-        display: flex;
-      }}
-
-      .main {{
-        margin-left: 0;
-      }}
-
-      .hero-row {{
-        grid-template-columns: 1fr;
-      }}
-
-      .split {{
-        grid-template-columns: 1fr;
-      }}
-
-      .kpi-grid {{
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      }}
-
-      .content {{
-        padding: 16px;
-      }}
-
-      .topbar {{
-        padding: 12px 16px 12px 56px;
-      }}
-
-      .day-row {{
-        grid-template-columns: 78px 1fr 40px;
-      }}
+      .hero-row {{ grid-template-columns: 1fr; }}
+      .split {{ grid-template-columns: 1fr; }}
+      .day-row {{ grid-template-columns: 78px 1fr 40px; }}
     }}
-  </style>
-</head>
-<body>
-  <!-- Mobile hamburger -->
-  <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open')" aria-label="Menu">
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg>
-  </button>
-  <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('open')"></div>
+    </style>"""
 
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-brand">
-      <h1>Barcode Buddy</h1>
-      <div class="brand-sub">Document Processor</div>
-    </div>
-
-    <div class="sidebar-nav">
-      <div class="nav-section">
-        <div class="nav-section-label">Inventory</div>
-        <a class="nav-btn" href="/scan" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4V2h4"/><path d="M14 2h4v2"/><path d="M2 16v2h4"/><path d="M14 18h4v-2"/><line x1="6" y1="6" x2="6" y2="14"/><line x1="10" y1="6" x2="10" y2="14"/><line x1="14" y1="6" x2="14" y2="14"/></svg>
-          Scan
-        </a>
-        <a class="nav-btn" href="/inventory" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h16v4H2z"/><path d="M2 9h16v8H2z"/><line x1="8" y1="12" x2="12" y2="12"/></svg>
-          Items
-        </a>
-        <a class="nav-btn" href="/inventory/new" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><line x1="10" y1="6" x2="10" y2="14"/><line x1="6" y1="10" x2="14" y2="10"/></svg>
-          New Item
-        </a>
+    body_html = f"""
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div class="dash-tabs">
+          <button class="dash-tab active" data-page="overview" onclick="switchPage('overview', this)">Overview</button>
+          <button class="dash-tab" data-page="documents" onclick="switchPage('documents', this)">Documents</button>
+          <button class="dash-tab" data-page="analytics" onclick="switchPage('analytics', this)">Analytics</button>
+          <button class="dash-tab" data-page="achievements" onclick="switchPage('achievements', this)">Achievements</button>
+          <button class="dash-tab" data-page="service" onclick="switchPage('service', this)">Service</button>
+          <button class="dash-tab" data-page="config" onclick="switchPage('config', this)">Configuration</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);">
+          <span>Updated {_escape(generated_at)}</span>
+          <span class="refresh-badge">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1v5h5"/><path d="M2.5 10A6.5 6.5 0 1014 8"/></svg>
+            {snapshot['refresh_seconds']}s
+          </span>
+        </div>
       </div>
 
-      <div class="nav-section">
-        <div class="nav-section-label">Monitor</div>
-        <button class="nav-btn active" data-page="overview" onclick="switchPage('overview', this)">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="4" rx="1.5"/><rect x="2" y="11" width="7" height="4" rx="1.5"/><rect x="11" y="8" width="7" height="7" rx="1.5"/></svg>
-          Overview
-        </button>
-        <button class="nav-btn" data-page="documents" onclick="switchPage('documents', this)">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h7l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1V3a1 1 0 011-1z"/><polyline points="12 2 12 6 16 6"/><line x1="7" y1="10" x2="13" y2="10"/><line x1="7" y1="13" x2="11" y2="13"/></svg>
-          Documents
-        </button>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Insights</div>
-        <button class="nav-btn" data-page="analytics" onclick="switchPage('analytics', this)">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 6 12 12 8 8 2 14"/><polyline points="18 10 18 6 14 6"/></svg>
-          Analytics
-        </button>
-        <button class="nav-btn" data-page="achievements" onclick="switchPage('achievements', this)">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="10 1 12.6 7.2 19 7.6 14 12 15.6 18.5 10 15 4.4 18.5 6 12 1 7.6 7.4 7.2"/></svg>
-          Achievements
-        </button>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">System</div>
-        <button class="nav-btn" data-page="service" onclick="switchPage('service', this)">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3"/><path d="M17.4 12.4a1.5 1.5 0 00.3 1.65l.05.05a1.82 1.82 0 01-1.29 3.1 1.82 1.82 0 01-1.28-.53l-.06-.06a1.5 1.5 0 00-1.65-.3 1.5 1.5 0 00-.9 1.37V18a1.82 1.82 0 01-3.64 0v-.1a1.5 1.5 0 00-.98-1.37 1.5 1.5 0 00-1.65.3l-.06.06a1.82 1.82 0 01-2.57-2.57l.06-.06a1.5 1.5 0 00.3-1.65 1.5 1.5 0 00-1.37-.9H2a1.82 1.82 0 010-3.64h.1a1.5 1.5 0 001.37-.98 1.5 1.5 0 00-.3-1.65l-.06-.06a1.82 1.82 0 012.57-2.57l.06.06a1.5 1.5 0 001.65.3h.07a1.5 1.5 0 00.9-1.37V2a1.82 1.82 0 013.64 0v.1a1.5 1.5 0 00.9 1.37 1.5 1.5 0 001.65-.3l.06-.06a1.82 1.82 0 012.57 2.57l-.06.06a1.5 1.5 0 00-.3 1.65v.07a1.5 1.5 0 001.37.9H18a1.82 1.82 0 010 3.64h-.1a1.5 1.5 0 00-1.37.9z"/></svg>
-          Service
-        </button>
-        <button class="nav-btn" data-page="config" onclick="switchPage('config', this)">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4"/><path d="M17 7V3h-4"/><path d="M3 13v4h4"/><path d="M17 13v4h-4"/><rect x="6" y="6" width="8" height="8" rx="1"/></svg>
-          Configuration
-        </button>
-      </div>
-    </div>
-
-    <div class="sidebar-status">
-      <div class="status-indicator">
-        <span class="status-dot {_escape(service_status)}"></span>
-        <span style="color: var(--sidebar-text); font-size: 12px;">
-          Service: <strong style="color: var(--sidebar-active);">{_escape(service_status.title())}</strong>
-        </span>
-      </div>
-    </div>
-
-    {_render_user_nav(current_user)}
-
-    <div class="sidebar-footer">
-      Barcode Buddy v1.0.0
-    </div>
-  </nav>
-
-  <!-- Main content -->
-  <div class="main">
-    <header class="topbar">
-      <div class="topbar-title" id="page-title">Overview</div>
-      <div class="topbar-meta">
-        <span>Updated {_escape(generated_at)}</span>
-        <span class="refresh-badge">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1v5h5"/><path d="M2.5 10A6.5 6.5 0 1014 8"/></svg>
-          {snapshot['refresh_seconds']}s
-        </span>
-      </div>
-    </header>
-
-    <div class="content">
-
-      <!-- ═══ OVERVIEW ═══ -->
+      <!-- OVERVIEW -->
       <div class="page active" id="page-overview">
         <div class="hero-row">
           <!-- Service health -->
@@ -1565,45 +803,28 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
         </div>
       </div>
 
-    </div>
-  </div>
+"""
 
-  <script>
-    const pageTitles = {{
-      overview: 'Overview',
-      documents: 'Documents',
-      analytics: 'Analytics',
-      achievements: 'Achievements',
-      service: 'Service',
-      config: 'Configuration'
-    }};
-
+    body_js = f"""<script>
     function switchPage(pageId, btn) {{
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
       const page = document.getElementById('page-' + pageId);
       if (page) page.classList.add('active');
       if (btn) btn.classList.add('active');
-      document.getElementById('page-title').textContent = pageTitles[pageId] || pageId;
-      // Close mobile sidebar
-      document.querySelector('.sidebar').classList.remove('open');
-      document.querySelector('.sidebar-overlay').classList.remove('open');
-      // Persist selection
       try {{ sessionStorage.setItem('bb_page', pageId); }} catch(e) {{}}
     }}
 
-    // Restore page on load (survives auto-refresh)
     (function() {{
       try {{
         const saved = sessionStorage.getItem('bb_page');
         if (saved && document.getElementById('page-' + saved)) {{
-          const btn = document.querySelector('[data-page="' + saved + '"]');
+          const btn = document.querySelector('.dash-tab[data-page="' + saved + '"]');
           switchPage(saved, btn);
         }}
       }} catch(e) {{}}
     }})();
 
-    // Auto-refresh via fetch to preserve page state
     setTimeout(function autoRefresh() {{
       fetch(window.location.href, {{ headers: {{ 'Accept': 'text/html' }} }})
         .then(r => r.text())
@@ -1611,32 +832,33 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, 'text/html');
           const newContent = doc.querySelector('.content');
-          const newTopbar = doc.querySelector('.topbar');
-          const newSidebarStatus = doc.querySelector('.sidebar-status');
           if (newContent) document.querySelector('.content').innerHTML = newContent.innerHTML;
-          if (newTopbar) {{
-            const meta = document.querySelector('.topbar-meta');
-            const newMeta = doc.querySelector('.topbar-meta');
-            if (meta && newMeta) meta.innerHTML = newMeta.innerHTML;
-          }}
-          if (newSidebarStatus) document.querySelector('.sidebar-status').innerHTML = newSidebarStatus.innerHTML;
-          // Re-apply active page
           try {{
             const saved = sessionStorage.getItem('bb_page');
             if (saved && document.getElementById('page-' + saved)) {{
               document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+              document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
               const page = document.getElementById('page-' + saved);
               if (page) page.classList.add('active');
+              const btn = document.querySelector('.dash-tab[data-page="' + saved + '"]');
+              if (btn) btn.classList.add('active');
             }}
           }} catch(e) {{}}
         }})
         .catch(() => {{}})
         .finally(() => setTimeout(autoRefresh, {snapshot['refresh_seconds']} * 1000));
     }}, {snapshot['refresh_seconds']} * 1000);
-  </script>
-</body>
-</html>
-"""
+    </script>"""
+
+    return render_shell(
+        title="Dashboard",
+        active_nav="monitor",
+        body_html=body_html,
+        body_js=body_js,
+        display_name=display_name,
+        role=user_role,
+        head_extra=stats_css,
+    )
 
 
 def render_client_html(snapshot: dict[str, Any]) -> str:
@@ -1804,7 +1026,7 @@ def create_stats_app(
     from starlette.responses import RedirectResponse as StarletteRedirect
 
     from app.admin_routes import router as admin_router
-    from app.auth import get_current_user, COOKIE_NAME, _get_token_from_request, _decode_token, _hash_token
+    from app.auth import get_current_user, COOKIE_NAME, _get_token_from_request, _decode_token, _hash_token, configure_secret_key
     from app.auth_routes import router as auth_router
     from app.database import User, UserSession, get_db, init_db
     from app.inventory_pages import router as inventory_pages_router
@@ -1813,6 +1035,9 @@ def create_stats_app(
     # Initialize database
     db_path = settings.log_path / "barcode_buddy.db"
     init_db(db_path)
+
+    # Use persistent secret key from config (if provided)
+    configure_secret_key(settings.secret_key)
 
     app = FastAPI(title="Barcode Buddy Stats", docs_url="/docs", redoc_url=None)
 
@@ -1947,14 +1172,6 @@ def create_stats_app(
             content=snapshot["hourly_throughput"],
             headers={"Cache-Control": "no-store"},
         )
-
-    @app.get("/inventory", response_class=HTMLResponse)
-    def inventory_page(request: Request) -> HTMLResponse:
-        from app.inventory_ui import render_inventory_app
-        user = getattr(request.state, "user", None)
-        if not user:
-            return HTMLResponse(content="<script>window.location='/auth/login'</script>")
-        return HTMLResponse(content=render_inventory_app(user))
 
     @app.get("/client", response_class=HTMLResponse)
     def client_portal(request: Request) -> HTMLResponse:
@@ -2422,52 +1639,6 @@ def _format_percentage(value: float | None) -> str:
 def _escape(value: Any) -> str:
     return html.escape(str(value), quote=True)
 
-
-def _render_user_nav(current_user: dict[str, Any] | None) -> str:
-    if not current_user:
-        return ""
-    name = _escape(current_user.get("display_name", "User"))
-    role = _escape(current_user.get("role", "user"))
-    is_admin = current_user.get("role") == "admin"
-    admin_link = (
-        '<a href="/admin" style="display:block;padding:6px 20px;color:var(--sidebar-text);'
-        'text-decoration:none;font-size:13px;transition:color 0.2s;" '
-        'onmouseover="this.style.color=\'var(--sidebar-active)\'" '
-        'onmouseout="this.style.color=\'var(--sidebar-text)\'">'
-        '<svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" '
-        'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
-        '<path d="M12 14v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2"/>'
-        '<path d="M16 7a4 4 0 00-8 0v3h8V7z"/><rect x="6" y="10" width="8" height="6" rx="1"/>'
-        '</svg>Admin Panel</a>'
-    ) if is_admin else ""
-    role_badge_bg = "#7c3aed33" if is_admin else "#3b82f633"
-    role_badge_color = "#a78bfa" if is_admin else "#93c5fd"
-    return f"""
-    <div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;
-          align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f8fafc;">
-          {_escape(name[0].upper())}
-        </div>
-        <div>
-          <div style="font-size:13px;color:var(--sidebar-active);font-weight:600;">{name}</div>
-          <span style="font-size:10px;padding:1px 6px;border-radius:4px;
-            background:{role_badge_bg};color:{role_badge_color};font-weight:600;">
-            {role}
-          </span>
-        </div>
-      </div>
-      {admin_link}
-      <a href="#" onclick="fetch('/auth/api/logout',{{method:'POST'}}).then(()=>window.location.href='/auth/login');return false;"
-        style="display:block;padding:6px 20px;color:var(--sidebar-text);text-decoration:none;font-size:13px;
-        transition:color 0.2s;"
-        onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--sidebar-text)'">
-        <svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20"
-          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 17H3a1 1 0 01-1-1V4a1 1 0 011-1h4"/><path d="M14 14l4-4-4-4"/><path d="M18 10H7"/>
-        </svg>Sign Out
-      </a>
-    </div>"""
 
 
 # ────────────────────────────────────────────────────────────────────

@@ -232,7 +232,7 @@ async def api_import_csv(
 
 @router.get("/api/inventory")
 def api_list_items(
-    q: str = "", category: str = "", status: str = "active",
+    q: str = "", category: str = "", location: str = "", status: str = "active",
     sort: str = "updated_at", order: str = "desc",
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
@@ -244,6 +244,8 @@ def api_list_items(
         query = query.filter(InventoryItem.status == status)
     if category:
         query = query.filter(InventoryItem.category == category)
+    if location:
+        query = query.filter(InventoryItem.location == location)
     if q:
         pattern = f"%{q}%"
         query = query.filter(or_(
