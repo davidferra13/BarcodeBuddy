@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,7 @@ Base = declarative_base()
 
 _engine = None
 _SessionLocal: sessionmaker | None = None
+_db_path: Path | None = None
 
 
 class User(Base):
@@ -154,6 +156,34 @@ class AuditLog(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
 
+class AlertConfig(Base):
+    __tablename__ = "alert_configs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    alert_type = Column(String(50), nullable=False)  # low_stock, out_of_stock, processing_failure
+    enabled = Column(Boolean, nullable=False, default=True)
+    webhook_url = Column(Text, nullable=False, default="")  # Optional webhook URL
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    alert_type = Column(String(50), nullable=False)  # low_stock, out_of_stock, processing_failure
+    severity = Column(String(20), nullable=False, default="warning")  # info, warning, critical
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False, default="")
+    item_id = Column(String(36), nullable=True)  # Optional link to inventory item
+    is_read = Column(Boolean, nullable=False, default=False)
+    is_dismissed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
 class SystemSettings(Base):
     __tablename__ = "system_settings"
 
@@ -177,10 +207,11 @@ def _ensure_system_settings(session_factory: sessionmaker) -> None:
 
 def init_db(db_path: Path) -> None:
     """Initialize the database engine and create tables."""
-    global _engine, _SessionLocal
+    global _engine, _SessionLocal, _db_path
     db_path.parent.mkdir(parents=True, exist_ok=True)
     db_url = f"sqlite:///{db_path}"
     _engine = create_engine(db_url, connect_args={"check_same_thread": False})
+    _db_path = db_path
 
     @event.listens_for(_engine, "connect")
     def _set_sqlite_pragma(dbapi_connection, connection_record):
@@ -201,5 +232,63 @@ def get_db() -> Generator[Session, None, None]:
     db = _SessionLocal()
     try:
         yield db
+    finally:
+        db.close()
+
+
+def shutdown_db() -> None:
+    """Dispose engine/session globals to release open DB handles."""
+    global _engine, _SessionLocal
+    if _engine is not None:
+        _engine.dispose()
+    _engine = None
+    _SessionLocal = None
+
+
+def get_database_path() -> Path:
+    """Return the current database file path."""
+    if _db_path is None:
+        raise RuntimeError("Database path not initialized. Call init_db() first.")
+    return _db_path
+
+
+def backup_database(backup_dir: Path, *, max_backups: int = 14) -> Path:
+    """Create a SQLite backup file and enforce a rolling retention policy."""
+    source_path = get_database_path()
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    target = backup_dir / f"barcode_buddy.{stamp}.db"
+
+    source = sqlite3.connect(str(source_path))
+    destination = sqlite3.connect(str(target))
+    try:
+        source.backup(destination)
+        destination.commit()
+    finally:
+        destination.close()
+        source.close()
+
+    backups = sorted(backup_dir.glob("barcode_buddy.*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for stale in backups[max(1, max_backups):]:
+        stale.unlink(missing_ok=True)
+
+    return target
+
+
+def revoke_expired_sessions(now: datetime | None = None) -> int:
+    """Revoke expired sessions and return affected row count."""
+    if _SessionLocal is None:
+        raise RuntimeError("Database not initialized. Call init_db() first.")
+
+    db = _SessionLocal()
+    try:
+        current = now or datetime.now(timezone.utc)
+        affected = db.query(UserSession).filter(
+            UserSession.is_revoked == False,
+            UserSession.expires_at <= current,
+        ).update({"is_revoked": True}, synchronize_session=False)
+        db.commit()
+        return int(affected or 0)
     finally:
         db.close()
