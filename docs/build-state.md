@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | bdbbc96 | 2026-04-05 |
-| Tests (`pytest`) | **GREEN** (353 passed, 65 subtests, 0 warnings) | bdbbc96 | 2026-04-05 |
+| Compilation (`compileall`) | **GREEN** | 16174dd | 2026-04-05 |
+| Tests (`pytest`) | **GREEN** (356 passed, 65 subtests, 0 warnings) | 16174dd | 2026-04-05 |
 
 ## Current Blockers
 
@@ -18,6 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | 16174dd | inventory UX: sorting, quick-filters, URL pre-fill, dashboard health |
 | 2026-04-05 | compileall + pytest | GREEN (353 passed, 65 subtests, 0 warnings) | bdbbc96 | user profile, activity logging, session cleanup, security fixes |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 5ce71b5 | full-system audit: gzip, activity logging, command palette, dead code removal |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 38a72d7 | gzip + empty states + tab persistence + dead code removal |
@@ -28,11 +29,6 @@ None known.
 | 2026-04-05 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 01438ac | doc alignment + transfer fix |
 | 2026-04-04 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 429cf32 | zero-friction auth |
 | 2026-04-04 | compileall + pytest | GREEN (316 passed, 65 subtests, 0 warnings) | 2d68493 | test hardening |
-| 2026-04-04 | compileall + pytest | GREEN (262 passed, 65 subtests) | 5a548f1 | system audit |
-| 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | a242145 | documentation audit |
-| 2026-04-04 | compileall | GREEN | 30bef50 | user manual session |
-| 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | 8b3eeff | infrastructure adoption |
-| 2026-04-04 | Initial | Infrastructure adoption - no code changes | 4472b5e | setup |
 
 ---
 
