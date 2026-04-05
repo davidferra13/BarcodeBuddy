@@ -23,6 +23,6 @@ Each entry follows this format:
 - Task: Agent infrastructure adoption - created agent workflow system, constraints, skills, hooks, policy files, spec queue, session tracking, and communication layer
 - Status: completed
 - Files touched: CLAUDE.md, AGENT-WORKFLOW.md, AI_POLICY.md, .claude/settings.json, .claude/hooks/*, .claude/skills/*, .claude/agents/*, .constraints/*, .patches/handoff.md, docs/specs/*, docs/build-state.md, docs/session-log.md, docs/session-digests/.gitkeep, docs/system-*.md
-- Commits: pending
-- Build state on departure: pending verification
-- Notes: No application code was modified. This is purely additive infrastructure. Next agent should run pre-flight checks to establish baseline build state.
+- Commits: b5cd044, 8b3eeff
+- Build state on departure: green (223 passed, 65 subtests, compileall clean)
+- Notes: No application code was modified. Purely additive infrastructure. All tests verified green before commit.

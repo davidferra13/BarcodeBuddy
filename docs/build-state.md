@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | 4472b5e | 2026-04-04 |
-| Tests (`pytest`) | **GREEN** (223 passed, 65 subtests) | 4472b5e | 2026-04-04 |
+| Compilation (`compileall`) | **GREEN** | 8b3eeff | 2026-04-04 |
+| Tests (`pytest`) | **GREEN** (223 passed, 65 subtests) | 8b3eeff | 2026-04-04 |
 
 ## Current Blockers
 
@@ -18,7 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
-| 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | 4472b5e | infrastructure adoption |
+| 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | 8b3eeff | infrastructure adoption |
 | 2026-04-04 | Initial | Infrastructure adoption - no code changes | 4472b5e | setup |
 
 ---
