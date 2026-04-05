@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import TestClient
 
 
 @pytest.fixture(autouse=True)

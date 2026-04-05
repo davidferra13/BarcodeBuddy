@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 import httpx
+from conftest import AsyncClient
 
 from app.auth import OWNER_EMAIL
 from app.config import load_settings, ensure_runtime_directories
@@ -15,7 +16,7 @@ from app.stats import create_stats_app
 
 async def run(app):
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
         # Setup: create admin user
         r = await c.post("/auth/api/signup", json={
             "email": OWNER_EMAIL,
