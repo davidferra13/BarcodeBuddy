@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | 68a2987 | 2026-04-05 |
-| Tests (`pytest`) | **GREEN** (356 passed, 65 subtests, 0 warnings) | 68a2987 | 2026-04-05 |
+| Compilation (`compileall`) | **GREEN** | fb00b0a | 2026-04-05 |
+| Tests (`pytest`) | **GREEN** (356 passed, 65 subtests, 0 warnings) | fb00b0a | 2026-04-05 |
 
 ## Current Blockers
 
@@ -18,6 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | fb00b0a | error handling: fetch resilience, modal Escape, logout robustness |
 | 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | 68a2987 | full-system audit: session expiry, edit guard, txn export, pagination, task safety |
 | 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | 16174dd | inventory UX: sorting, quick-filters, URL pre-fill, dashboard health |
 | 2026-04-05 | compileall + pytest | GREEN (353 passed, 65 subtests, 0 warnings) | bdbbc96 | user profile, activity logging, session cleanup, security fixes |
@@ -28,8 +29,6 @@ None known.
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 35aa253 | visual upgrade suite |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 6cddc6b | handoff audit + feedback + update |
 | 2026-04-05 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 01438ac | doc alignment + transfer fix |
-| 2026-04-04 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 429cf32 | zero-friction auth |
-| 2026-04-04 | compileall + pytest | GREEN (316 passed, 65 subtests, 0 warnings) | 2d68493 | test hardening |
 
 ---
 
