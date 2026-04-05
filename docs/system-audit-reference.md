@@ -1,17 +1,17 @@
-# Phase 1 - System Audit: CFv1 Infrastructure
+# Phase 1 - System Audit: Reference Architecture
 
 > Date: 2026-04-04
-> Purpose: Document the complete infrastructure of the CFv1 gold standard system for replication into BarcodeBuddy.
+> Purpose: Document the complete reference infrastructure used as the basis for BarcodeBuddy's agent system.
 
 ---
 
 ## 1. Agent Architecture
 
-CFv1 runs up to 5 concurrent agent worktrees, each an isolated git environment with full project access:
+The reference system runs up to 5 concurrent agent worktrees, each an isolated git environment with full project access:
 
 - **Planner Agent** - reads codebase, writes specs (no code changes)
 - **Builder Agent** - implements specs with continuous verification
-- **QA Tester Agent** - tests via Playwright, read-only exploration
+- **QA Tester Agent** - tests via browser automation, read-only exploration
 - **Research Agent** - investigates questions, produces written reports with citations
 - **General/Verification Agent** - runs health checks, verification protocols
 
@@ -44,8 +44,8 @@ Green/broken status for typecheck and build. Last verified commit hash. 10-entry
 4. **Claim** - Builder scans queue, picks first buildable `ready` spec (priority + dependency order), changes to `in-progress`
 5. **Pre-Flight** - git status clean, typecheck passes, build passes
 6. **Spike** - Read every spec-named file, report accuracy, flag discrepancies
-7. **Build** - Implement with continuous verification (tsc after each major change)
-8. **Final Verification** - Typecheck + build + Playwright + edge cases + regression + before/after evidence
+7. **Build** - Implement with continuous verification after each major change
+8. **Final Verification** - Typecheck + build + testing + edge cases + regression + before/after evidence
 9. **Completion** - Update spec timeline, status -> verified, commit, push, write digest
 
 ## 4. Constraint System
@@ -54,10 +54,10 @@ Green/broken status for typecheck and build. Last verified commit hash. 10-entry
 
 | File | Domain |
 |---|---|
-| `event-fsm.json` | 8-state event lifecycle, transition rules, audit trail |
-| `financial-integrity.json` | Money in cents, immutable ledger, computed balances |
-| `privacy-boundary.json` | Ollama-only for PII, hard-fail if offline |
-| `server-actions.json` | 'use server' patterns, auth-first, tenant from session |
+| `event-fsm.json` | State lifecycle, transition rules, audit trail |
+| `financial-integrity.json` | Monetary integrity, immutable ledger, computed balances |
+| `privacy-boundary.json` | Local-only for PII, hard-fail if offline |
+| `server-actions.json` | Server-side patterns, auth-first, tenant from session |
 | `tier-gating.json` | Free vs Pro feature boundaries |
 
 ## 5. Skills (11 Total)
@@ -78,7 +78,7 @@ Green/broken status for typecheck and build. Last verified commit hash. 10-entry
 
 ## 6. Hooks
 
-- `build-guard.sh` - PreToolUse hook on Bash. Blocks `next build` and `tsc` when `.multi-agent-lock` exists. Prevents concurrent build corruption.
+- `build-guard.sh` - PreToolUse hook on Bash. Blocks build and typecheck commands when `.multi-agent-lock` exists. Prevents concurrent build corruption.
 - `notify.sh` - Notification hook. Sends Windows toast notification when agent needs user input.
 
 ## 7. Quality Systems
@@ -90,7 +90,7 @@ Green/broken status for typecheck and build. Last verified commit hash. 10-entry
 
 ## 8. Policy Files
 
-- `CLAUDE.md` (36KB) - comprehensive project rules, read at every session start
+- `CLAUDE.md` - comprehensive project rules, read at every session start
 - `AGENT-WORKFLOW.md` - pre-start, health, post-work, multi-agent rules
 - `AI_POLICY.md` - AI-as-draft-only boundaries
 

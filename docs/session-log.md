@@ -20,7 +20,7 @@ Each entry follows this format:
 ## 2026-04-04 — Infrastructure Adoption
 
 - Agent: general
-- Task: CFv1 infrastructure parity adoption - created agent workflow system, constraints, skills, hooks, policy files, spec queue, session tracking, and communication layer
+- Task: Agent infrastructure adoption - created agent workflow system, constraints, skills, hooks, policy files, spec queue, session tracking, and communication layer
 - Status: completed
 - Files touched: CLAUDE.md, AGENT-WORKFLOW.md, AI_POLICY.md, .claude/settings.json, .claude/hooks/*, .claude/skills/*, .claude/agents/*, .constraints/*, .patches/handoff.md, docs/specs/*, docs/build-state.md, docs/session-log.md, docs/session-digests/.gitkeep, docs/system-*.md
 - Commits: pending

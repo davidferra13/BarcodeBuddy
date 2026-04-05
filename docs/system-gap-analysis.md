@@ -1,13 +1,13 @@
-# Phase 2 - Gap Analysis: BarcodeBuddy vs CFv1
+# Phase 2 - Gap Analysis: BarcodeBuddy vs Reference Architecture
 
 > Date: 2026-04-04
-> Purpose: Compare BarcodeBuddy's existing infrastructure against CFv1 to identify what exists, what's missing, and what conflicts.
+> Purpose: Compare BarcodeBuddy's existing infrastructure against the reference architecture to identify what exists, what's missing, and what conflicts.
 
 ---
 
 ## What Already Exists
 
-| CFv1 Component | BarcodeBuddy Equivalent | Status |
+| Reference Component | BarcodeBuddy Equivalent | Status |
 |---|---|---|
 | Product blueprint | `docs/PRODUCT_BLUEPRINT.md` | EXISTS - comprehensive |
 | Builder handoff | `docs/danpack-builder-handoff.md` | EXISTS - comprehensive |
@@ -55,13 +55,13 @@
 | Verification | pytest tests only | Added pre-flight gate, continuous verification protocol, formal verify skill |
 | Error codes | `app/contracts.py` | Also documented in `.constraints/barcode-integrity.json` |
 
-## Adaptations Made (CFv1 -> BarcodeBuddy)
+## Adaptations Made (Reference -> BarcodeBuddy)
 
-| CFv1 Pattern | BarcodeBuddy Adaptation | Reason |
+| Reference Pattern | BarcodeBuddy Adaptation | Reason |
 |---|---|---|
 | `npx tsc --noEmit` | `py -m compileall app/ -q` | Python, not TypeScript |
 | `npx next build` | `py -3.12 -B -m pytest tests/ -x -q` | pytest is the build verification |
-| Playwright browser tests | pytest + httpx + curl | No Playwright setup in BB |
+| Browser automation tests | pytest + httpx + curl | No browser automation in BB |
 | `.auth/agent.json` | Test fixtures in `tests/` | Different auth system |
 | Event FSM constraint | File Processing FSM constraint | Different domain |
 | Financial integrity constraint | Data safety constraint | Different domain |

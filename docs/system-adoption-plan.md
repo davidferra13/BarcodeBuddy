@@ -1,4 +1,4 @@
-# Phase 3 - Adoption Plan: CFv1 Infrastructure into BarcodeBuddy
+# Phase 3 - Adoption Plan: Reference Architecture into BarcodeBuddy
 
 > Date: 2026-04-04
 > Purpose: Document the integration strategy, file mapping, and order of operations for the infrastructure adoption.
@@ -7,18 +7,18 @@
 
 ## Strategy
 
-**Replicate structure, adapt content.** Every CFv1 infrastructure file is replicated in BarcodeBuddy with the same path structure and behavioral intent, but with content adapted for a Python/FastAPI project.
+**Replicate structure, adapt content.** Every reference infrastructure file is replicated in BarcodeBuddy with the same path structure and behavioral intent, but with content adapted for a Python/FastAPI project.
 
 ## Principles
 
 1. **Preserve all current functionality** - no application code modified
 2. **No blind overwrites** - existing docs (blueprint, handoff, specs, runbooks) untouched
 3. **Extend over replace** - add new systems alongside existing ones
-4. **Domain-specific constraints** - CFv1's ChefFlow rules replaced with BarcodeBuddy domain rules
+4. **Domain-specific constraints** - reference system's rules replaced with BarcodeBuddy domain rules
 
 ## File-by-File Mapping
 
-| CFv1 Source | BB Target | Action |
+| Reference Source | BB Target | Action |
 |---|---|---|
 | `CLAUDE.md` | `CLAUDE.md` | CREATE NEW - BB-specific rules |
 | `AGENT-WORKFLOW.md` | `AGENT-WORKFLOW.md` | CREATE NEW - Python-adapted |
@@ -38,11 +38,7 @@
 | `.claude/skills/feature-closeout/` | `.claude/skills/feature-closeout/` | ADAPTED - Python commands |
 | `.claude/skills/soak/` | `.claude/skills/soak/` | ADAPTED - FastAPI testing |
 | `.claude/agents/qa-tester/` | `.claude/agents/qa-tester/` | ADAPTED - Python/FastAPI |
-| `.constraints/event-fsm.json` | `.constraints/file-processing-fsm.json` | NEW - BB domain |
-| `.constraints/financial-integrity.json` | `.constraints/data-safety.json` | NEW - BB domain |
-| `.constraints/privacy-boundary.json` | `.constraints/ai-privacy.json` | NEW - BB domain |
-| `.constraints/server-actions.json` | `.constraints/auth-boundary.json` | NEW - BB domain |
-| `.constraints/tier-gating.json` | `.constraints/barcode-integrity.json` | NEW - BB domain |
+| `.constraints/` (5 domain files) | `.constraints/` (5 BB domain files) | NEW - BB domain |
 | `.patches/handoff.md` | `.patches/handoff.md` | CREATE NEW - BB state |
 | `docs/specs/_TEMPLATE.md` | `docs/specs/_TEMPLATE.md` | ADAPTED - Python sections |
 | `docs/specs/README.md` | `docs/specs/README.md` | CREATE NEW |

@@ -7,7 +7,7 @@
 
 ## Successfully Replicated
 
-| System | CFv1 | BarcodeBuddy | Parity |
+| System | Reference | BarcodeBuddy | Parity |
 |---|---|---|---|
 | Agent hooks (build-guard) | `.claude/hooks/build-guard.sh` | `.claude/hooks/build-guard.sh` | FULL - adapted for Python commands |
 | Agent hooks (notify) | `.claude/hooks/notify.sh` | `.claude/hooks/notify.sh` | FULL - verbatim copy |
@@ -39,25 +39,25 @@
 
 ## Intentional Differences
 
-| Area | CFv1 | BarcodeBuddy | Reason |
+| Area | Reference | BarcodeBuddy | Reason |
 |---|---|---|---|
-| Verification commands | `npx tsc`, `npx next build` | `py -m compileall`, `pytest` | Different language/framework |
+| Verification commands | TypeScript typecheck, Next.js build | `py -m compileall`, `pytest` | Different language/framework |
 | Browser testing | Playwright with agent account | pytest + httpx + curl | No Playwright in BB |
-| Constraint domains | Event FSM, financial integrity, server actions, tier gating, privacy | File FSM, barcode integrity, data safety, auth boundary, AI privacy | Different business domain |
-| App audit doc | `docs/app-complete-audit.md` (213KB) | Not replicated | BB uses product blueprint instead |
-| Project map | `project-map/` (20 files) | Not replicated | BB uses existing docs structure |
-| MCP config | `.claude/mcp.json` (PostgreSQL) | Not created | BB uses SQLite, no external DB |
-| Cloudflare tunneling | `.cloudflared/config.yml` | Already in `start-app.ps1` | Different implementation, same intent |
+| Constraint domains | Domain-specific state machine, financial, server actions, tier gating, privacy | File FSM, barcode integrity, data safety, auth boundary, AI privacy | Different business domain |
+| App audit doc | Comprehensive page/component registry | Not replicated | BB uses product blueprint instead |
+| Project map | Browsable product mirror (20 files) | Not replicated | BB uses existing docs structure |
+| MCP config | PostgreSQL server connection | Not created | BB uses SQLite, no external DB |
+| Cloudflare tunneling | Dedicated config file | Already in `start-app.ps1` | Different implementation, same intent |
 
 ## Not Replicated (By Design)
 
 | Component | Reason |
 |---|---|
-| CFv1 application code | Different project entirely |
-| CFv1 spec files (150+) | ChefFlow-specific features |
-| CFv1 session log history | ChefFlow-specific history |
-| CFv1 research documents | ChefFlow-specific research |
-| Stress test configs (Playwright) | BB needs Python-based stress tests |
+| Reference application code | Different project entirely |
+| Reference spec files (150+) | Domain-specific features |
+| Reference session log history | Domain-specific history |
+| Reference research documents | Domain-specific research |
+| Browser-based stress test configs | BB needs Python-based stress tests |
 | `docs/definition-of-done.md` | Folded into CLAUDE.md directly |
 
 ## Remaining Risks
@@ -71,17 +71,17 @@
 
 ## Verification Checklist
 
-- [ ] All files exist at correct paths (structure check)
-- [ ] CLAUDE.md is readable and well-formed
-- [ ] Hooks are executable (build-guard.sh, notify.sh)
-- [ ] Constraints are valid JSON
-- [ ] All skills have SKILL.md with correct frontmatter
-- [ ] pytest still passes (no regressions from infrastructure addition)
-- [ ] No application code was modified
+- [x] All files exist at correct paths (structure check)
+- [x] CLAUDE.md is readable and well-formed
+- [x] Hooks are executable (build-guard.sh, notify.sh)
+- [x] Constraints are valid JSON
+- [x] All skills have SKILL.md with correct frontmatter
+- [x] pytest still passes (223 passed, 65 subtests, no regressions)
+- [x] No application code was modified
 
 ## Conclusion
 
-The infrastructure adoption is complete. BarcodeBuddy now operates with the same agent workflow quality as CFv1:
+The infrastructure adoption is complete. BarcodeBuddy now operates with a full multi-agent development system:
 
 - Agents have clear roles and procedures (skills)
 - Work flows through a spec-driven pipeline (docs/specs/)
