@@ -1,0 +1,15 @@
+{
+  "name": "Authentication and Authorization Boundary",
+  "rules": [
+    "JWT cookie-based authentication via app/auth.py - never use token-in-URL or token-in-body",
+    "First signup must use owner email (BB_OWNER_EMAIL env var or default) - enforced in auth_routes.py",
+    "Role hierarchy: owner > admin > manager > user - higher roles inherit all lower permissions",
+    "Every protected endpoint must call require_role() or equivalent auth check as its first operation",
+    "User identity comes from the JWT session, never from request body or query parameters",
+    "Session revocation is checked hourly by APScheduler job - expired tokens are invalidated",
+    "Password changes invalidate all existing sessions for that user",
+    "Ownership transfer requires current owner role - no other role can initiate",
+    "Team-scoped access (team-lead, team-member, team-viewer) is additive to base role, never overrides it",
+    "Never store plaintext passwords - bcrypt hashing is mandatory"
+  ]
+}

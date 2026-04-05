@@ -1,0 +1,14 @@
+{
+  "name": "File Processing State Machine",
+  "rules": [
+    "5 states: INPUT -> STABILIZING -> PROCESSING -> VALIDATING -> SUCCESS | FAILURE",
+    "Only BarcodeBuddyService in app/processor.py transitions file state",
+    "File state transitions happen via atomic OS-level rename (shutil.move)",
+    "Journal files in processing/.journal track in-flight state - never delete mid-processing",
+    "Rejected files get a .meta.json sidecar with rejection context - never discard silently",
+    "Recovery on startup: stranded files in processing/ are re-enqueued to input/",
+    "FAILURE is terminal: file moves to rejected_path with error_code from contracts.py",
+    "SUCCESS is terminal: PDF written to output_path/YYYY/MM with barcode-based filename",
+    "Never move files directly between directories outside the service class"
+  ]
+}

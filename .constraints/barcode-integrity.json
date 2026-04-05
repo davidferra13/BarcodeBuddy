@@ -1,0 +1,14 @@
+{
+  "name": "Barcode Integrity",
+  "rules": [
+    "Barcode values must match ^[A-Za-z0-9_-]{4,64}$ regex",
+    "Business-rule patterns are configurable via barcode_value_patterns in config.json",
+    "Multi-pass detection: scan at 0, 90, 180, 270 degree rotations",
+    "Deterministic selection: largest bounding box wins when multiple barcodes found",
+    "No OCR inference - barcodes are read directly via pyzbar/zxing, never guessed",
+    "Error codes from app/contracts.py are canonical - never invent new error codes",
+    "BARCODE_NOT_FOUND and INVALID_BARCODE_FORMAT are terminal rejection reasons",
+    "Barcode types are restricted to config.json barcode_types list",
+    "Never assume a barcode value - if detection fails, the file is rejected"
+  ]
+}

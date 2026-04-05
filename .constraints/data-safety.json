@@ -1,0 +1,15 @@
+{
+  "name": "Data Safety",
+  "rules": [
+    "JSONL processing logs are append-only - never UPDATE or DELETE log records",
+    "Activity log records in SQLite are append-only audit trail - never modify or delete",
+    "SQLite must run in WAL mode for concurrent read safety",
+    "All file writes (logs, journals) must be fsynced for durability",
+    "Journal files in processing/.journal are immutable during active processing",
+    "Config is immutable after startup - never modify config.json at runtime",
+    "Daily log rotation archives are gzipped and never modified after creation",
+    "Inventory transactions are append-only ledger entries - adjustments create new records",
+    "Database backups run daily at 00:15 UTC - never skip or disable without explicit approval",
+    "Rejection sidecars (.meta.json) are write-once - never overwrite existing rejection metadata"
+  ]
+}

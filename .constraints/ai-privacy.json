@@ -1,0 +1,15 @@
+{
+  "name": "AI Privacy Boundary",
+  "rules": [
+    "Private data stays local when Ollama is the configured provider",
+    "Cloud providers (Anthropic, OpenAI) are only used when the user explicitly enables them in AI settings",
+    "No silent fallback from local Ollama to cloud providers - if Ollama is offline, surface the error",
+    "AI tool results (inventory lookups, barcode suggestions, CSV previews) are suggestions only",
+    "AI never makes canonical inventory changes without explicit user confirmation",
+    "Chat conversations are stored locally in SQLite, never sent to external analytics",
+    "AI setup wizard must clearly disclose which provider is active and what data leaves the machine",
+    "Privacy page must accurately reflect current provider configuration",
+    "Inventory data sent to AI tools is scoped to what the query needs - never dump full database",
+    "AI provider configuration in ai_config table is user-controlled - never auto-switch providers"
+  ]
+}
