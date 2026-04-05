@@ -63,6 +63,6 @@ Each entry follows this format:
 - Task: Removed signup friction for fresh installs. First user becomes owner with any email when BB_OWNER_EMAIL is not explicitly set. Open signup defaults to True. Updated auth constraint, tests, and user manual.
 - Status: completed
 - Files touched: app/auth.py, app/auth_routes.py, app/database.py, .constraints/auth-boundary.json, tests/test_auth_rbac.py, docs/USER_MANUAL.md, docs/build-state.md, docs/session-log.md
-- Commits: pending
+- Commits: 429cf32
 - Build state on departure: green (317 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: When BB_OWNER_EMAIL env var is set, owner email enforcement is preserved (production security). When not set, any email claims owner on first signup and OWNER_EMAIL is locked to that address. open_signup now defaults to True in SystemSettings. Auth constraint file updated. One new test added (test_first_user_any_email_becomes_owner_when_env_not_set). Existing test updated (test_signup_disabled_blocks_new_users now requires explicit disable). New test_signup_open_by_default added.
