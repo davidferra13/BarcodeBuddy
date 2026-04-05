@@ -512,15 +512,15 @@ def team_page(user: User = Depends(require_user)) -> HTMLResponse:
   .task-title.done { text-decoration: line-through; color: var(--muted); }
   .task-meta { display: flex; gap: 10px; margin-top: 4px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
   .priority-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; text-transform: uppercase; }
-  .priority-urgent { background: rgba(239,68,68,.2); color: #ef4444; }
-  .priority-high { background: rgba(245,158,11,.2); color: #f59e0b; }
-  .priority-medium { background: rgba(96,165,250,.2); color: #60a5fa; }
-  .priority-low { background: rgba(148,163,184,.15); color: #94a3b8; }
+  .priority-urgent { background: var(--failure-bg); color: var(--failure); }
+  .priority-high { background: var(--warning-bg); color: var(--warning); }
+  .priority-medium { background: var(--info-bg); color: var(--info); }
+  .priority-low { background: rgba(148,163,184,.15); color: var(--muted); }
   .status-pill { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; }
-  .status-todo { background: rgba(148,163,184,.15); color: #94a3b8; }
-  .status-in_progress { background: rgba(96,165,250,.2); color: #60a5fa; }
-  .status-done { background: rgba(34,197,94,.2); color: #22c55e; }
-  .status-blocked { background: rgba(239,68,68,.15); color: #ef4444; }
+  .status-todo { background: rgba(148,163,184,.15); color: var(--muted); }
+  .status-in_progress { background: var(--info-bg); color: var(--info); }
+  .status-done { background: var(--success-bg); color: var(--success); }
+  .status-blocked { background: var(--failure-bg); color: var(--failure); }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000;
     display: flex; align-items: center; justify-content: center; }
   .modal { background: var(--sidebar-bg); border-radius: 12px; padding: 24px; width: 440px; max-width: 90vw;
@@ -537,8 +537,8 @@ def team_page(user: User = Depends(require_user)) -> HTMLResponse:
   .btn-primary:hover { filter: brightness(1.1); }
   .btn-secondary { padding: 8px 18px; border-radius: 6px; border: 1px solid rgba(255,255,255,.1);
     background: transparent; color: var(--text); font-size: 13px; cursor: pointer; }
-  .btn-danger-sm { padding: 4px 10px; border-radius: 5px; border: none; background: rgba(239,68,68,.15);
-    color: #ef4444; font-size: 11px; cursor: pointer; font-weight: 600; }
+  .btn-danger-sm { padding: 4px 10px; border-radius: 5px; border: none; background: var(--failure-bg);
+    color: var(--failure); font-size: 11px; cursor: pointer; font-weight: 600; }
   .btn-danger-sm:hover { background: rgba(239,68,68,.25); }
   .add-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
   .section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -744,7 +744,7 @@ function renderTasks(tasks, canManage) {{
         <div class="task-meta">
           <span class="priority-badge priority-${{t.priority}}">${{t.priority}}</span>
           <span class="status-pill status-${{t.status}}">${{t.status.replace('_',' ')}}</span>
-          ${{t.assignee_name ? `<span>Assigned: ${{esc(t.assignee_name)}}</span>` : '<span style="color:#ef4444">Unassigned</span>'}}
+          ${{t.assignee_name ? `<span>Assigned: ${{esc(t.assignee_name)}}</span>` : '<span style="color:var(--failure)">Unassigned</span>'}}
           ${{t.due_date ? `<span>Due: ${{new Date(t.due_date).toLocaleDateString()}}</span>` : ''}}
         </div>
       </div>

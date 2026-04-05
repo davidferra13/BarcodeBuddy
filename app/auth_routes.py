@@ -310,52 +310,68 @@ def api_me(user: User = Depends(require_user)) -> JSONResponse:
 
 _AUTH_STYLES = """
 <style>
+  :root {
+    --auth-bg: #0f172a; --auth-card: #1e293b; --auth-text: #e2e8f0;
+    --auth-heading: #f8fafc; --auth-muted: #94a3b8; --auth-input-bg: #0f172a;
+    --auth-input-border: #334155; --auth-accent: #3b82f6; --auth-accent-hover: #2563eb;
+    --auth-link: #60a5fa; --auth-err-bg: #450a0a; --auth-err-text: #fca5a5;
+    --auth-ok-bg: #052e16; --auth-ok-text: #86efac;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0f172a; color: #e2e8f0;
+    font-family: "Segoe UI Variable", "Segoe UI", "Aptos", system-ui, sans-serif;
+    background: var(--auth-bg); color: var(--auth-text);
     min-height: 100vh; display: flex; align-items: center; justify-content: center;
   }
+  @keyframes authCardIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
   .auth-card {
-    background: #1e293b; border-radius: 12px; padding: 40px;
-    width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    background: var(--auth-card); border-radius: 16px; padding: 40px;
+    width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: authCardIn 0.35s cubic-bezier(.4,0,.2,1);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   }
   .auth-card h1 {
-    font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #f8fafc;
+    font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--auth-heading);
   }
   .auth-card .subtitle {
-    font-size: 14px; color: #94a3b8; margin-bottom: 28px;
+    font-size: 14px; color: var(--auth-muted); margin-bottom: 28px;
   }
   .form-group { margin-bottom: 18px; }
   .form-group label {
     display: block; font-size: 13px; font-weight: 600;
-    color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--auth-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
   }
   .form-group input {
     width: 100%; padding: 10px 14px; border-radius: 8px;
-    border: 1px solid #334155; background: #0f172a; color: #f8fafc;
-    font-size: 15px; outline: none; transition: border 0.2s;
+    border: 1px solid var(--auth-input-border); background: var(--auth-input-bg); color: var(--auth-heading);
+    font-size: 15px; outline: none; transition: border 0.2s, box-shadow 0.2s;
   }
-  .form-group input:focus { border-color: #3b82f6; }
+  .form-group input:focus { border-color: var(--auth-accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
   .btn {
     width: 100%; padding: 12px; border-radius: 8px; border: none;
-    background: #3b82f6; color: #fff; font-size: 15px; font-weight: 600;
-    cursor: pointer; transition: background 0.2s; margin-top: 8px;
+    background: var(--auth-accent); color: #fff; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s, transform 0.1s; margin-top: 8px;
   }
-  .btn:hover { background: #2563eb; }
+  .btn:hover { background: var(--auth-accent-hover); }
+  .btn:active { transform: scale(0.98); }
   .btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .error-msg {
-    background: #450a0a; color: #fca5a5; padding: 10px 14px;
+    background: var(--auth-err-bg); color: var(--auth-err-text); padding: 10px 14px;
     border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none;
+    animation: contentIn 0.2s ease;
   }
+  @keyframes contentIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .success-msg {
-    background: #052e16; color: #86efac; padding: 10px 14px;
+    background: var(--auth-ok-bg); color: var(--auth-ok-text); padding: 10px 14px;
     border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none;
   }
   .link-row {
-    text-align: center; margin-top: 20px; font-size: 14px; color: #94a3b8;
+    text-align: center; margin-top: 20px; font-size: 14px; color: var(--auth-muted);
   }
-  .link-row a { color: #60a5fa; text-decoration: none; }
+  .link-row a { color: var(--auth-link); text-decoration: none; transition: color 0.15s; }
   .link-row a:hover { text-decoration: underline; }
   .brand {
     text-align: center; margin-bottom: 28px; font-size: 14px;

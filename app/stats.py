@@ -413,9 +413,9 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
     .day-row {{ display: grid; grid-template-columns: 90px 1fr 50px; gap: 12px; align-items: center; font-size: 13px; }}
     .day-row .date-label {{ color: var(--muted); font-variant-numeric: tabular-nums; }}
     .bar-track {{ height: 14px; background: var(--track); border-radius: 999px; overflow: hidden; display: flex; }}
-    .bar-success {{ background: linear-gradient(90deg, #34c47c, #1a7a54); }}
-    .bar-failure {{ background: linear-gradient(90deg, #e74c3c, #c0392b); }}
-    .bar-incomplete {{ background: linear-gradient(90deg, #f0c040, #b8860b); }}
+    .bar-success {{ background: linear-gradient(90deg, var(--success), #065f46); }}
+    .bar-failure {{ background: linear-gradient(90deg, var(--failure), #7f1d1d); }}
+    .bar-incomplete {{ background: linear-gradient(90deg, var(--warning), #78350f); }}
     .day-row .count {{ text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }}
 
     .chart-legend {{ display: flex; gap: 20px; margin-bottom: 16px; }}
@@ -993,7 +993,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
     ach = snapshot.get("achievements", {"streak": {"zero_error_days": 0, "label": "—"}, "badge": {"name": None, "color": None}})
     hourly = snapshot.get("hourly_throughput", [])
 
-    grade_colors = {"A": "#1a7a54", "B": "#2472a4", "C": "#b8860b", "D": "#c0392b", "F": "#8b0000"}
+    grade_colors = {"A": "var(--success)", "B": "var(--info)", "C": "var(--warning)", "D": "var(--failure)", "F": "#8b0000"}
     grade_color = grade_colors.get(health["grade"], "#888")
 
     max_hourly = max((h["total"] for h in hourly), default=1) or 1
@@ -1003,7 +1003,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
         hourly_bars += (
             f'<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">'
             f'<div style="width:100%;height:50px;display:flex;align-items:flex-end;">'
-            f'<div style="width:100%;height:{bar_h}px;background:linear-gradient(180deg,#34c47c,#1a7a54);border-radius:3px 3px 0 0;"></div>'
+            f'<div style="width:100%;height:{bar_h}px;background:linear-gradient(180deg,var(--success),#065f46);border-radius:3px 3px 0 0;"></div>'
             f'</div>'
             f'<div style="font-size:8px;color:#aaa;margin-top:2px;">{_escape(bucket["hour"][:2])}</div>'
             f'</div>'
@@ -1017,7 +1017,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
             f'<div style="display:flex;align-items:center;gap:8px;margin:3px 0;">'
             f'<span style="width:68px;font-size:12px;color:#aaa;">{_escape(day["date"])}</span>'
             f'<div style="flex:1;height:14px;background:#f0f0f0;border-radius:8px;overflow:hidden;">'
-            f'<div style="width:{pct}%;height:100%;background:linear-gradient(90deg,#34c47c,#1a7a54);border-radius:8px;"></div>'
+            f'<div style="width:{pct}%;height:100%;background:linear-gradient(90deg,var(--success),#065f46);border-radius:8px;"></div>'
             f'</div>'
             f'<span style="width:32px;text-align:right;font-size:12px;font-weight:600;">{day["total"]}</span>'
             f'</div>'
@@ -1062,17 +1062,17 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
         <div class="card-value" style="color:{grade_color};">{health["score"]}<span style="font-size:18px;margin-left:4px;">{_escape(health["grade"])}</span></div>
         <div class="card-sub">System health composite</div>
       </div>
-      <div class="card" style="border-left:3px solid #1a7a54;">
+      <div class="card" style="border-left:3px solid var(--success);">
         <div class="card-label">Documents Processed</div>
-        <div class="card-value" style="color:#1a7a54;">{docs["succeeded"]:,}</div>
+        <div class="card-value" style="color:var(--success);">{docs["succeeded"]:,}</div>
         <div class="card-sub">{_format_percentage(docs["success_rate"])} success rate</div>
       </div>
-      <div class="card" style="border-left:3px solid #2472a4;">
+      <div class="card" style="border-left:3px solid var(--info);">
         <div class="card-label">24h Processed</div>
-        <div class="card-value" style="color:#2472a4;">{last24["completed"]}</div>
+        <div class="card-value" style="color:var(--info);">{last24["completed"]}</div>
         <div class="card-sub">{last24["succeeded"]} succeeded, {last24["failed"]} failed</div>
       </div>
-      <div class="card" style="border-left:3px solid #b8860b;">
+      <div class="card" style="border-left:3px solid var(--warning);">
         <div class="card-label">Queue ETA</div>
         <div class="card-value">{_escape(eta["eta_display"])}</div>
         <div class="card-sub">{eta["backlog"]} file(s) waiting</div>
@@ -1094,7 +1094,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
       </div>
       <div class="card">
         <div class="card-label">Error-Free Streak</div>
-        <div class="card-value" style="font-size:24px;color:#1a7a54;">{ach["streak"]["zero_error_days"]} days</div>
+        <div class="card-value" style="font-size:24px;color:var(--success);">{ach["streak"]["zero_error_days"]} days</div>
       </div>
     </div>
 

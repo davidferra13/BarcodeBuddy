@@ -186,12 +186,12 @@ async function submitFeedback() {
       document.getElementById('fb-success').style.display = 'block';
     } else {
       const d = await r.json();
-      alert(d.detail || d.error || 'Something went wrong. Please try again.');
+      toast(d.detail || d.error || 'Something went wrong. Please try again.', 'error');
       btn.disabled = false;
       btn.textContent = 'Send Feedback';
     }
   } catch(e) {
-    alert('Network error. Please check your connection and try again.');
+    toast('Network error. Please check your connection and try again.', 'error');
     btn.disabled = false;
     btn.textContent = 'Send Feedback';
   }

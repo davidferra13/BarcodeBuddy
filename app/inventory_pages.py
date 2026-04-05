@@ -734,7 +734,7 @@ let scanning=false,stream=null,hist=[],lastCode='',lastTime=0;
 document.getElementById('mi').addEventListener('keydown',e=>{if(e.key==='Enter')lookup()});
 async function lookup(code){const inp=document.getElementById('mi');code=code||inp.value.trim();if(!code)return;inp.value=code;const now=Date.now();if(code===lastCode&&now-lastTime<2000)return;lastCode=code;lastTime=now;document.getElementById('nr').style.display='none';document.getElementById('nf').style.display='none';document.getElementById('rc').style.display='none';const r=await apiCall('GET','/api/scan/lookup?code='+encodeURIComponent(code));addHist(code,r.ok);if(!r.ok){document.getElementById('nf').style.display='block';document.getElementById('nfc').textContent='Code: '+code;document.getElementById('cl').href='/inventory/new?sku='+encodeURIComponent(code);return}renderRes(r.data.item)}
 function renderRes(i){const c=document.getElementById('rc');c.style.display='block';const qc=i.quantity===0?'qz':i.min_quantity>0&&i.quantity<=i.min_quantity?'ql':'';c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px"><div><h2 style="font-size:20px;font-weight:700">${esc(i.name)}</h2><code style="color:var(--muted)">${esc(i.sku)}</code></div><a href="/inventory/${i.id}" class="btn btn-sm btn-secondary">Full Detail</a></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div><span style="font-size:11px;color:var(--muted);text-transform:uppercase">Quantity</span><div style="font-size:28px;font-weight:700" class="${qc}">${i.quantity} <span style="font-size:14px;color:var(--muted)">${esc(i.unit)}</span></div></div><div><span style="font-size:11px;color:var(--muted);text-transform:uppercase">Location</span><div style="font-size:16px">${esc(i.location)||'—'}</div></div></div>${i.category?'<span class="badge bb">'+esc(i.category)+'</span>':''}${i.description?'<p style="color:var(--muted);margin-top:8px;font-size:13px">'+esc(i.description)+'</p>':''}<div class="qa"><span style="font-size:13px;color:var(--muted)">Quick adjust:</span><button class="mn" onclick="qAdj('${i.id}',-1)">-</button><input type="number" id="qaa" value="1" min="1"><button class="pl" onclick="qAdj('${i.id}',1)">+</button><select id="qar" style="padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--text);font-size:13px"><option value="sold">Sold</option><option value="received">Received</option><option value="adjusted">Adjusted</option><option value="damaged">Damaged</option><option value="returned">Returned</option></select></div>`}
-async function qAdj(id,dir){const amt=parseInt(document.getElementById('qaa').value)||1;const r=await apiCall('POST',`/api/inventory/${id}/adjust`,{quantity_change:dir*amt,reason:document.getElementById('qar').value,notes:'Quick adjust from scanner'});if(!r.ok){alert(r.data.error);return}renderRes(r.data.item)}
+async function qAdj(id,dir){const amt=parseInt(document.getElementById('qaa').value)||1;const r=await apiCall('POST',`/api/inventory/${id}/adjust`,{quantity_change:dir*amt,reason:document.getElementById('qar').value,notes:'Quick adjust from scanner'});if(!r.ok){toast(r.data.error,'error');return}renderRes(r.data.item)}
 function addHist(code,found){hist.unshift({code,found,time:new Date().toLocaleTimeString()});if(hist.length>50)hist.pop();document.getElementById('sh').innerHTML=hist.map(h=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span><code>${esc(h.code)}</code></span><span style="font-size:12px;color:var(--muted)">${h.time} <span class="badge ${h.found?'bg':'br'}">${h.found?'Found':'Not Found'}</span></span></div>`).join('')}
 async function toggleCam(){if(scanning){stopCam();return}try{const devs=await navigator.mediaDevices.enumerateDevices();const cams=devs.filter(d=>d.kind==='videoinput');const sel=document.getElementById('csel');sel.innerHTML=cams.map((c,i)=>`<option value="${c.deviceId}">${c.label||'Camera '+(i+1)}</option>`).join('');await startCam(cams[0]?.deviceId)}catch(e){document.getElementById('sstat').textContent='Camera denied: '+e.message}}
 async function startCam(did){const c={video:{deviceId:did?{exact:did}:undefined,facingMode:'environment',width:{ideal:1280},height:{ideal:720}}};stream=await navigator.mediaDevices.getUserMedia(c);document.getElementById('vid').srcObject=stream;scanning=true;document.getElementById('cbtn').textContent='Stop Camera';document.getElementById('sline').style.display='block';const ph=document.getElementById('cam-placeholder');if(ph)ph.style.display='none';document.getElementById('sstat').textContent='Camera active — scanning...';scanLoop()}
@@ -1145,7 +1145,8 @@ def analytics_page(user: User = Depends(require_user)) -> HTMLResponse:
     </div>"""
 
     js = """<script>
-const REASON_COLORS={received:'#1a7a54',sold:'#2472a4',adjusted:'#b8860b',damaged:'#c0392b',returned:'#7c3aed',initial:'#64748b'};
+function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+const REASON_COLORS={received:cv('--success'),sold:cv('--info'),adjusted:cv('--warning'),damaged:cv('--failure'),returned:'#7c3aed',initial:cv('--muted')};
 function switchAna(id,btn){document.querySelectorAll('.ana-page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');document.querySelectorAll('.ana-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
 function getDays(){return document.getElementById('period').value}
 
@@ -1209,7 +1210,7 @@ function renderVal(d){
 
   // Category rows
   const maxCatVal=Math.max(...Object.values(d.by_category).map(c=>c.value))||1;
-  const catColors=['#1a7a54','#2472a4','#b8860b','#7c3aed','#c0392b','#0891b2','#d97706','#4f46e5'];
+  const catColors=[cv('--success'),cv('--info'),cv('--warning'),'#7c3aed',cv('--failure'),'#0891b2','#d97706','#4f46e5'];
   document.getElementById('cat-rows').innerHTML=Object.entries(d.by_category)
     .sort((a,b)=>b[1].value-a[1].value)
     .map(([cat,info],i)=>`<div class="cat-row">
@@ -1221,7 +1222,7 @@ function renderVal(d){
 
   // Location rows
   const maxLocVal=Math.max(...Object.values(d.by_location).map(l=>l.value))||1;
-  const locColors=['#2472a4','#1a7a54','#d97706','#7c3aed','#c0392b','#0891b2'];
+  const locColors=[cv('--info'),cv('--success'),'#d97706','#7c3aed',cv('--failure'),'#0891b2'];
   document.getElementById('loc-rows').innerHTML=Object.entries(d.by_location)
     .sort((a,b)=>b[1].value-a[1].value)
     .map(([loc,info],i)=>`<div class="cat-row">
@@ -1232,7 +1233,7 @@ function renderVal(d){
     </div>`).join('')||'<div style="color:var(--muted);padding:16px;text-align:center">No location data.</div>';
 
   // Barcode format
-  const fmtColors=['#4f46e5','#0891b2','#d97706','#1a7a54','#c0392b'];
+  const fmtColors=['#4f46e5','#0891b2','#d97706',cv('--success'),cv('--failure')];
   const maxFmt=Math.max(...Object.values(d.by_barcode_type))||1;
   document.getElementById('fmt-rows').innerHTML=Object.entries(d.by_barcode_type)
     .sort((a,b)=>b[1]-a[1])

@@ -46,14 +46,14 @@ def log_activity(
 # ── Category metadata (colour + icon label) ───────────────────────
 
 _CAT_META = {
-    "inventory": {"color": "#3b82f6", "bg": "#1e3a5f", "label": "Inventory"},
-    "auth":      {"color": "#a78bfa", "bg": "#2e1f5e", "label": "Auth"},
-    "admin":     {"color": "#f59e0b", "bg": "#422006", "label": "Admin"},
-    "scan":      {"color": "#10b981", "bg": "#064e3b", "label": "Scan"},
-    "import":    {"color": "#06b6d4", "bg": "#164e63", "label": "Import"},
-    "export":    {"color": "#8b5cf6", "bg": "#2e1065", "label": "Export"},
-    "alert":     {"color": "#ef4444", "bg": "#450a0a", "label": "Alert"},
-    "system":    {"color": "#64748b", "bg": "#1e293b", "label": "System"},
+    "inventory": {"css_class": "cat-inventory", "label": "Inventory"},
+    "auth":      {"css_class": "cat-auth", "label": "Auth"},
+    "admin":     {"css_class": "cat-admin", "label": "Admin"},
+    "scan":      {"css_class": "cat-scan", "label": "Scan"},
+    "import":    {"css_class": "cat-import", "label": "Import"},
+    "export":    {"css_class": "cat-export", "label": "Export"},
+    "alert":     {"css_class": "cat-alert", "label": "Alert"},
+    "system":    {"css_class": "cat-system", "label": "System"},
 }
 
 
@@ -164,11 +164,8 @@ def activity_page(user: User = Depends(require_user)) -> HTMLResponse:
         for k, v in _CAT_META.items()
     )
 
-    # Build CSS for category badges
-    cat_badge_css = "\n".join(
-        f'.cat-{k} {{ color:{v["color"]}; background:{v["bg"]}; }}'
-        for k, v in _CAT_META.items()
-    )
+    # Category badges now use .cat-badge classes from layout.py
+    cat_badge_css = ""  # No longer needed — layout.py provides .cat-badge.cat-*
 
     body = f"""
 <style>
@@ -257,6 +254,9 @@ def activity_page(user: User = Depends(require_user)) -> HTMLResponse:
 
     js = f"""<script>
 const CAT_META = {cat_meta_json};
+/* Resolve bar chart colors from CSS variables for theme support */
+const _cv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const CAT_COLORS = {{inventory:_cv('--info'),auth:'#a78bfa',admin:_cv('--warning'),scan:_cv('--success'),'import':'#06b6d4','export':'#8b5cf6',alert:_cv('--failure'),system:_cv('--muted')}};
 let actOffset = 0;
 const PAGE = 100;
 let actTotal = 0;
@@ -278,7 +278,7 @@ async function loadStats() {{
   chart.innerHTML = cats.map(([k, v]) => {{
     const meta = CAT_META[k] || CAT_META.system;
     const h = Math.max(8, (v / maxVal) * 52);
-    return `<div class="week-bar" style="height:${{h}}px;background:${{meta.color}}" title="${{meta.label}}: ${{v}}"></div>`;
+    return `<div class="week-bar" style="height:${{h}}px;background:${{CAT_COLORS[k]||CAT_COLORS.system}}" title="${{meta.label}}: ${{v}}"></div>`;
   }}).join('');
 }}
 
@@ -312,7 +312,7 @@ async function loadActivity(append) {{
     }} catch(_) {{}}
     return `<div class="act-row">
       <div class="act-time">${{timeStr}}</div>
-      <div><span class="act-cat cat-${{e.category}}">${{meta.label}}</span></div>
+      <div><span class="cat-badge cat-${{e.category}}">${{meta.label}}</span></div>
       <div class="act-body">
         <div class="act-action">${{esc(e.action)}}${{detailHtml}}</div>
         <div class="act-summary">${{esc(e.summary)}}</div>

@@ -1001,6 +1001,107 @@ code {
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ra-meta { font-size:11px; color:var(--muted); margin-top:3px; opacity:.7; }
 .ra-empty { padding:40px; text-align:center; color:var(--muted); }
+
+/* ── Loading skeleton ── */
+@keyframes shimmer { to { background-position: -200% 0; } }
+.skeleton {
+  background: linear-gradient(90deg, var(--line) 25%, rgba(255,255,255,0.15) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px; color: transparent !important;
+  user-select: none; pointer-events: none;
+}
+.skeleton-text { height: 14px; margin-bottom: 10px; width: 80%; }
+.skeleton-text.short { width: 40%; }
+.skeleton-text.medium { width: 60%; }
+.skeleton-heading { height: 24px; width: 50%; margin-bottom: 16px; }
+.skeleton-card {
+  height: 80px; border-radius: var(--radius);
+  border: 1px solid var(--line); padding: 20px;
+}
+.skeleton-row { height: 44px; margin-bottom: 2px; }
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, rgba(148,163,184,0.08) 25%, rgba(148,163,184,0.15) 50%, rgba(148,163,184,0.08) 75%);
+  background-size: 200% 100%;
+}
+
+/* ── Standardized empty state ── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 48px 24px; text-align: center;
+  color: var(--muted);
+}
+.empty-state svg, .empty-state .empty-icon {
+  width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4;
+  color: var(--muted);
+}
+.empty-state h3, .empty-state .empty-title {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  margin: 0 0 6px;
+}
+.empty-state p, .empty-state .empty-desc {
+  font-size: 13px; color: var(--muted); margin: 0 0 16px;
+  max-width: 320px; line-height: 1.5;
+}
+.empty-state .btn { margin-top: 4px; }
+
+/* ── Unified tab bar ── */
+.tab-bar {
+  display: flex; gap: 2px; margin-bottom: 20px;
+  border-bottom: 2px solid var(--line); padding-bottom: 0;
+}
+.tab-btn {
+  padding: 10px 18px; border: none; background: transparent;
+  color: var(--muted); font-size: 13px; font-weight: 600;
+  cursor: pointer; position: relative; transition: color 0.15s;
+  font-family: inherit; border-radius: 8px 8px 0 0;
+}
+.tab-btn:hover { color: var(--text); background: rgba(0,0,0,0.02); }
+.tab-btn.active {
+  color: var(--info); background: transparent;
+}
+.tab-btn.active::after {
+  content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+  height: 2px; background: var(--info); border-radius: 2px 2px 0 0;
+}
+[data-theme="dark"] .tab-btn:hover { background: rgba(255,255,255,0.03); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: contentIn 0.2s ease; }
+
+/* ── Form validation states ── */
+.fg label .required {
+  color: var(--failure); font-weight: 700; margin-left: 2px;
+}
+.fg .is-invalid {
+  border-color: var(--failure) !important;
+  box-shadow: 0 0 0 2px var(--failure-bg);
+}
+.fg .field-error {
+  font-size: 12px; color: var(--failure); margin-top: 4px;
+  display: none;
+}
+.fg .field-error.show { display: block; animation: contentIn 0.15s ease; }
+.fg .is-valid {
+  border-color: var(--success) !important;
+}
+
+/* ── Category badge (semantic) ── */
+.cat-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+  background: var(--line); color: var(--muted);
+}
+.cat-badge.cat-inventory { background: var(--info-bg); color: var(--info); }
+.cat-badge.cat-auth { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.cat-badge.cat-admin { background: var(--warning-bg); color: var(--warning); }
+.cat-badge.cat-scan { background: var(--success-bg); color: var(--success); }
+.cat-badge.cat-import { background: rgba(6,182,212,0.12); color: #06b6d4; }
+.cat-badge.cat-export { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+.cat-badge.cat-alert { background: var(--failure-bg); color: var(--failure); }
+.cat-badge.cat-system { background: var(--line); color: var(--muted); }
+[data-theme="dark"] .cat-badge.cat-auth { background: rgba(167,139,250,0.15); color: #c4b5fd; }
+[data-theme="dark"] .cat-badge.cat-import { background: rgba(6,182,212,0.15); color: #67e8f9; }
+[data-theme="dark"] .cat-badge.cat-export { background: rgba(139,92,246,0.15); color: #c4b5fd; }
 </style>"""
 
 
@@ -1268,7 +1369,8 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 });
 
 /* ── Recent activity drawer ── */
-const _raCatColors={inventory:'#3b82f6',auth:'#a78bfa',admin:'#f59e0b',scan:'#10b981','import':'#06b6d4','export':'#8b5cf6',alert:'#ef4444',system:'#64748b'};
+const _raCv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const _raCatColors={inventory:_raCv('--info'),auth:'#a78bfa',admin:_raCv('--warning'),scan:_raCv('--success'),'import':'#06b6d4','export':'#8b5cf6',alert:_raCv('--failure'),system:_raCv('--muted')};
 function toggleRecentActivity(){
   const d=document.getElementById('ra-drawer');
   const o=document.getElementById('ra-overlay');
