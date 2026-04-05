@@ -262,8 +262,7 @@ const PAGE = 100;
 let actTotal = 0;
 
 async function loadStats() {{
-  const r = await fetch('/api/activity/stats');
-  const d = await r.json();
+  let d;try{{const r = await fetch('/api/activity/stats');d = await r.json()}}catch(e){{toast('Failed to load stats','error');return}}
   document.getElementById('stat-today').textContent = d.today.toLocaleString();
   document.getElementById('stat-week').textContent = d.week.toLocaleString();
   document.getElementById('stat-total').textContent = d.total.toLocaleString();
@@ -290,8 +289,7 @@ async function loadActivity(append) {{
   const params = new URLSearchParams({{days, limit: PAGE, offset: actOffset}});
   if (cat) params.set('category', cat);
   if (q) params.set('q', q);
-  const r = await fetch('/api/activity?' + params);
-  const d = await r.json();
+  let d;try{{const r = await fetch('/api/activity?' + params);d = await r.json()}}catch(e){{toast('Failed to load activity','error');return}}
   actTotal = d.total;
   const list = document.getElementById('act-list');
   if (!append) list.innerHTML = '';

@@ -167,7 +167,7 @@ def _user_section(display_name: str, role: str, is_admin: bool) -> str:
           <path d="M10 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M16 18a6 6 0 00-12 0"/>
         </svg><span class="signout-text">Profile</span>
       </a>
-      <a href="#" onclick="fetch('/auth/api/logout',{{method:'POST'}}).then(()=>window.location.href='/auth/login');return false;"
+      <a href="#" onclick="fetch('/auth/api/logout',{{method:'POST'}}).catch(()=>{{}}).finally(()=>window.location.href='/auth/login');return false;"
         class="signout-link"
         style="display:flex;align-items:center;gap:6px;padding:6px 0;color:#a0aab4;text-decoration:none;font-size:13px;
         transition:color 0.2s;white-space:nowrap;overflow:hidden;"

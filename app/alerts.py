@@ -417,8 +417,8 @@ function timeAgo(iso){
 async function markRead(id){const r=await apiCall('POST','/api/alerts/read',{alert_ids:[id]});if(r.ok)loadAlerts();else toast('Failed to mark as read','error')}
 async function dismiss(id){const r=await apiCall('POST','/api/alerts/dismiss',{alert_ids:[id]});if(r.ok)loadAlerts();else toast('Failed to dismiss alert','error')}
 async function markAllRead(){
-  const r=await fetch('/api/alerts?unread_only=true');const d=await r.json();
-  if(d.alerts.length){const res=await apiCall('POST','/api/alerts/read',{alert_ids:d.alerts.map(a=>a.id)});if(res.ok){loadAlerts();toast('All marked as read','success')}else toast('Failed to mark all as read','error')}
+  try{const r=await fetch('/api/alerts?unread_only=true');const d=await r.json();
+  if(d.alerts.length){const res=await apiCall('POST','/api/alerts/read',{alert_ids:d.alerts.map(a=>a.id)});if(res.ok){loadAlerts();toast('All marked as read','success')}else toast('Failed to mark all as read','error')}}catch(e){toast('Failed to load alerts','error')}
 }
 async function dismissAll(){const r=await apiCall('POST','/api/alerts/dismiss-all',{});if(r.ok){loadAlerts();toast('All alerts dismissed','success')}else toast('Failed to dismiss alerts','error')}
 
