@@ -56,3 +56,13 @@ Each entry follows this format:
 - Commits: 2d68493
 - Build state on departure: green (316 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: Cookie deprecation fix is architectural — one conftest.py subclass instead of 241 individual call-site changes. All 8 test files updated to use custom client. Test coverage now covers image_quality.py (threshold logic, scoring, assess_quality integration), contracts.py (error code stability, normalize_error_code), documents.py (type detection, page counts, PDF conversion, file locking, image mode handling). Remaining untested modules: ai_provider.py, ai_tools.py, watcher.py (all require external mocking or are thin wrappers).
+
+## 2026-04-04 — Zero-Friction Auth
+
+- Agent: general
+- Task: Removed signup friction for fresh installs. First user becomes owner with any email when BB_OWNER_EMAIL is not explicitly set. Open signup defaults to True. Updated auth constraint, tests, and user manual.
+- Status: completed
+- Files touched: app/auth.py, app/auth_routes.py, app/database.py, .constraints/auth-boundary.json, tests/test_auth_rbac.py, docs/USER_MANUAL.md, docs/build-state.md, docs/session-log.md
+- Commits: pending
+- Build state on departure: green (317 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: When BB_OWNER_EMAIL env var is set, owner email enforcement is preserved (production security). When not set, any email claims owner on first signup and OWNER_EMAIL is locked to that address. open_signup now defaults to True in SystemSettings. Auth constraint file updated. One new test added (test_first_user_any_email_becomes_owner_when_env_not_set). Existing test updated (test_signup_disabled_blocks_new_users now requires explicit disable). New test_signup_open_by_default added.

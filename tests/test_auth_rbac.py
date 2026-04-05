@@ -10,12 +10,15 @@ from conftest import TestClient
 
 
 @pytest.fixture(autouse=True)
-def _reset_rate_limits():
-    """Reset the global rate limiter between every test."""
+def _reset_globals():
+    """Reset global rate limiter and owner email between every test."""
     from app.auth_routes import _reset_rate_limiter
+    from app.auth import configure_owner_email, DEFAULT_OWNER_EMAIL
     _reset_rate_limiter()
+    configure_owner_email(DEFAULT_OWNER_EMAIL)
     yield
     _reset_rate_limiter()
+    configure_owner_email(DEFAULT_OWNER_EMAIL)
 
 
 @pytest.fixture()
@@ -82,6 +85,23 @@ def _enable_open_signup() -> None:
             pass
 
 
+def _disable_open_signup() -> None:
+    from app.database import SystemSettings, get_db
+
+    db_gen = get_db()
+    db = next(db_gen)
+    try:
+        settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
+        if settings:
+            settings.open_signup = False
+            db.commit()
+    finally:
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
+
+
 # ═══════════════════════════════════════════════════════════════════
 # AUTH: Signup
 # ═══════════════════════════════════════════════════════════════════
@@ -93,14 +113,14 @@ class TestSignup:
         data = r["response"].json()
         assert data["user"]["role"] == "owner"
 
-    def test_first_user_must_use_reserved_owner_email(self, client):
-        r = _signup(client, "owner@test.com", "Owner")
-        assert r["response"].status_code == 403
-        assert _owner_email() in r["response"].json()["error"]
+    def test_first_user_any_email_becomes_owner_when_env_not_set(self, client):
+        """When BB_OWNER_EMAIL is not explicitly set, any email can claim owner."""
+        r = _signup(client, "anyone@example.com", "Owner")
+        assert r["response"].status_code == 200
+        assert r["response"].json()["user"]["role"] == "owner"
 
     def test_second_user_becomes_regular_user(self, client):
         _signup(client, _owner_email())
-        _enable_open_signup()
         r = _signup(client, "user2@test.com")
         assert r["response"].status_code == 200
         assert r["response"].json()["user"]["role"] == "user"
@@ -124,9 +144,17 @@ class TestSignup:
         })
         assert resp.status_code == 422  # Pydantic validation
 
-    def test_signup_disabled_blocks_new_users(self, client):
-        """After owner creates account, signup is disabled by default."""
+    def test_signup_open_by_default(self, client):
+        """After owner creates account, signup is open by default."""
         _signup(client, _owner_email())
+        r = _signup(client, "newuser@test.com")
+        assert r["response"].status_code == 200
+        assert r["response"].json()["user"]["role"] == "user"
+
+    def test_signup_disabled_blocks_new_users(self, client):
+        """When admin closes signup, new users are blocked."""
+        _signup(client, _owner_email())
+        _disable_open_signup()
         r = _signup(client, "blocked@test.com")
         assert r["response"].status_code == 403
 

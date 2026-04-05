@@ -27,6 +27,7 @@ ROLE_LEVELS: dict[str, int] = {
 VALID_ROLES = frozenset(ROLE_LEVELS.keys())
 ASSIGNABLE_ROLES = ("admin", "manager", "user")  # owner is never assignable via API
 DEFAULT_OWNER_EMAIL = "mferragamo@danpack.com"
+_OWNER_EMAIL_EXPLICIT = bool((os.environ.get("BB_OWNER_EMAIL") or "").strip())
 OWNER_EMAIL = (os.environ.get("BB_OWNER_EMAIL", DEFAULT_OWNER_EMAIL) or DEFAULT_OWNER_EMAIL).strip().lower()
 
 

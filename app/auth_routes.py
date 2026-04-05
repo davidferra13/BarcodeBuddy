@@ -17,13 +17,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import (
+    _OWNER_EMAIL_EXPLICIT,
     clear_auth_cookie,
+    configure_owner_email,
     create_access_token,
     create_reset_token,
     hash_password,
-  is_owner_email,
-  OWNER_EMAIL,
-  normalize_email,
+    is_owner_email,
+    OWNER_EMAIL,
+    normalize_email,
     require_user,
     revoke_token,
     set_auth_cookie,
@@ -175,11 +177,14 @@ def api_signup(request: Request, body: SignupRequest, db: Session = Depends(get_
     # First user becomes owner; subsequent users need open signup.
     user_count = db.query(User).count()
     if user_count == 0:
-        if not is_owner_email(email):
+        if _OWNER_EMAIL_EXPLICIT and not is_owner_email(email):
             return JSONResponse(
                 status_code=403,
                 content={"error": f"The owner account must be created with {OWNER_EMAIL}"},
             )
+        # Lock owner identity to the email actually used
+        if not _OWNER_EMAIL_EXPLICIT:
+            configure_owner_email(email)
         role = "owner"
     else:
         settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()

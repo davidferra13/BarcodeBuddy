@@ -771,10 +771,11 @@ This section is for the person installing, configuring, and maintaining the syst
    ```bash
    pip install -r requirements.txt
    ```
-3. **Set the owner email** (the email that the first user must use to sign up):
+3. **(Optional) Lock the owner email** — if you want to restrict who can claim owner on first signup:
    ```bash
    export BB_OWNER_EMAIL="owner@yourcompany.com"
    ```
+   If not set, the first person to sign up becomes the owner with any email.
 4. **Set a persistent JWT secret** (so sessions survive server restarts):
    ```bash
    export BB_SECRET_KEY="a-long-random-string-at-least-32-characters"
@@ -783,7 +784,7 @@ This section is for the person installing, configuring, and maintaining the syst
    ```bash
    python stats.py
    ```
-6. **Open a browser** and go to `http://localhost:8080/auth/signup`. Sign up with the owner email. You are now the owner.
+6. **Open a browser** and go to `http://localhost:8080/auth/signup`. The first user to sign up becomes the system owner.
 7. **Start the ingestion service** (if you need document processing):
    ```bash
    python main.py
@@ -808,7 +809,7 @@ See [Appendix B: Configuration Reference](#appendix-b-configuration-reference) f
 |----------|---------|---------|
 | `BB_CONFIG` | `config.json` | Config file path (overridden by `--config` flag) |
 | `BB_SECRET_KEY` | (empty) | JWT secret for session persistence. **Set this in production.** If empty, a random key is generated per startup, meaning all user sessions are invalidated on every restart. |
-| `BB_OWNER_EMAIL` | `mferragamo@danpack.com` | The email address that the first signup must use. This person becomes the system owner. |
+| `BB_OWNER_EMAIL` | (not set) | If set, the first signup must use this email. If not set, anyone can claim owner on first signup. |
 | `BB_SMTP_HOST` | (empty) | SMTP server hostname for password reset emails |
 | `BB_SMTP_PORT` | `587` | SMTP port |
 | `BB_SMTP_USER` | (empty) | SMTP username |
@@ -1002,8 +1003,8 @@ Use this for load balancers, Docker health checks, Kubernetes probes, or uptime 
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| Cannot sign up | Open signup is disabled | Ask an admin to turn it on in Admin Panel |
-| Cannot sign up (first user) | Wrong email address | You must use the email configured in `BB_OWNER_EMAIL`. Ask IT. |
+| Cannot sign up | Admin has closed signup | Ask an admin to re-enable it in Admin Panel |
+| Cannot sign up (first user) | `BB_OWNER_EMAIL` is set and you used a different email | Use the email configured in `BB_OWNER_EMAIL`, or ask IT to unset it |
 | Login fails after correct password | Rate limited (10 attempts per 60 seconds) | Wait 60 seconds and try again |
 | Logged out unexpectedly | 24-hour session expired | Log in again. If it happens on every server restart, tell IT to set `BB_SECRET_KEY`. |
 | Password reset email never arrives | SMTP not configured | Ask an admin to reset your password via Admin Panel |

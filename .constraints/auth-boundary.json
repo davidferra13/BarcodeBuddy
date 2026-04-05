@@ -2,7 +2,7 @@
   "name": "Authentication and Authorization Boundary",
   "rules": [
     "JWT cookie-based authentication via app/auth.py - never use token-in-URL or token-in-body",
-    "First signup must use owner email (BB_OWNER_EMAIL env var or default) - enforced in auth_routes.py",
+    "First signup becomes owner - email check only enforced when BB_OWNER_EMAIL env var is explicitly set",
     "Role hierarchy: owner > admin > manager > user - higher roles inherit all lower permissions",
     "Every protected endpoint must call require_role() or equivalent auth check as its first operation",
     "User identity comes from the JWT session, never from request body or query parameters",
