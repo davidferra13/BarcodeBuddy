@@ -13,19 +13,19 @@ BarcodeBuddy is deliberately scoped to the first automation step:
 - convert the document into a durable PDF
 - produce a deterministic success or failure result
 
-The master product blueprint — full capability map, status, and roadmap — is in [docs/PRODUCT_BLUEPRINT.md](c:/Users/david/Documents/BarcodeBuddy/docs/PRODUCT_BLUEPRINT.md).
-Research notes and source links are in [docs/industry-workflow-research.md](c:/Users/david/Documents/BarcodeBuddy/docs/industry-workflow-research.md).
-Recommended operating patterns for packaging and industrial supply deployments are in [docs/packaging-industrial-operating-model.md](c:/Users/david/Documents/BarcodeBuddy/docs/packaging-industrial-operating-model.md).
-The quickest builder entry point is [docs/current-system-truth.md](c:/Users/david/Documents/BarcodeBuddy/docs/current-system-truth.md).
-Current builder-facing system context and Danpack-specific handoff are in [docs/danpack-builder-handoff.md](c:/Users/david/Documents/BarcodeBuddy/docs/danpack-builder-handoff.md).
-Production integration, observability, incident, and security requirements are in [docs/production-operations-blueprint.md](c:/Users/david/Documents/BarcodeBuddy/docs/production-operations-blueprint.md).
-The dependency-aware implementation order for the next builder is in [docs/builder-execution-plan.md](c:/Users/david/Documents/BarcodeBuddy/docs/builder-execution-plan.md).
-Builder-facing interaction rules for any future human-facing surface are in [docs/danpack-system-interaction-philosophy.md](c:/Users/david/Documents/BarcodeBuddy/docs/danpack-system-interaction-philosophy.md).
-A future owner-facing single-scan page design is in [docs/scan-record-workbench.md](c:/Users/david/Documents/BarcodeBuddy/docs/scan-record-workbench.md).
-A dependency-aware implementation handoff for that work is in [docs/scan-record-builder-handoff.md](c:/Users/david/Documents/BarcodeBuddy/docs/scan-record-builder-handoff.md).
-The future multi-record planning and reporting control plane is defined in [docs/operations-planner-product-spec.md](c:/Users/david/Documents/BarcodeBuddy/docs/operations-planner-product-spec.md), [docs/operations-planner-technical-spec.md](c:/Users/david/Documents/BarcodeBuddy/docs/operations-planner-technical-spec.md), [docs/operations-planner-builder-handoff.md](c:/Users/david/Documents/BarcodeBuddy/docs/operations-planner-builder-handoff.md), and [docs/operations-planner-execution-plan.md](c:/Users/david/Documents/BarcodeBuddy/docs/operations-planner-execution-plan.md).
-Executable runtime and artifact-consistency tests are in [tests](/c:/Users/david/Documents/BarcodeBuddy/tests).
-The machine-readable config contract is in [config.schema.json](c:/Users/david/Documents/BarcodeBuddy/config.schema.json).
+The master product blueprint — full capability map, status, and roadmap — is in [docs/PRODUCT_BLUEPRINT.md](docs/PRODUCT_BLUEPRINT.md).
+Research notes and source links are in [docs/industry-workflow-research.md](docs/industry-workflow-research.md).
+Recommended operating patterns for packaging and industrial supply deployments are in [docs/packaging-industrial-operating-model.md](docs/packaging-industrial-operating-model.md).
+The quickest builder entry point is [docs/current-system-truth.md](docs/current-system-truth.md).
+Current builder-facing system context and Danpack-specific handoff are in [docs/danpack-builder-handoff.md](docs/danpack-builder-handoff.md).
+Production integration, observability, incident, and security requirements are in [docs/production-operations-blueprint.md](docs/production-operations-blueprint.md).
+The dependency-aware implementation order for the next builder is in [docs/builder-execution-plan.md](docs/builder-execution-plan.md).
+Builder-facing interaction rules for any future human-facing surface are in [docs/danpack-system-interaction-philosophy.md](docs/danpack-system-interaction-philosophy.md).
+A future owner-facing single-scan page design is in [docs/scan-record-workbench.md](docs/scan-record-workbench.md).
+A dependency-aware implementation handoff for that work is in [docs/scan-record-builder-handoff.md](docs/scan-record-builder-handoff.md).
+The future multi-record planning and reporting control plane is defined in [docs/operations-planner-product-spec.md](docs/operations-planner-product-spec.md), [docs/operations-planner-technical-spec.md](docs/operations-planner-technical-spec.md), [docs/operations-planner-builder-handoff.md](docs/operations-planner-builder-handoff.md), and [docs/operations-planner-execution-plan.md](docs/operations-planner-execution-plan.md).
+Executable runtime and artifact-consistency tests are in [tests](tests/).
+The machine-readable config contract is in [config.schema.json](config.schema.json).
 
 ## Requirements
 
@@ -36,14 +36,14 @@ The machine-readable config contract is in [config.schema.json](c:/Users/david/D
 
 If you are picking up this repo for implementation work:
 
-- start with [docs/current-system-truth.md](c:/Users/david/Documents/BarcodeBuddy/docs/current-system-truth.md)
+- start with [docs/current-system-truth.md](docs/current-system-truth.md)
 - treat `tests/` as the freeze line for current runtime and builder artifact behavior
 - treat the code in `main.py`, `stats.py`, and `app/` as the current runtime truth
-- use [docs/danpack-builder-handoff.md](c:/Users/david/Documents/BarcodeBuddy/docs/danpack-builder-handoff.md) as the builder handoff
-- use [docs/production-operations-blueprint.md](c:/Users/david/Documents/BarcodeBuddy/docs/production-operations-blueprint.md) for production integration, observability, incident, and security decisions
-- use [docs/builder-execution-plan.md](c:/Users/david/Documents/BarcodeBuddy/docs/builder-execution-plan.md) for dependency-aware implementation order
-- use [docs/danpack-system-interaction-philosophy.md](c:/Users/david/Documents/BarcodeBuddy/docs/danpack-system-interaction-philosophy.md) if you are adding any human-facing surface
-- use [docs/operations-planner-builder-handoff.md](c:/Users/david/Documents/BarcodeBuddy/docs/operations-planner-builder-handoff.md) if you are implementing the planner, reporting, or obligation system
+- use [docs/danpack-builder-handoff.md](docs/danpack-builder-handoff.md) as the builder handoff
+- use [docs/production-operations-blueprint.md](docs/production-operations-blueprint.md) for production integration, observability, incident, and security decisions
+- use [docs/builder-execution-plan.md](docs/builder-execution-plan.md) for dependency-aware implementation order
+- use [docs/danpack-system-interaction-philosophy.md](docs/danpack-system-interaction-philosophy.md) if you are adding any human-facing surface
+- use [docs/operations-planner-builder-handoff.md](docs/operations-planner-builder-handoff.md) if you are implementing the planner, reporting, or obligation system
 - this workspace is now a Git repository; do not assume this workspace has Git metadata in deployment contexts; use the repo files, docs, and executable tests as the evidence trail
 - treat `TECHNICAL_ARCHITECTURE_SPECIFICATION.md` as target-state guidance, not proof that every specified behavior already exists
 
@@ -293,7 +293,7 @@ Upstream capture guidance:
 - if a device defaults to `TIFF`, switch the profile to `PDF`, `JPG`, or `PNG` unless runtime support is added
 - keep all managed paths for a workflow on the same filesystem volume under the current config safeguards
 
-More deployment and capture guidance is in [docs/packaging-industrial-operating-model.md](c:/Users/david/Documents/BarcodeBuddy/docs/packaging-industrial-operating-model.md).
+More deployment and capture guidance is in [docs/packaging-industrial-operating-model.md](docs/packaging-industrial-operating-model.md).
 
 ## Configuration
 
@@ -319,12 +319,12 @@ Current loader guarantees:
 - all managed runtime paths must be distinct
 - `input_path`, `processing_path`, `output_path`, `rejected_path`, and `log_path` must resolve onto the same filesystem volume
 
-The current machine-readable config contract is in [config.schema.json](c:/Users/david/Documents/BarcodeBuddy/config.schema.json).
+The current machine-readable config contract is in [config.schema.json](config.schema.json).
 Workflow-specific starter configs are in:
 
-- [configs/config.receiving.example.json](c:/Users/david/Documents/BarcodeBuddy/configs/config.receiving.example.json)
-- [configs/config.shipping-pod.example.json](c:/Users/david/Documents/BarcodeBuddy/configs/config.shipping-pod.example.json)
-- [configs/config.quality-compliance.example.json](c:/Users/david/Documents/BarcodeBuddy/configs/config.quality-compliance.example.json)
+- [configs/config.receiving.example.json](configs/config.receiving.example.json)
+- [configs/config.shipping-pod.example.json](configs/config.shipping-pod.example.json)
+- [configs/config.quality-compliance.example.json](configs/config.quality-compliance.example.json)
 
 Current default configuration:
 
