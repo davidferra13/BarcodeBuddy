@@ -1,6 +1,6 @@
 # Danpack Builder Handoff
 
-Last updated: 2026-04-03.
+Last updated: 2026-04-05.
 
 This document is the builder-facing source of truth for the current BarcodeBuddy repo state, the verified Danpack business context, and the recommended execution order for the next implementation pass.
 
@@ -52,14 +52,15 @@ Builder-critical repository artifacts:
 
 ## 0. Builder Starting Point
 
-The repo now includes four execution anchors:
+The repo includes:
 
-- baseline runtime tests in `tests/`
+- 325 tests (0 warnings) in `tests/` covering ingestion pipeline and full web application
 - workflow starter configs in `configs/`
 - production operations blueprint in `docs/production-operations-blueprint.md`
-- ordered builder plan in `docs/builder-execution-plan.md`
+- phased roadmap in `docs/PRODUCT_BLUEPRINT.md` Section 6
+- constraint files in `.constraints/` (FSM, barcode, data safety, auth, AI privacy)
 
-Start from those artifacts before widening the implementation.
+Start by reading `docs/PRODUCT_BLUEPRINT.md` for the full capability map and roadmap.
 
 ## 1. Current Runtime Truth
 
@@ -112,13 +113,30 @@ Note: the web application (`stats.py`) does include a SQLAlchemy + SQLite databa
 
 ### 1.4 Current module boundary in practice
 
+**Ingestion pipeline modules:**
+
 - `app/config.py`: Pydantic-based config loading with model validators, runtime directory creation
 - `app/processor.py`: watchfiles-based watcher, processing orchestration, validation, duplicate handling, rejection handling, and logging payload assembly
 - `app/documents.py`: file access checks, page counting, PDF rendering, file moves, PDF output writing
 - `app/barcode.py`: OpenCV-based image preprocessing and barcode selection via zxing-cpp
 - `app/logging_utils.py`: structlog configuration, fsync-backed JSONL append and atomic JSON writes
 - `app/contracts.py`: canonical log field names, error codes, and stage/status constants
+
+**Web application modules (stats.py):**
+
 - `app/stats.py`: log aggregation plus HTML and JSON rendering for the local stats page
+- `app/auth.py` / `app/auth_routes.py`: JWT cookie auth, bcrypt hashing, session management, RBAC
+- `app/admin_routes.py`: user management, role changes, ownership transfer, system settings, audit log
+- `app/inventory.py`: full CRUD, quantity adjustments, barcode generation, scan lookup, camera scanning, bulk import/export
+- `app/alerts.py`: per-item stock alerts, severity, webhook dispatch, scheduled checks
+- `app/scan_to_pdf.py`: barcode decode from uploads, inventory enrichment, PDF report generation
+- `app/teams.py`: team CRUD, member management, task tracking
+- `app/ai_routes.py` / `app/ai_provider.py` / `app/ai_tools.py`: hybrid AI (Ollama/Anthropic/OpenAI), chatbot with 11 tools, setup wizard
+- `app/activity.py`: unified audit trail across all subsystems
+- `app/feedback.py`: in-app bug reports, feature requests, questions (append-only JSONL)
+- `app/layout.py`: shared navigation, sidebar, toast notifications
+- `app/database.py`: SQLAlchemy models, SQLite WAL mode, all persistent state
+- `app/image_quality.py`: image quality assessment for scan inputs
 
 ## 2. Reality Check Against The Architecture Spec
 
@@ -274,42 +292,46 @@ These are the most important unknowns. The builder should not hallucinate them.
 
 ## 7. Verified Builder Baseline
 
-The repo is no longer in a pre-hardening state.
+The repo is production-hardened with comprehensive test coverage.
 
-Already in place:
+**Test suite:** 325 tests + 65 subtests, 0 warnings, verified at commit 8b646e0 (2026-04-05).
 
-- fixture-based runtime tests in `tests/test_service_runtime.py`
-- config-loader and path-constraint tests in `tests/test_config.py`
-- stats aggregation tests in `tests/test_stats.py`
-- config schema and example-config consistency tests in `tests/test_config_artifacts.py`
-- workflow config templates in `configs/`
-- README and builder docs that describe the Danpack-fit deployment split
-- runtime support for `barcode_value_patterns`
-- local read-only stats surface in `stats.py`
+**Verification commands:**
 
-Verification already performed on the current repo state:
+- `py -3.12 -B -m pytest tests/ -x -q`
+- `py -m compileall app tests main.py stats.py -q`
 
-- `py -B -m unittest discover -s tests -v`
-- `py -m compileall app tests main.py stats.py`
-- `load_settings()` against the example workflow configs
+### 7.1 What the test suite covers
 
-### 7.1 What the test suite currently covers
+**Ingestion pipeline:**
 
 - supported input conversion for `PNG`, `JPG`, `JPEG`, and `PDF`
 - duplicate handling for both `reject` and `timestamp`
 - rejection paths for `BARCODE_NOT_FOUND`, `INVALID_BARCODE_FORMAT`, `CORRUPT_FILE`, and `UNSUPPORTED_FORMAT`
-- rejection sidecar contents
-- runtime metadata fields in logs and rejection sidecars
+- rejection sidecar contents and runtime metadata fields
 - singleton startup locking
 - deterministic best-candidate selection across later pages and multiple eligible values
 - journal-backed startup recovery from `processing`
 - lifecycle heartbeat events and health-aware stats snapshots
-- config-loader rejection of unknown keys
-- config-loader enforcement of distinct managed paths and same-volume managed paths
+- config-loader rejection of unknown keys, distinct managed paths, same-volume enforcement
 - file-stability readiness and lockout behavior
 - stats snapshot aggregation and HTML rendering
 - schema coverage for current config keys
 - example config loading and workflow duplicate-policy defaults
+
+**Web application:**
+
+- auth: signup, login, logout, password reset, session management, RBAC, ownership transfer, zero-friction first-user signup
+- inventory: CRUD, adjustments, barcode generation, scan lookup, bulk import/export, bulk actions
+- alerts: stock alert configuration, threshold checks, webhook dispatch (with SSRF prevention)
+- scan-to-PDF: barcode extraction, inventory enrichment, PDF generation
+- teams: team CRUD, member management, task tracking
+- AI: provider configuration, chatbot tool execution, conversation persistence
+- activity: unified audit trail across subsystems
+- feedback: bug reports, feature requests, question submission
+- image quality: threshold logic, scoring, quality assessment
+- contracts: error code stability, normalization
+- documents: type detection, page counts, PDF conversion, file locking
 
 ### 7.2 What the workflow config templates currently provide
 
@@ -327,97 +349,53 @@ The filenames use hyphens only as filesystem-friendly config names, while the ru
 
 ## 8. Recommended Builder Execution Order
 
-This is the safest dependency-aware order for the next implementation pass from the repo's current state.
+This is the safest dependency-aware order for the next implementation pass. Sections 4.1–4.10 of the Product Blueprint are complete. The roadmap below covers what remains.
 
-### Phase 1: Preserve the verified baseline
+The full phased roadmap is in `docs/PRODUCT_BLUEPRINT.md` Section 6. The summary here is for quick orientation.
 
-Prerequisite:
+### Phase 1: Foundation Gaps (independent, low-risk)
 
-- treat the code as source of truth, not the architecture spec
+- TIFF input support (some scanners default to TIFF)
+- Environment variable config overrides (containerized deployments)
+- Wire alerting thresholds to external notification dispatch
 
-Do now:
+### Phase 2: Scan Record Workbench
 
-- keep the existing tests passing before any refactor
-- extend tests before changing core routing behavior
-- keep the example configs loading without manual edits
+- Single-scan detail page with full processing lifecycle
+- Notes, attachments, and external links on scan records
+- Reprocessing and manual enrichment
 
-Why first:
+Spec: `docs/scan-record-workbench.md`
 
-- the runtime now has a useful regression harness
-- later architectural changes should land against that harness rather than replacing it
+### Phase 3: Event Truth and State Store
 
-### Phase 2: Lift observability and define retry policy
+- Freeze event schema versioning
+- Normalize JSONL scan events into SQLite state store
+- Append-only activity event ledger for planner actions
 
-Prerequisite:
+Spec: `docs/operations-planner-execution-plan.md` Phase 1–2
 
-- verified baseline preserved
+### Phase 4: Scan Obligations
 
-Deliverables:
+- Manual obligation creation with due windows
+- Obligation state machine and overdue detection
+- Obligation queue UI
+- Imported obligations from upstream systems
 
-- off-host log shipping and alert wiring
-- backlog, latency, failure-rate, and restart telemetry
-- explicit bounded retry policy for any retryable failure classes
-- clearer distinction between recovery requeue, quarantine, and terminal rejection
+Spec: `docs/operations-planner-execution-plan.md` Phase 3
 
-Why second:
+### Phase 5: Report Engine + Planner Screens + External Integration
 
-- Phase 1 and Phase 2 runtime hardening are already in place
-- the next operational risk is visibility and retry policy, not another structural refactor
+See `docs/PRODUCT_BLUEPRINT.md` Sections 6.5–6.7 for full details.
 
-### Phase 3: Add targeted Danpack-specific extensions
+### Builder guardrails for all phases
 
-Prerequisite:
-
-- owner-provided sample documents or confirmed barcode formats
-
-Deliverables:
-
-- barcode regex rules per workflow
-- realistic sample configs
-- fixture samples that mirror Danpack documents
-- clearer operational guidance for warehouse, shipping, and compliance staff
-- optional ERP or record-validation rules if Danpack confirms the target systems
-
-Why third:
-
-- Danpack-specific hardening is impossible to do correctly without real document examples
-
-### Phase 4: Break the monolith only where it buys something real
-
-Prerequisite:
-
-- spec delta understood
-- tests covering current routing behavior
-
-Deliverables:
-
-- incremental extraction from `app/processor.py` only where the separation improves maintainability or new features
-- no cosmetic module split without behavior-level value
-
-Why fourth:
-
-- the current service is small enough that a large refactor would be easy to overdo
-- module extraction should follow verified pressure, not architecture aesthetics
-
-### Phase 5: Apply the interaction philosophy only where a human-facing surface is justified
-
-Prerequisite:
-
-- Phase 1 through Phase 3 complete
-- a real operator need exists for review, search, or configuration beyond file and config editing
-
-Deliverables:
-
-- workflow-specific exception review surface if needed
-- search-first retrieval by business identifier
-- admin-only configuration surface if needed
-- no dashboard unless an actual operational decision requires it
-
-Why fifth:
-
-- the repo currently has only a local read-only stats page, not an operator workflow UI
-- the correct next step is not to invent one early
-- if a surface is later added, it must follow the stricter interaction rules in `docs/danpack-system-interaction-philosophy.md`
+- Keep the 325-test baseline passing before any refactor
+- Extend tests before changing core routing behavior
+- Treat the code as source of truth, not the architecture spec
+- Do not widen the runtime into OCR or AI classification without an explicit product decision
+- Do not create barcode regexes from guesswork — wait for real Danpack samples
+- Prefer small reversible steps with tests before structural refactors
 
 ## 9. Builder Guardrails
 
@@ -452,4 +430,8 @@ Why fifth:
 
 ## 11. Bottom Line For The Next Agent
 
-BarcodeBuddy is currently a deterministic barcode-routing hot-folder service with a verified baseline: runtime tests exist, stats-page tests exist, workflow config templates exist, and the Danpack operating model is documented. Danpack is a packaging-engineering business with multiple document families and stronger proof signals than the visible homepage suggests. The right next step is not broad feature expansion. It is to preserve the verified runtime, reconcile the architecture spec with the implementation, and only then harden the system with Danpack-specific barcode rules and samples. If any human-facing surface is added later, it should follow `docs/danpack-system-interaction-philosophy.md` and start as a narrow exception-first tool rather than a dashboard.
+BarcodeBuddy is a production-ready barcode-driven document ingestion and inventory management system. The ingestion pipeline (main.py) is a deterministic hot-folder service. The web application (stats.py) is a full multi-user FastAPI app with authentication, RBAC, inventory management, analytics, alerts, scan-to-PDF, team management, AI chatbot, activity audit trail, and in-app feedback — all verified by 325 tests with 0 warnings.
+
+Danpack is a packaging-engineering business with multiple document families. All core capabilities (Sections 4.1–4.10) are complete. The next implementation work is the roadmap in `docs/PRODUCT_BLUEPRINT.md` Section 6: foundation gaps (TIFF, env overrides, alert wiring), then Scan Record Workbench, then the Operations Planner (event store, obligations, reports).
+
+Any new UI surfaces must follow `docs/danpack-system-interaction-philosophy.md`. Any changes to the ingestion pipeline FSM, auth, or contracts require explicit approval per CLAUDE.md.

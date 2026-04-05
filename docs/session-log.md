@@ -76,3 +76,22 @@ Each entry follows this format:
 - Commits: 01438ac
 - Build state on departure: green (317 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: Ownership transfer now works for any active user — the require_owner dependency is sufficient security. Removed is_owner_email and OWNER_EMAIL imports from admin_routes.py. All documentation now reflects the zero-friction auth model consistently.
+
+## 2026-04-05 — Feedback Widget + Update Script + Production Ops
+
+- Agent: general
+- Task: Added in-app Help & Feedback page (/feedback) with bug report, feature request, and question types (append-only feedback.jsonl). Created update-app.ps1 for safe one-command patch delivery. Updated production-operations-blueprint.md to reflect v3.0.0 reality. Updated USER_MANUAL.md and PRODUCT_BLUEPRINT.md.
+- Status: completed
+- Files touched: app/feedback.py (new), app/layout.py, app/stats.py, tests/test_feedback.py (new), update-app.ps1 (new), docs/PRODUCT_BLUEPRINT.md, docs/USER_MANUAL.md, docs/production-operations-blueprint.md, docs/build-state.md
+- Commits: 6cddc6b, 8b646e0
+- Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: Feedback page saves to append-only JSONL file (data safety compliant). Update script handles stop, pull, deps, verify, restart sequence. 8 new tests added for feedback endpoints.
+
+## 2026-04-05 — Documentation Alignment + State Verification
+
+- Agent: general
+- Task: Full state verification (compileall + pytest at HEAD 8b646e0). Closed documentation gaps: missing session log entry for 6cddc6b, stale builder handoff (2026-04-03), stale current-system-truth, build-state commit hash.
+- Status: completed
+- Files touched: docs/session-log.md, docs/build-state.md, docs/current-system-truth.md, docs/danpack-builder-handoff.md
+- Commits: (this session)
+- Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)

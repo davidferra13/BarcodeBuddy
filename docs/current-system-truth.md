@@ -1,8 +1,8 @@
 # Current System Truth
 
-Last updated: 2026-04-04.
+Last updated: 2026-04-05.
 
-Version: 3.0.0 — multi-user web application with inventory, auth, alerts, and analytics.
+Version: 3.0.0 — multi-user web application with inventory, auth, alerts, analytics, feedback, and self-update.
 
 v2.0.0 infrastructure changes (retained):
 
@@ -44,6 +44,8 @@ v3.0.0 changes:
 - activity logging: unified audit trail for inventory, auth, admin, scan, import, and system events
 - team management: create teams, manage members and roles, assign and track tasks
 - AI integration: Ollama and cloud provider support (Anthropic, OpenAI), chatbot with inventory tools, CSV preview, barcode recovery suggestions, setup wizard, privacy controls
+- in-app Help & Feedback page (/feedback) with bug report, feature request, and question types, saved to append-only feedback.jsonl
+- `update-app.ps1` safe one-command patch delivery (stop, pull, deps, verify, restart)
 
 This is a short pointer document for builders.
 
