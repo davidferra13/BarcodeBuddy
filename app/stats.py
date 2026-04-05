@@ -1272,6 +1272,12 @@ def create_stats_app(
 
     app.add_middleware(CsrfMiddleware)
 
+    # --- GZip Middleware ---
+    # Compress HTML/JSON responses (inline CSS+JS makes pages 50-200KB).
+    from starlette.middleware.gzip import GZipMiddleware
+
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
     # Include auth, admin, inventory, and alerts routers
     app.include_router(auth_router)
     app.include_router(admin_router)

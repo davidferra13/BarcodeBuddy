@@ -366,14 +366,15 @@ def alerts_page(user: User = Depends(require_user)) -> HTMLResponse:
     js = """<script>
 const SEVERITY_ICONS={critical:'&#10007;',warning:'&#9888;',info:'&#8505;'};
 const TYPE_LABELS={low_stock:'Low Stock',out_of_stock:'Out of Stock',processing_failure:'Processing Failure'};
-function switchAlertTab(id,btn){document.querySelectorAll('.alert-sec').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
+function switchAlertTab(id,btn){document.querySelectorAll('.alert-sec').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active'));btn.classList.add('active');try{sessionStorage.setItem('bb_alert_tab',id)}catch(e){}}
+try{const saved=sessionStorage.getItem('bb_alert_tab');if(saved&&document.getElementById('sec-'+saved)){const btn=document.querySelector('.tab-pill[onclick*="\\''+saved+'\\'"]');if(btn)switchAlertTab(saved,btn)}}catch(e){}
 
 async function loadAlerts(){
   const r=await fetch('/api/alerts');const d=await r.json();
   const badge=document.getElementById('badge-count');
   if(d.unread_count>0){badge.textContent=d.unread_count;badge.style.display='inline'}else{badge.style.display='none'}
   const list=document.getElementById('alert-list');
-  if(!d.alerts.length){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)"><svg width="48" height="48" viewBox="0 0 20 20" fill="none" stroke="var(--muted)" stroke-width="1" style="margin-bottom:12px;opacity:.4"><path d="M10 2a6 6 0 00-6 6c0 3-1.5 5-2 6h16c-.5-1-2-3-2-6a6 6 0 00-6-6z"/><path d="M8 16a2 2 0 004 0"/></svg><div style="font-size:15px;margin-bottom:6px;color:var(--text)">No alerts</div><div>Your inventory is looking good. Alerts will appear here when stock levels need attention.</div></div>';return}
+  if(!d.alerts.length){list.innerHTML='<div class="empty-state" style="padding:40px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><path d="M10 2a6 6 0 00-6 6c0 3-1.5 5-2 6h16c-.5-1-2-3-2-6a6 6 0 00-6-6z"/><path d="M8 16a2 2 0 004 0"/></svg><h3>No alerts</h3><p>Your inventory is looking good. Alerts appear here when stock levels need attention.</p></div>';return}
   list.innerHTML=d.alerts.map(a=>{
     const icon=SEVERITY_ICONS[a.severity]||'&#8505;';
     const cls=a.is_read?'':'unread';
