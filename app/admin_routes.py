@@ -300,7 +300,7 @@ def admin_dashboard(admin: User = Depends(require_admin)) -> HTMLResponse:
       </label>
     </div>
   </div>
-  <div id="loading" class="empty" style="padding:30px">Loading users...</div>
+  <div id="loading" style="padding:16px;display:flex;flex-direction:column;gap:6px"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
   <div style="overflow-x:auto">
     <table id="users-table" style="display:none">
       <thead><tr>
@@ -313,7 +313,7 @@ def admin_dashboard(admin: User = Depends(require_admin)) -> HTMLResponse:
 
 <div class="panel" style="margin-top:16px">
   <div class="form-section-title" style="margin-bottom:12px">Audit Log</div>
-  <div id="audit-loading" class="empty" style="padding:20px">Loading...</div>
+  <div id="audit-loading" style="padding:16px;display:flex;flex-direction:column;gap:6px"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
   <div style="overflow-x:auto">
     <table id="audit-table" style="display:none">
       <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Detail</th></tr></thead>

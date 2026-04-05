@@ -441,11 +441,7 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
 
     .split {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
 
-    /* ── Dashboard tab bar ── */
-    .dash-tabs {{ display: flex; gap: 4px; margin-bottom: 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px; overflow-x: auto; }}
-    .dash-tab {{ padding: 8px 16px; border-radius: 8px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; white-space: nowrap; }}
-    .dash-tab:hover {{ background: rgba(44,54,63,0.06); color: var(--text); }}
-    .dash-tab.active {{ background: var(--sidebar-bg); color: #fff; }}
+    /* Dashboard tabs — uses .tab-pills from layout.py */
 
     .refresh-badge {{ display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--info-bg); color: var(--info); font-size: 11px; font-weight: 600; border: 1px solid var(--info-border); }}
 
@@ -458,14 +454,14 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
 
     body_html = f"""
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-        <div class="dash-tabs">
-          <button class="dash-tab active" data-page="overview" onclick="switchPage('overview', this)">Overview</button>
-          <button class="dash-tab" data-page="documents" onclick="switchPage('documents', this)">Documents</button>
-          <button class="dash-tab" data-page="analytics" onclick="switchPage('analytics', this)">Analytics</button>
-          <button class="dash-tab" data-page="quality" onclick="switchPage('quality', this)">Quality</button>
-          <button class="dash-tab" data-page="achievements" onclick="switchPage('achievements', this)">Achievements</button>
-          <button class="dash-tab" data-page="service" onclick="switchPage('service', this)">Service</button>
-          <button class="dash-tab" data-page="config" onclick="switchPage('config', this)">Configuration</button>
+        <div class="tab-pills">
+          <button class="tab-pill active" data-page="overview" onclick="switchPage('overview', this)">Overview</button>
+          <button class="tab-pill" data-page="documents" onclick="switchPage('documents', this)">Documents</button>
+          <button class="tab-pill" data-page="analytics" onclick="switchPage('analytics', this)">Analytics</button>
+          <button class="tab-pill" data-page="quality" onclick="switchPage('quality', this)">Quality</button>
+          <button class="tab-pill" data-page="achievements" onclick="switchPage('achievements', this)">Achievements</button>
+          <button class="tab-pill" data-page="service" onclick="switchPage('service', this)">Service</button>
+          <button class="tab-pill" data-page="config" onclick="switchPage('config', this)">Configuration</button>
         </div>
         <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);">
           <span>Updated {_escape(generated_at)}</span>
@@ -929,7 +925,7 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
     body_js = f"""<script>
     function switchPage(pageId, btn) {{
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
       const page = document.getElementById('page-' + pageId);
       if (page) page.classList.add('active');
       if (btn) btn.classList.add('active');
@@ -940,7 +936,7 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
       try {{
         const saved = sessionStorage.getItem('bb_page');
         if (saved && document.getElementById('page-' + saved)) {{
-          const btn = document.querySelector('.dash-tab[data-page="' + saved + '"]');
+          const btn = document.querySelector('.tab-pill[data-page="' + saved + '"]');
           switchPage(saved, btn);
         }}
       }} catch(e) {{}}
@@ -958,10 +954,10 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
             const saved = sessionStorage.getItem('bb_page');
             if (saved && document.getElementById('page-' + saved)) {{
               document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-              document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
+              document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
               const page = document.getElementById('page-' + saved);
               if (page) page.classList.add('active');
-              const btn = document.querySelector('.dash-tab[data-page="' + saved + '"]');
+              const btn = document.querySelector('.tab-pill[data-page="' + saved + '"]');
               if (btn) btn.classList.add('active');
             }}
           }} catch(e) {{}}

@@ -1068,6 +1068,24 @@ code {
 .tab-panel { display: none; }
 .tab-panel.active { display: block; animation: contentIn 0.2s ease; }
 
+/* ── Pill/segment tab variant ── */
+.tab-pills {
+  display: flex; gap: 4px; margin-bottom: 24px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 4px; overflow-x: auto;
+}
+.tab-pill {
+  padding: 8px 16px; border-radius: 8px; border: none;
+  background: transparent; color: var(--muted); font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+  font-family: inherit; white-space: nowrap;
+}
+.tab-pill:hover { background: rgba(44,54,63,0.06); color: var(--text); }
+.tab-pill.active { background: var(--sidebar-bg); color: #fff; }
+[data-theme="dark"] .tab-pills { background: rgba(30,37,48,0.6); }
+[data-theme="dark"] .tab-pill:hover { background: rgba(255,255,255,0.06); }
+[data-theme="dark"] .tab-pill.active { background: rgba(232,160,76,0.18); color: var(--sidebar-accent); }
+
 /* ── Form validation states ── */
 .fg label .required {
   color: var(--failure); font-weight: 700; margin-left: 2px;
@@ -1751,7 +1769,7 @@ def render_shell(
         </button>
       </div>
     </div>
-    <div class="ra-list" id="ra-list"><div style="padding:40px;text-align:center;color:var(--muted)">Loading...</div></div>
+    <div class="ra-list" id="ra-list"><div style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div></div>
   </div>
 
   <!-- Command palette -->

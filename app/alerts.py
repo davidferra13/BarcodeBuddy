@@ -305,10 +305,7 @@ def _fire_webhook(cfg: AlertConfig | None, alert: Alert) -> None:
 @router.get("/alerts", response_class=HTMLResponse)
 def alerts_page(user: User = Depends(require_user)) -> HTMLResponse:
     css = """<style>
-    .alert-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
-    .alert-tab{padding:8px 16px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
-    .alert-tab:hover{background:rgba(44,54,63,.06);color:var(--text)}
-    .alert-tab.active{background:var(--sidebar-bg);color:#fff}
+    /* Alert tabs — uses .tab-pills from layout.py */
     .alert-sec{display:none;animation:alertIn .2s ease}
     .alert-sec.active{display:block}
     @keyframes alertIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -347,9 +344,9 @@ def alerts_page(user: User = Depends(require_user)) -> HTMLResponse:
       </div>
     </div>
 
-    <div class="alert-tabs">
-      <button class="alert-tab active" onclick="switchAlertTab('list',this)">Alerts <span id="badge-count" style="background:var(--failure);color:#fff;border-radius:999px;padding:1px 7px;font-size:11px;margin-left:4px;display:none"></span></button>
-      <button class="alert-tab" onclick="switchAlertTab('config',this)">Settings</button>
+    <div class="tab-pills">
+      <button class="tab-pill active" onclick="switchAlertTab('list',this)">Alerts <span id="badge-count" style="background:var(--failure);color:#fff;border-radius:999px;padding:1px 7px;font-size:11px;margin-left:4px;display:none"></span></button>
+      <button class="tab-pill" onclick="switchAlertTab('config',this)">Settings</button>
     </div>
 
     <div class="alert-sec active" id="sec-list">
@@ -369,7 +366,7 @@ def alerts_page(user: User = Depends(require_user)) -> HTMLResponse:
     js = """<script>
 const SEVERITY_ICONS={critical:'&#10007;',warning:'&#9888;',info:'&#8505;'};
 const TYPE_LABELS={low_stock:'Low Stock',out_of_stock:'Out of Stock',processing_failure:'Processing Failure'};
-function switchAlertTab(id,btn){document.querySelectorAll('.alert-sec').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');document.querySelectorAll('.alert-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
+function switchAlertTab(id,btn){document.querySelectorAll('.alert-sec').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
 
 async function loadAlerts(){
   const r=await fetch('/api/alerts');const d=await r.json();

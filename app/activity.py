@@ -244,7 +244,7 @@ def activity_page(user: User = Depends(require_user)) -> HTMLResponse:
 
 <div class="panel" style="padding:0;">
   <div class="act-list" id="act-list">
-    <div class="act-empty">Loading activity...</div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:8px"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
   </div>
 </div>
 <button class="load-more" id="load-more" style="display:none" onclick="loadMore()">Load More</button>
@@ -296,7 +296,7 @@ async function loadActivity(append) {{
   const list = document.getElementById('act-list');
   if (!append) list.innerHTML = '';
   if (d.entries.length === 0 && !append) {{
-    list.innerHTML = '<div class="act-empty"><svg width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="var(--muted)" stroke-width="1" style="margin-bottom:12px;opacity:.5"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/><path d="M10 6v4l3 3"/></svg><div>No activity found</div></div>';
+    list.innerHTML = '<div class="empty-state"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/><path d="M10 6v4l3 3"/></svg><h3>No activity found</h3><p>Try adjusting your filters or check back later.</p></div>';
     document.getElementById('load-more').style.display = 'none';
     return;
   }}

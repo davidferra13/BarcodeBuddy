@@ -45,7 +45,7 @@ def inventory_list_page(user: User = Depends(require_user)) -> HTMLResponse:
   </div>
   <div class="panel" style="padding:0;overflow-x:auto;">
     <table><thead><tr><th>Name</th><th>SKU</th><th>Qty</th><th>Location</th><th>Category</th><th>Barcode</th><th>Status</th><th></th></tr></thead>
-    <tbody id="tb"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody></table>
+    <tbody id="tb"><tr><td colspan="8" style="padding:0;border:none;"><div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div></td></tr></tbody></table>
   </div>"""
 
     js = """<script>
@@ -288,7 +288,7 @@ def inventory_bulk_page(user: User = Depends(require_user)) -> HTMLResponse:
               <th>Name</th><th>SKU</th><th>Qty</th><th>Location</th><th>Category</th><th>Cost</th>
             </tr></thead><tbody id="exp-tbody"></tbody></table>
           </div>
-          <div id="exp-empty" class="empty" style="display:none">No items match the current filters.</div>
+          <div id="exp-empty" class="empty-state" style="display:none;padding:24px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><circle cx="9" cy="9" r="6"/><line x1="13.5" y1="13.5" x2="18" y2="18"/></svg><h3>No matches</h3><p>No items match the current filters.</p></div>
         </div>
       </div>
 
@@ -296,7 +296,7 @@ def inventory_bulk_page(user: User = Depends(require_user)) -> HTMLResponse:
       <div>
         <div class="panel" id="exp-summary">
           <div class="form-section-title" style="margin-bottom:12px">Summary</div>
-          <div id="exp-summary-content" style="color:var(--muted);font-size:13px">Loading...</div>
+          <div id="exp-summary-content" style="color:var(--muted);font-size:13px"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="skeleton skeleton-text medium"></div></div>
         </div>
         <div class="panel" style="background:var(--info-bg);border-color:var(--info-border)">
           <div style="font-size:13px;font-weight:600;color:var(--info);margin-bottom:6px">Tip</div>
@@ -976,7 +976,7 @@ async function selectDay(key){
   // Transactions
   const tbody=document.getElementById('detail-tbody');
   if(!txns.length){
-    tbody.innerHTML='<tr><td colspan="6" class="empty">No transactions on this day</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty-state" style="padding:24px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="4" width="16" height="14" rx="2"/><line x1="2" y1="8" x2="18" y2="8"/><line x1="6" y1="2" x2="6" y2="6"/><line x1="14" y1="2" x2="14" y2="6"/></svg><h3>No transactions</h3><p>No inventory movements on this day.</p></div></td></tr>';
     return;
   }
   tbody.innerHTML=txns.map(t=>{
@@ -1038,10 +1038,7 @@ init();
 @router.get("/analytics", response_class=HTMLResponse)
 def analytics_page(user: User = Depends(require_user)) -> HTMLResponse:
     css = """<style>
-    .ana-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;overflow-x:auto}
-    .ana-tab{padding:8px 16px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
-    .ana-tab:hover{background:rgba(44,54,63,.06);color:var(--text)}
-    .ana-tab.active{background:var(--sidebar-bg);color:#fff}
+    /* Analytics tabs — uses .tab-pills from layout.py */
     .ana-page{display:none;animation:anaIn .2s ease}
     .ana-page.active{display:block}
     @keyframes anaIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -1087,11 +1084,11 @@ def analytics_page(user: User = Depends(require_user)) -> HTMLResponse:
       </select>
     </div>
 
-    <div class="ana-tabs">
-      <button class="ana-tab active" onclick="switchAna('txns',this)">Transactions</button>
-      <button class="ana-tab" onclick="switchAna('value',this)">Valuation</button>
-      <button class="ana-tab" onclick="switchAna('velocity',this)">Velocity</button>
-      <button class="ana-tab" onclick="switchAna('health',this)">Stock Health</button>
+    <div class="tab-pills">
+      <button class="tab-pill active" onclick="switchAna('txns',this)">Transactions</button>
+      <button class="tab-pill" onclick="switchAna('value',this)">Valuation</button>
+      <button class="tab-pill" onclick="switchAna('velocity',this)">Velocity</button>
+      <button class="tab-pill" onclick="switchAna('health',this)">Stock Health</button>
     </div>
 
     <!-- Transactions Tab -->
@@ -1147,7 +1144,7 @@ def analytics_page(user: User = Depends(require_user)) -> HTMLResponse:
     js = """<script>
 function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
 const REASON_COLORS={received:cv('--success'),sold:cv('--info'),adjusted:cv('--warning'),damaged:cv('--failure'),returned:'#7c3aed',initial:cv('--muted')};
-function switchAna(id,btn){document.querySelectorAll('.ana-page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');document.querySelectorAll('.ana-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
+function switchAna(id,btn){document.querySelectorAll('.ana-page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');document.querySelectorAll('.tab-pill').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}
 function getDays(){return document.getElementById('period').value}
 
 async function loadAll(){
@@ -1247,7 +1244,7 @@ function renderVal(d){
 
 function renderVel(d){
   const rows=document.getElementById('vel-rows');
-  if(!d.top_items.length){rows.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">No activity in this period.</div>';return}
+  if(!d.top_items.length){rows.innerHTML='<div class="empty-state" style="padding:24px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><polyline points="2 16 6 10 10 13 14 6 18 2"/><line x1="2" y1="18" x2="18" y2="18"/></svg><h3>No activity</h3><p>No inventory movements in this period.</p></div>';return}
   const maxTxn=Math.max(...d.top_items.map(i=>i.transaction_count))||1;
   rows.innerHTML=d.top_items.map(i=>`<div class="vel-row">
     <div><a href="/inventory/${i.item_id}" style="color:var(--text);text-decoration:none;font-weight:600">${esc(i.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(i.sku)}${i.category?' · '+esc(i.category):''}</div></div>

@@ -485,11 +485,7 @@ def team_page(user: User = Depends(require_user)) -> HTMLResponse:
   .team-detail { background: var(--paper); border-radius: 10px; padding: 20px; min-height: 400px; }
   .team-detail .empty-detail { display: flex; align-items: center; justify-content: center;
     height: 300px; color: var(--muted); font-size: 14px; }
-  .tab-bar { display: flex; gap: 0; border-bottom: 2px solid rgba(255,255,255,.06); margin-bottom: 16px; }
-  .tab-btn { padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer;
-    border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--sidebar-accent); border-bottom-color: var(--sidebar-accent); }
+  /* Tab bar — uses .tab-bar/.tab-btn from layout.py */
   .tab-content { display: none; }
   .tab-content.active { display: block; }
   .member-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px;
@@ -565,7 +561,7 @@ def team_page(user: User = Depends(require_user)) -> HTMLResponse:
 <div class="team-grid">
   <div>
     <div class="team-list" id="team-list">
-      <div class="empty" style="padding:30px;text-align:center;color:var(--muted)">Loading teams...</div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:8px"><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div></div>
     </div>
   </div>
   <div class="team-detail" id="team-detail">
@@ -734,7 +730,7 @@ function setTaskFilter(f) {{
 function renderTasks(tasks, canManage) {{
   let filtered = tasks;
   if (taskFilter !== 'all') filtered = tasks.filter(t => t.status === taskFilter);
-  if (!filtered.length) return '<div style="color:var(--muted);padding:16px;text-align:center">No tasks</div>';
+  if (!filtered.length) return '<div class="empty-state" style="padding:32px"><svg width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 8h6M7 11h4"/></svg><h3>No tasks</h3><p>Create a task to get started.</p></div>';
   return filtered.map(t => `
     <div class="task-row" onclick="showTaskDetailModal('${{t.id}}')">
       <input type="checkbox" class="task-check" ${{t.status==='done'?'checked':''}}
