@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | pending | 2026-04-05 |
-| Tests (`pytest`) | **GREEN** (325 passed, 65 subtests, 0 warnings) | pending | 2026-04-05 |
+| Compilation (`compileall`) | **GREEN** | 6cddc6b | 2026-04-05 |
+| Tests (`pytest`) | **GREEN** (325 passed, 65 subtests, 0 warnings) | 6cddc6b | 2026-04-05 |
 
 ## Current Blockers
 
@@ -18,7 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
-| 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | pending | handoff audit + feedback + update |
+| 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 6cddc6b | handoff audit + feedback + update |
 | 2026-04-05 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 01438ac | doc alignment + transfer fix |
 | 2026-04-04 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 429cf32 | zero-friction auth |
 | 2026-04-04 | compileall + pytest | GREEN (316 passed, 65 subtests, 0 warnings) | 2d68493 | test hardening |
