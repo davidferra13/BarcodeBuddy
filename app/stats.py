@@ -983,7 +983,7 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
         const b=document.getElementById('inv-health-body');
         if(!p||!b)return;
         p.style.display='block';
-        const items=d.total_items||0,units=d.total_units||0,low=d.low_stock||0,zero=d.out_of_stock||0,cats=d.categories||0;
+        const items=d.total_items||0,units=d.total_quantity||0,low=d.low_stock_count||0,zero=d.out_of_stock_count||0,cats=Object.keys(d.categories||{{}}).length;
         b.innerHTML=`
           <div style="text-align:center;padding:14px;border-radius:12px;background:var(--info-bg);border:1px solid var(--info-border);">
             <div style="font-size:28px;font-weight:700;color:var(--info);">${{items}}</div>

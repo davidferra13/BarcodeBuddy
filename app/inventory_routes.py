@@ -148,12 +148,14 @@ def api_summary(
             categories[i.category] = categories.get(i.category, 0) + 1
         if i.location:
             locations[i.location] = locations.get(i.location, 0) + 1
+    out_of_stock = [i for i in items if i.quantity == 0]
     return JSONResponse(content={
         "total_items": total_items,
         "total_quantity": total_quantity,
         "total_value": round(total_value, 2),
         "low_stock_count": len(low_stock),
         "low_stock_items": low_stock[:10],
+        "out_of_stock_count": len(out_of_stock),
         "categories": categories,
         "locations": locations,
     })
