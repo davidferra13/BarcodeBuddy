@@ -53,6 +53,6 @@ Each entry follows this format:
 - Task: Eliminated all 375 deprecation warnings (per-request cookie pattern) via custom TestClient/AsyncClient subclasses in conftest.py. Added 54 new unit tests for 3 previously untested modules: image_quality.py (16 tests), contracts.py (14 tests), documents.py (24 tests).
 - Status: completed
 - Files touched: tests/conftest.py (new), tests/test_image_quality.py (new), tests/test_contracts.py (new), tests/test_documents.py (new), tests/test_activity.py, tests/test_ai.py, tests/test_alerts.py, tests/test_auth_rbac.py, tests/test_inventory.py, tests/test_scan_to_pdf.py, tests/test_teams.py, tests/test_e2e.py, docs/build-state.md, docs/session-log.md
-- Commits: pending
+- Commits: 2d68493
 - Build state on departure: green (316 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: Cookie deprecation fix is architectural — one conftest.py subclass instead of 241 individual call-site changes. All 8 test files updated to use custom client. Test coverage now covers image_quality.py (threshold logic, scoring, assess_quality integration), contracts.py (error code stability, normalize_error_code), documents.py (type detection, page counts, PDF conversion, file locking, image mode handling). Remaining untested modules: ai_provider.py, ai_tools.py, watcher.py (all require external mocking or are thin wrappers).

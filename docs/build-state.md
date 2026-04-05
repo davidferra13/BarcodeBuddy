@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | pending | 2026-04-04 |
-| Tests (`pytest`) | **GREEN** (316 passed, 65 subtests, 0 warnings) | pending | 2026-04-04 |
+| Compilation (`compileall`) | **GREEN** | 2d68493 | 2026-04-04 |
+| Tests (`pytest`) | **GREEN** (316 passed, 65 subtests, 0 warnings) | 2d68493 | 2026-04-04 |
 
 ## Current Blockers
 
@@ -18,7 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
-| 2026-04-04 | compileall + pytest | GREEN (316 passed, 65 subtests, 0 warnings) | pending | test hardening |
+| 2026-04-04 | compileall + pytest | GREEN (316 passed, 65 subtests, 0 warnings) | 2d68493 | test hardening |
 | 2026-04-04 | compileall + pytest | GREEN (262 passed, 65 subtests) | 5a548f1 | system audit |
 | 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | a242145 | documentation audit |
 | 2026-04-04 | compileall | GREEN | 30bef50 | user manual session |
