@@ -18,6 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-04 | compileall | GREEN | 30bef50 | user manual session |
 | 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | 8b3eeff | infrastructure adoption |
 | 2026-04-04 | Initial | Infrastructure adoption - no code changes | 4472b5e | setup |
 

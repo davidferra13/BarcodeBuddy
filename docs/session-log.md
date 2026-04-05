@@ -26,3 +26,13 @@ Each entry follows this format:
 - Commits: b5cd044, 8b3eeff
 - Build state on departure: green (223 passed, 65 subtests, compileall clean)
 - Notes: No application code was modified. Purely additive infrastructure. All tests verified green before commit.
+
+## 2026-04-04 — User Manual
+
+- Agent: general
+- Task: Created comprehensive user manual (docs/USER_MANUAL.md) — workflow-first structure with 12 core workflows, 16 feature reference pages, 5 role-based guides, admin/setup section, troubleshooting, and known gaps appendix. All claims verified against codebase (zero discrepancies).
+- Status: completed
+- Files touched: docs/USER_MANUAL.md
+- Commits: a242145, 30bef50
+- Build state on departure: green (compilation clean, 223 passed — docs-only change, no code modified)
+- Notes: Manual covers every user-facing surface (116 routes, 21 screens). Written for first-time users. Appendix D documents known gaps (TIFF support, batch splitting, Scan Record Workbench, Operations Planner, etc.).
