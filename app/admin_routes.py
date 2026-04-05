@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -230,7 +232,12 @@ def get_settings(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
-    return JSONResponse(content={"open_signup": settings.open_signup if settings else True})
+    smtp_host = (os.environ.get("BB_SMTP_HOST") or "").strip()
+    smtp_from = (os.environ.get("BB_RESET_FROM") or "").strip()
+    return JSONResponse(content={
+        "open_signup": settings.open_signup if settings else True,
+        "smtp_configured": bool(smtp_host and smtp_from),
+    })
 
 
 @router.put("/api/settings/signup")
@@ -294,6 +301,7 @@ def admin_dashboard(admin: User = Depends(require_admin)) -> HTMLResponse:
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <div class="form-section-title" style="margin:0">User Management</div>
     <div style="display:flex;gap:8px;align-items:center">
+      <span id="smtp-badge" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600"></span>
       <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer">
         <input type="checkbox" id="signup-toggle" onchange="toggleSignup(this.checked)" style="accent-color:var(--sidebar-accent)">
         Open signup
@@ -337,6 +345,15 @@ async function loadSettings() {{
   const resp = await fetch('/admin/api/settings');
   const data = await resp.json();
   document.getElementById('signup-toggle').checked = data.open_signup;
+  const badge = document.getElementById('smtp-badge');
+  if (data.smtp_configured) {{
+    badge.textContent = 'SMTP ✓';
+    badge.style.cssText = 'display:inline;font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600;background:var(--success-bg,rgba(26,122,84,.1));color:var(--success);border:1px solid var(--success)';
+  }} else {{
+    badge.textContent = 'SMTP not configured';
+    badge.style.cssText = 'display:inline;font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600;background:var(--warning-bg,rgba(184,134,11,.1));color:var(--warning);border:1px solid var(--warning)';
+    badge.title = 'Password reset emails will not be sent. Set BB_SMTP_HOST and BB_RESET_FROM environment variables.';
+  }}
 }}
 
 async function loadAuditLog() {{

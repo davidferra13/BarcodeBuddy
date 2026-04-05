@@ -571,6 +571,38 @@ class TestExportCSVFiltered:
         assert "ALL-2" in skus
 
 
+# --- Transaction Ledger Export ---
+
+class TestTransactionExport:
+    def test_transaction_export_csv(self, client, auth_user):
+        """Export transaction ledger as CSV after creating item + adjustment."""
+        item = _create_item(client, auth_user, sku="TXN-EXP-1", quantity=10)
+        client.post(f"/api/inventory/{item['id']}/adjust", cookies=auth_user,
+                    json={"quantity_change": -3, "reason": "sold", "notes": "test sale"})
+        resp = client.get("/api/inventory/export/transactions?days=30", cookies=auth_user)
+        assert resp.status_code == 200
+        assert "text/csv" in resp.headers["content-type"]
+        reader = csv.reader(io.StringIO(resp.text))
+        rows = list(reader)
+        assert rows[0] == ["date", "item_name", "sku", "change", "quantity_after", "reason", "notes"]
+        # Should have at least the initial + adjustment transactions
+        data_rows = [r for r in rows[1:] if r[2] == "TXN-EXP-1"]
+        assert len(data_rows) >= 2
+        # Find the sold transaction
+        sold_rows = [r for r in data_rows if r[5] == "sold"]
+        assert len(sold_rows) == 1
+        assert sold_rows[0][3] == "-3"
+        assert sold_rows[0][6] == "test sale"
+
+    def test_transaction_export_empty(self, client, auth_user):
+        """Export with no transactions returns header only."""
+        resp = client.get("/api/inventory/export/transactions?days=1", cookies=auth_user)
+        assert resp.status_code == 200
+        reader = csv.reader(io.StringIO(resp.text))
+        rows = list(reader)
+        assert rows[0][0] == "date"
+
+
 # --- Roundtrip: Export then Import ---
 
 class TestRoundtrip:

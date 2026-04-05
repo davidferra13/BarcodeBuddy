@@ -314,15 +314,24 @@ def remove_member(
             return JSONResponse(status_code=400, content={"error": "Cannot remove the last team lead"})
 
     target_user = db.query(User).filter(User.id == member.user_id).first()
+
+    # Unassign tasks from the departing member so they don't orphan
+    unassigned = db.query(TeamTask).filter(
+        TeamTask.team_id == team_id,
+        TeamTask.assigned_to == member.user_id,
+    ).update({"assigned_to": None}, synchronize_session=False)
+
     db.delete(member)
     db.commit()
     removed_name = target_user.display_name if target_user else "Unknown"
     removed_email = target_user.email if target_user else member.user_id
-    log_audit(db, user, "remove_team_member", target_id=team_id, detail={"user": removed_email})
+    log_audit(db, user, "remove_team_member", target_id=team_id,
+              detail={"user": removed_email, "tasks_unassigned": unassigned})
     log_activity(db, user=user, action="Member Removed", category="admin",
-                 summary=f"Removed {removed_name} from team",
-                 detail={"team_id": team_id, "email": removed_email})
-    return JSONResponse(content={"message": "Member removed"})
+                 summary=f"Removed {removed_name} from team"
+                         + (f" ({unassigned} task(s) unassigned)" if unassigned else ""),
+                 detail={"team_id": team_id, "email": removed_email, "tasks_unassigned": unassigned})
+    return JSONResponse(content={"message": "Member removed", "tasks_unassigned": unassigned})
 
 
 # ── Task management ─────────────────────────────────────────────────

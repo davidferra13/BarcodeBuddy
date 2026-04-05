@@ -600,6 +600,16 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
             </div>
           </div>
         </div>
+
+        <!-- Inventory health (loaded async) -->
+        <div class="panel" id="inv-health" style="display:none">
+          <div class="panel-header">
+            <span class="panel-title">Inventory Health</span>
+            <a href="/inventory" style="font-size:12px;color:var(--info);text-decoration:none">View All →</a>
+          </div>
+          <div id="inv-health-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;">
+          </div>
+        </div>
       </div>
 
       <!-- ═══ DOCUMENTS ═══ -->
@@ -965,6 +975,38 @@ def render_stats_html(snapshot: dict[str, Any], *, current_user: dict[str, Any] 
         .catch(() => {{}})
         .finally(() => setTimeout(autoRefresh, {snapshot['refresh_seconds']} * 1000));
     }}, {snapshot['refresh_seconds']} * 1000);
+
+    /* Inventory health on overview */
+    (function loadInvHealth() {{
+      fetch('/api/inventory/summary').then(r=>r.json()).then(d=>{{
+        const p=document.getElementById('inv-health');
+        const b=document.getElementById('inv-health-body');
+        if(!p||!b)return;
+        p.style.display='block';
+        const items=d.total_items||0,units=d.total_units||0,low=d.low_stock||0,zero=d.out_of_stock||0,cats=d.categories||0;
+        b.innerHTML=`
+          <div style="text-align:center;padding:14px;border-radius:12px;background:var(--info-bg);border:1px solid var(--info-border);">
+            <div style="font-size:28px;font-weight:700;color:var(--info);">${{items}}</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:4px;">Items</div>
+          </div>
+          <div style="text-align:center;padding:14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);">
+            <div style="font-size:28px;font-weight:700;">${{units.toLocaleString()}}</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:4px;">Units</div>
+          </div>
+          ${{low?`<a href="/inventory" style="text-align:center;padding:14px;border-radius:12px;background:var(--warning-bg);border:1px solid var(--warning-border);text-decoration:none;display:block;">
+            <div style="font-size:28px;font-weight:700;color:var(--warning);">${{low}}</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:4px;">Low Stock</div>
+          </a>`:''}}
+          ${{zero?`<a href="/inventory" style="text-align:center;padding:14px;border-radius:12px;background:var(--failure-bg);border:1px solid var(--failure-border);text-decoration:none;display:block;">
+            <div style="font-size:28px;font-weight:700;color:var(--failure);">${{zero}}</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:4px;">Out of Stock</div>
+          </a>`:''}}
+          <div style="text-align:center;padding:14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);">
+            <div style="font-size:28px;font-weight:700;">${{cats}}</div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:4px;">Categories</div>
+          </div>`;
+      }}).catch(()=>{{}});
+    }})();
     </script>"""
 
     return render_shell(

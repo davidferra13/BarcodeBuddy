@@ -754,6 +754,12 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .sb .v { font-size: 24px; font-weight: 700; color: var(--text); }
 .sb .l { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+.sb-active { border-color: var(--info); background: rgba(59,130,246,0.08); }
+
+/* ── Sortable table headers ── */
+.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.sortable:hover { color: var(--info); }
+.sort-icon { font-size: 10px; margin-left: 2px; opacity: 0.7; }
 
 /* ── Messages ── */
 .err {

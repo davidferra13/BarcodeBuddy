@@ -406,6 +406,45 @@ def api_export_csv_filtered(
     )
 
 
+# ── Export Transaction Ledger ───────────────────────────────────────
+
+@router.get("/api/inventory/export/transactions")
+def api_export_transactions(
+    days: int = Query(default=30, ge=1, le=365),
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Export transaction ledger as CSV for auditing."""
+    target = _resolve_target_user_id(user, view_user)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    txns = (
+        db.query(InventoryTransaction, InventoryItem.name, InventoryItem.sku)
+        .join(InventoryItem, InventoryTransaction.item_id == InventoryItem.id)
+        .filter(InventoryItem.user_id == target, InventoryTransaction.created_at >= cutoff)
+        .order_by(InventoryTransaction.created_at.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["date", "item_name", "sku", "change", "quantity_after", "reason", "notes"])
+    for t, name, sku in txns:
+        writer.writerow([
+            t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else "",
+            name, sku, t.quantity_change, t.quantity_after, t.reason or "", t.notes or "",
+        ])
+    output.seek(0)
+    log_activity(db, user=user, action="Transaction Export", category="export",
+                 summary=f"Exported {len(txns)} transactions ({days} days) as CSV",
+                 detail={"count": len(txns), "days": days})
+    return StreamingResponse(
+        iter([output.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=transactions_{days}d.csv"},
+    )
+
+
 # ── Import JSON ─────────────────────────────────────────────────────
 
 _JSON_IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -862,8 +901,10 @@ def api_barcode_image(
     except Exception as exc:
         logging.getLogger(__name__).exception("Barcode generation failed for item %s", item_id)
         return JSONResponse(status_code=500, content={"error": "Barcode generation failed"})
+    safe_sku = "".join(c if c.isalnum() or c in "-_" else "" for c in (item.sku or "barcode")).strip() or "barcode"
     return Response(content=img_bytes, media_type="image/png",
-                    headers={"Cache-Control": "public, max-age=3600"})
+                    headers={"Cache-Control": "public, max-age=3600",
+                             "Content-Disposition": f'inline; filename="{safe_sku}-barcode.png"'})
 
 
 @router.get("/api/barcode/preview.png")

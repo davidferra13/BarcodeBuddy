@@ -177,6 +177,34 @@ def test_remove_member(client: TestClient, auth_user, second_user):
     assert resp.status_code == 200
 
 
+def test_remove_member_unassigns_tasks(client: TestClient, auth_user, second_user):
+    """Removing a member should unassign their tasks."""
+    team = _create_team(client, auth_user, name="Unassign Test")
+    me_resp = client.get("/auth/api/me", cookies=second_user)
+    user_id = me_resp.json()["user"]["id"]
+
+    client.post(f"/team/api/teams/{team['id']}/members", cookies=auth_user, json={
+        "user_id": user_id, "team_role": "member",
+    })
+    # Create task assigned to the member
+    task_resp = client.post(f"/team/api/teams/{team['id']}/tasks", cookies=auth_user, json={
+        "title": "Assigned Task", "assigned_to": user_id,
+    })
+    task_id = task_resp.json()["task"]["id"]
+
+    # Remove the member
+    detail = client.get(f"/team/api/teams/{team['id']}", cookies=auth_user).json()
+    member = next(m for m in detail["team"]["members"] if m["user_id"] == user_id)
+    resp = client.delete(f"/team/api/teams/{team['id']}/members/{member['id']}", cookies=auth_user)
+    assert resp.status_code == 200
+    assert resp.json()["tasks_unassigned"] == 1
+
+    # Verify task is now unassigned
+    team_detail = client.get(f"/team/api/teams/{team['id']}", cookies=auth_user).json()
+    task = next(t for t in team_detail["team"]["tasks"] if t["id"] == task_id)
+    assert task["assigned_to"] is None
+
+
 def test_creator_is_lead(client: TestClient, auth_user):
     team = _create_team(client, auth_user, name="Lead Test")
     detail = client.get(f"/team/api/teams/{team['id']}", cookies=auth_user).json()

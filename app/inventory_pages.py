@@ -44,17 +44,31 @@ def inventory_list_page(user: User = Depends(require_user)) -> HTMLResponse:
     <select id="cf" style="padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--text);font-size:14px;"><option value="">All Categories</option></select>
   </div>
   <div class="panel" style="padding:0;overflow-x:auto;">
-    <table><thead><tr><th>Name</th><th>SKU</th><th>Qty</th><th>Location</th><th>Category</th><th>Barcode</th><th>Status</th><th></th></tr></thead>
+    <table><thead><tr><th class="sortable" data-col="name" onclick="toggleSort('name')">Name <span class="sort-icon"></span></th><th class="sortable" data-col="sku" onclick="toggleSort('sku')">SKU <span class="sort-icon"></span></th><th class="sortable" data-col="quantity" onclick="toggleSort('quantity')">Qty <span class="sort-icon"></span></th><th class="sortable" data-col="location" onclick="toggleSort('location')">Location <span class="sort-icon"></span></th><th class="sortable" data-col="category" onclick="toggleSort('category')">Category <span class="sort-icon"></span></th><th>Barcode</th><th>Status</th><th></th></tr></thead>
     <tbody id="tb"><tr><td colspan="8" style="padding:0;border:none;"><div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div></td></tr></tbody></table>
+  </div>
+  <div id="pager" style="display:none;margin-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted)">
+    <span id="page-info"></span>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-secondary btn-sm" id="pg-prev" onclick="goPage(-1)">&laquo; Prev</button>
+      <button class="btn btn-secondary btn-sm" id="pg-next" onclick="goPage(1)">Next &raquo;</button>
+    </div>
   </div>"""
 
     js = """<script>
-let all=[];
-async function load(){const[ir,cr]=await Promise.all([fetch('/api/inventory?limit=1000').then(r=>r.json()),fetch('/api/inventory/categories').then(r=>r.json())]);all=ir.items;renderS(all);renderI(all);const s=document.getElementById('cf');cr.categories.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o)})}
-function renderS(items){const a=items.filter(i=>i.status==='active'),tq=a.reduce((s,i)=>s+i.quantity,0),ls=a.filter(i=>i.min_quantity>0&&i.quantity<=i.min_quantity).length,zs=a.filter(i=>i.quantity===0).length,cs=new Set(a.map(i=>i.category).filter(Boolean));document.getElementById('sr').innerHTML=`<div class="sb"><div class="v">${a.length}</div><div class="l">Items</div></div><div class="sb"><div class="v">${tq.toLocaleString()}</div><div class="l">Total Units</div></div><div class="sb"><div class="v">${cs.size}</div><div class="l">Categories</div></div><div class="sb"><div class="v" style="color:${ls?'var(--warning)':'var(--success)'}">${ls}</div><div class="l">Low Stock</div></div><div class="sb"><div class="v" style="color:${zs?'var(--failure)':'var(--success)'}">${zs}</div><div class="l">Out of Stock</div></div>`}
-function renderI(items){const tb=document.getElementById('tb');const q=document.getElementById('q').value,c=document.getElementById('cf').value;const hasFilter=q||c;if(!items.length){tb.innerHTML=hasFilter?'<tr><td colspan="8"><div class="empty-state" style="padding:32px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><circle cx="9" cy="9" r="6"/><line x1="13.5" y1="13.5" x2="18" y2="18"/></svg><h3>No matches</h3><p>No items match your search. Try different terms or clear filters.</p></div></td></tr>':'<tr><td colspan="8"><div class="empty-state" style="padding:32px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><path d="M2 3h16v4H2z"/><path d="M2 9h16v8H2z"/><line x1="8" y1="12" x2="12" y2="12"/></svg><h3>No items yet</h3><p>Get started by creating your first inventory item.</p><a href="/inventory/new" class="btn btn-primary" style="margin-top:8px">Create Item</a></div></td></tr>';return}tb.innerHTML=items.map(i=>`<tr style="cursor:pointer" onclick="location='/inventory/${i.id}'"><td><strong>${esc(i.name)}</strong></td><td><code style="color:var(--muted)">${esc(i.sku)}</code></td><td class="${i.quantity===0?'qz':i.min_quantity>0&&i.quantity<=i.min_quantity?'ql':''}">${i.quantity} ${esc(i.unit)}</td><td>${esc(i.location)||'<span style="color:var(--muted)">-</span>'}</td><td>${i.category?`<span class="badge bb">${esc(i.category)}</span>`:''}</td><td><code style="font-size:11px;color:var(--muted)">${esc(i.barcode_value)}</code></td><td><span class="badge ${i.status==='active'?'bg':'bgr'}">${i.status}</span></td><td><a href="/inventory/${i.id}" class="btn btn-sm btn-secondary" onclick="event.stopPropagation()">View</a></td></tr>`).join('')}
+let all=[],sortCol='name',sortAsc=true,quickFilter='',pageIdx=0;const PAGE_SZ=50;
+async function load(){const[ir,cr]=await Promise.all([fetch('/api/inventory?limit=1000').then(r=>r.json()),fetch('/api/inventory/categories').then(r=>r.json())]);all=ir.items;renderS(all);filt();const s=document.getElementById('cf');cr.categories.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o)})}
+function toggleSort(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true}updateSortIcons();filt()}
+function updateSortIcons(){document.querySelectorAll('.sortable').forEach(th=>{const icon=th.querySelector('.sort-icon');if(th.dataset.col===sortCol)icon.textContent=sortAsc?'\\u25B2':'\\u25BC';else icon.textContent=''})}
+function sortItems(items){return[...items].sort((a,b)=>{let av=a[sortCol]??'',bv=b[sortCol]??'';if(sortCol==='quantity'){av=Number(av)||0;bv=Number(bv)||0}else{av=String(av).toLowerCase();bv=String(bv).toLowerCase()}if(av<bv)return sortAsc?-1:1;if(av>bv)return sortAsc?1:-1;return 0})}
+function setQuickFilter(type){quickFilter=quickFilter===type?'':type;document.querySelectorAll('.sb').forEach(el=>el.classList.remove('sb-active'));if(quickFilter){const idx=type==='low'?3:4;document.querySelectorAll('.sb')[idx]?.classList.add('sb-active')}filt()}
+function renderS(items){const a=items.filter(i=>i.status==='active'),tq=a.reduce((s,i)=>s+i.quantity,0),ls=a.filter(i=>i.min_quantity>0&&i.quantity<=i.min_quantity).length,zs=a.filter(i=>i.quantity===0).length,cs=new Set(a.map(i=>i.category).filter(Boolean));document.getElementById('sr').innerHTML=`<div class="sb"><div class="v">${a.length}</div><div class="l">Items</div></div><div class="sb"><div class="v">${tq.toLocaleString()}</div><div class="l">Total Units</div></div><div class="sb"><div class="v">${cs.size}</div><div class="l">Categories</div></div><div class="sb" style="cursor:pointer" onclick="setQuickFilter('low')"><div class="v" style="color:${ls?'var(--warning)':'var(--success)'}">${ls}</div><div class="l">Low Stock</div></div><div class="sb" style="cursor:pointer" onclick="setQuickFilter('zero')"><div class="v" style="color:${zs?'var(--failure)':'var(--success)'}">${zs}</div><div class="l">Out of Stock</div></div>`}
+let _filtered=[];
+function renderI(items){_filtered=items;pageIdx=0;renderPage()}
+function renderPage(){const tb=document.getElementById('tb');const q=document.getElementById('q').value,c=document.getElementById('cf').value;const hasFilter=q||c||quickFilter;const pager=document.getElementById('pager');if(!_filtered.length){pager.style.display='none';tb.innerHTML=hasFilter?'<tr><td colspan="8"><div class="empty-state" style="padding:32px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><circle cx="9" cy="9" r="6"/><line x1="13.5" y1="13.5" x2="18" y2="18"/></svg><h3>No matches</h3><p>No items match your search. Try different terms or clear filters.</p></div></td></tr>':'<tr><td colspan="8"><div class="empty-state" style="padding:32px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><path d="M2 3h16v4H2z"/><path d="M2 9h16v8H2z"/><line x1="8" y1="12" x2="12" y2="12"/></svg><h3>No items yet</h3><p>Get started by creating your first inventory item.</p><a href="/inventory/new" class="btn btn-primary" style="margin-top:8px">Create Item</a></div></td></tr>';return}const start=pageIdx*PAGE_SZ,end=start+PAGE_SZ,page=_filtered.slice(start,end);tb.innerHTML=page.map(i=>`<tr style="cursor:pointer" onclick="location='/inventory/${i.id}'"><td><strong>${esc(i.name)}</strong></td><td><code style="color:var(--muted)">${esc(i.sku)}</code></td><td class="${i.quantity===0?'qz':i.min_quantity>0&&i.quantity<=i.min_quantity?'ql':''}">${i.quantity} ${esc(i.unit)}</td><td>${esc(i.location)||'<span style="color:var(--muted)">-</span>'}</td><td>${i.category?`<span class="badge bb">${esc(i.category)}</span>`:''}</td><td><code style="font-size:11px;color:var(--muted)">${esc(i.barcode_value)}</code></td><td><span class="badge ${i.status==='active'?'bg':'bgr'}">${i.status}</span></td><td><a href="/inventory/${i.id}" class="btn btn-sm btn-secondary" onclick="event.stopPropagation()">View</a></td></tr>`).join('');const pages=Math.ceil(_filtered.length/PAGE_SZ);if(pages>1){pager.style.display='flex';document.getElementById('page-info').textContent=`${start+1}\u2013${Math.min(end,_filtered.length)} of ${_filtered.length}`;document.getElementById('pg-prev').disabled=pageIdx===0;document.getElementById('pg-next').disabled=pageIdx>=pages-1}else{pager.style.display='none'}}
+function goPage(d){const pages=Math.ceil(_filtered.length/PAGE_SZ);pageIdx=Math.max(0,Math.min(pages-1,pageIdx+d));renderPage();window.scrollTo({top:0,behavior:'smooth'})}
 document.getElementById('q').addEventListener('input',filt);document.getElementById('cf').addEventListener('change',filt);
-function filt(){const q=document.getElementById('q').value.toLowerCase(),c=document.getElementById('cf').value;let f=all;if(q)f=f.filter(i=>i.name.toLowerCase().includes(q)||i.sku.toLowerCase().includes(q)||i.barcode_value.toLowerCase().includes(q)||(i.location||'').toLowerCase().includes(q)||(i.tags||'').toLowerCase().includes(q));if(c)f=f.filter(i=>i.category===c);renderI(f)}
+function filt(){const q=document.getElementById('q').value.toLowerCase(),c=document.getElementById('cf').value;let f=all;if(q)f=f.filter(i=>i.name.toLowerCase().includes(q)||i.sku.toLowerCase().includes(q)||i.barcode_value.toLowerCase().includes(q)||(i.location||'').toLowerCase().includes(q)||(i.tags||'').toLowerCase().includes(q));if(c)f=f.filter(i=>i.category===c);if(quickFilter==='low')f=f.filter(i=>i.status==='active'&&i.min_quantity>0&&i.quantity<=i.min_quantity);if(quickFilter==='zero')f=f.filter(i=>i.quantity===0);f=sortItems(f);renderI(f)}
 load();
 </script>"""
 
@@ -111,7 +125,9 @@ def inventory_create_page(user: User = Depends(require_user)) -> HTMLResponse:
 const _FIELDS=['name','sku','description','quantity','unit','location','category','tags','notes','barcode_type','barcode_value','min_quantity','cost'];
 const _as=autosaveInit('new_item',_FIELDS);
 const _guard=guardUnsaved('#cf');
-if(_as.load()){toast('Draft restored from previous session','info')}
+/* Pre-fill from URL params (e.g. from scan page ?sku=CODE) */
+(function(){const p=new URLSearchParams(window.location.search);let filled=false;_FIELDS.forEach(f=>{const v=p.get(f);if(v){document.getElementById(f).value=v;filled=true}});/* If sku passed but no barcode_value, pre-fill barcode too */if(p.get('sku')&&!p.get('barcode_value')){document.getElementById('barcode_value').value=p.get('sku');filled=true}if(filled){toast('Pre-filled from scan','info');_guard.markDirty&&_guard.markDirty()}})();
+if(!new URLSearchParams(window.location.search).toString()&&_as.load()){toast('Draft restored from previous session','info')}
 async function cI(e){e.preventDefault();hideMsg();const b={};_FIELDS.forEach(f=>{let v=document.getElementById(f).value;if(f==='quantity'||f==='min_quantity')v=parseInt(v)||0;else if(f==='cost')v=v?parseFloat(v):null;b[f]=v});const r=await apiCall('POST','/api/inventory',b);if(!r.ok){showErr(r.data.error||'Failed');return false}_guard.markClean();_as.clear();location.href='/inventory/'+r.data.item.id;return false}
 async function aiSuggest(field){
   const name=document.getElementById('name').value;
@@ -1093,6 +1109,9 @@ def analytics_page(user: User = Depends(require_user)) -> HTMLResponse:
 
     <!-- Transactions Tab -->
     <div class="ana-page active" id="page-txns">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-secondary btn-sm" onclick="exportTxns()" title="Download transaction ledger as CSV">Export CSV</button>
+      </div>
       <div class="ana-grid" id="txn-cards"></div>
       <div class="panel" style="padding:20px">
         <h3 style="font-size:14px;margin-bottom:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Breakdown by Reason</h3>
@@ -1290,6 +1309,7 @@ function renderHealth(d){
   sections.innerHTML=html;
 }
 
+function exportTxns(){window.location='/api/inventory/export/transactions?days='+getDays()}
 loadAll();
 </script>"""
 
