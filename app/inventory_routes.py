@@ -355,6 +355,9 @@ def api_export_json(
             for i in items
         ],
     }
+    log_activity(db, user=user, action="JSON Export", category="export",
+                 summary=f"Exported {len(items)} items as JSON",
+                 detail={"count": len(items), "format": "json"})
     return Response(
         content=json_mod.dumps(payload, indent=2),
         media_type="application/json",
@@ -393,6 +396,10 @@ def api_export_csv_filtered(
                          item.notes, item.barcode_value, item.barcode_type,
                          item.min_quantity, item.cost or ""])
     output.seek(0)
+    log_activity(db, user=user, action="CSV Export (Filtered)", category="export",
+                 summary=f"Exported {len(items)} items as filtered CSV",
+                 detail={"count": len(items), "format": "csv",
+                         "filters": {"category": category, "location": location, "status": status}})
     return StreamingResponse(
         iter([output.getvalue()]), media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=inventory_export.csv"},
