@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | 38a72d7 | 2026-04-05 |
-| Tests (`pytest`) | **GREEN** (325 passed, 65 subtests, 0 warnings) | 38a72d7 | 2026-04-05 |
+| Compilation (`compileall`) | **GREEN** | 5ce71b5 | 2026-04-05 |
+| Tests (`pytest`) | **GREEN** (325 passed, 65 subtests, 0 warnings) | 5ce71b5 | 2026-04-05 |
 
 ## Current Blockers
 
@@ -18,6 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 5ce71b5 | full-system audit: gzip, activity logging, command palette, dead code removal |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 38a72d7 | gzip + empty states + tab persistence + dead code removal |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 5e792e7 | unified tabs + skeletons + empty states |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 6a9d2d0 | design system enforcement |
