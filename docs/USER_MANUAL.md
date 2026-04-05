@@ -2,1068 +2,814 @@
 
 Last updated: 2026-04-04.
 
-This manual covers every feature of BarcodeBuddy from the perspective of the person using it. It is organized by role so you can jump to the section that applies to you, then by feature so you can look up exactly what you need.
-
 ---
 
 ## Table of Contents
 
-- [1. What Is BarcodeBuddy?](#1-what-is-barcodebuddy)
-- [2. Quick Start by Role](#2-quick-start-by-role)
-  - [2.1 Scanner Operator / Warehouse Clerk](#21-scanner-operator--warehouse-clerk)
-  - [2.2 Inventory Manager](#22-inventory-manager)
-  - [2.3 Department Lead / Manager](#23-department-lead--manager)
-  - [2.4 Operations Owner / Executive](#24-operations-owner--executive)
-  - [2.5 System Administrator](#25-system-administrator)
-  - [2.6 IT / Infrastructure Admin](#26-it--infrastructure-admin)
-- [3. Getting In — Authentication](#3-getting-in--authentication)
-  - [3.1 First-Time Setup (Owner Account)](#31-first-time-setup-owner-account)
-  - [3.2 Signing Up](#32-signing-up)
-  - [3.3 Logging In](#33-logging-in)
-  - [3.4 Resetting Your Password](#34-resetting-your-password)
-  - [3.5 Sessions and Security](#35-sessions-and-security)
-- [4. Navigation](#4-navigation)
-- [5. Dashboard](#5-dashboard)
-- [6. Inventory Management](#6-inventory-management)
-  - [6.1 Viewing Your Inventory](#61-viewing-your-inventory)
-  - [6.2 Creating an Item](#62-creating-an-item)
-  - [6.3 Viewing Item Details](#63-viewing-item-details)
-  - [6.4 Editing an Item](#64-editing-an-item)
-  - [6.5 Adjusting Stock Quantity](#65-adjusting-stock-quantity)
-  - [6.6 Deleting an Item](#66-deleting-an-item)
-  - [6.7 Barcode Generation](#67-barcode-generation)
-  - [6.8 Barcode / SKU Scan Lookup](#68-barcode--sku-scan-lookup)
-  - [6.9 Camera Scanning](#69-camera-scanning)
-  - [6.10 Bulk Import (CSV / JSON)](#610-bulk-import-csv--json)
-  - [6.11 Bulk Export (CSV / JSON)](#611-bulk-export-csv--json)
-  - [6.12 Bulk Actions](#612-bulk-actions)
-- [7. Scan-to-PDF](#7-scan-to-pdf)
-- [8. Calendar View](#8-calendar-view)
-- [9. Analytics](#9-analytics)
-  - [9.1 Valuation](#91-valuation)
-  - [9.2 Velocity](#92-velocity)
-  - [9.3 Stock Health](#93-stock-health)
-- [10. Alerts](#10-alerts)
-- [11. Activity Log](#11-activity-log)
-- [12. Team Management](#12-team-management)
-  - [12.1 Creating a Team](#121-creating-a-team)
-  - [12.2 Managing Members](#122-managing-members)
-  - [12.3 Tasks](#123-tasks)
-- [13. AI Assistant](#13-ai-assistant)
-  - [13.1 Setup Wizard](#131-setup-wizard)
-  - [13.2 AI Chat](#132-ai-chat)
-  - [13.3 AI Tools](#133-ai-tools)
-  - [13.4 AI Settings](#134-ai-settings)
-  - [13.5 Privacy and Data Handling](#135-privacy-and-data-handling)
-- [14. Admin Panel](#14-admin-panel)
-  - [14.1 User Management](#141-user-management)
-  - [14.2 Role Assignments](#142-role-assignments)
-  - [14.3 Open/Closed Signup](#143-openclosed-signup)
-  - [14.4 Ownership Transfer](#144-ownership-transfer)
-  - [14.5 Audit Log](#145-audit-log)
-- [15. Document Ingestion Service](#15-document-ingestion-service)
-  - [15.1 How It Works](#151-how-it-works)
-  - [15.2 Supported File Formats](#152-supported-file-formats)
-  - [15.3 Barcode Detection](#153-barcode-detection)
-  - [15.4 What Happens to Your Files](#154-what-happens-to-your-files)
-  - [15.5 Duplicate Handling](#155-duplicate-handling)
-  - [15.6 Rejections](#156-rejections)
-  - [15.7 Workflows](#157-workflows)
-- [16. System Setup and Deployment](#16-system-setup-and-deployment)
-  - [16.1 Requirements](#161-requirements)
-  - [16.2 Installation](#162-installation)
-  - [16.3 Configuration Reference](#163-configuration-reference)
-  - [16.4 Environment Variables](#164-environment-variables)
-  - [16.5 Running the Web Application](#165-running-the-web-application)
-  - [16.6 Running the Ingestion Service](#166-running-the-ingestion-service)
-  - [16.7 Windows Deployment](#167-windows-deployment)
-  - [16.8 Docker Deployment](#168-docker-deployment)
-  - [16.9 Railway Deployment](#169-railway-deployment)
-  - [16.10 Running Multiple Workflows](#1610-running-multiple-workflows)
-- [17. Health and Monitoring](#17-health-and-monitoring)
-- [18. Troubleshooting](#18-troubleshooting)
-- [19. Roles and Permissions Reference](#19-roles-and-permissions-reference)
-- [20. Glossary](#20-glossary)
+- [1. Quick Start](#1-quick-start)
+  - [1.1 What This System Is](#11-what-this-system-is)
+  - [1.2 What It Does](#12-what-it-does)
+  - [1.3 How to Access It](#13-how-to-access-it)
+  - [1.4 Your First Five Minutes](#14-your-first-five-minutes)
+- [2. Core Workflows](#2-core-workflows)
+  - [2.1 Receiving a Shipment](#21-receiving-a-shipment)
+  - [2.2 Looking Up an Item on the Floor](#22-looking-up-an-item-on-the-floor)
+  - [2.3 Running a Physical Inventory Count](#23-running-a-physical-inventory-count)
+  - [2.4 Handling a Stock Adjustment](#24-handling-a-stock-adjustment)
+  - [2.5 Setting Up Inventory from Scratch](#25-setting-up-inventory-from-scratch)
+  - [2.6 Scanning Documents into the System](#26-scanning-documents-into-the-system)
+  - [2.7 Investigating a Rejected Document](#27-investigating-a-rejected-document)
+  - [2.8 Responding to Low-Stock Alerts](#28-responding-to-low-stock-alerts)
+  - [2.9 Onboarding a New Team Member](#29-onboarding-a-new-team-member)
+  - [2.10 Running an End-of-Day Review](#210-running-an-end-of-day-review)
+  - [2.11 Asking the AI for Help](#211-asking-the-ai-for-help)
+  - [2.12 Generating a Scan Report](#212-generating-a-scan-report)
+- [3. Feature Reference](#3-feature-reference)
+  - [3.1 Dashboard](#31-dashboard)
+  - [3.2 Items List](#32-items-list)
+  - [3.3 Item Detail](#33-item-detail)
+  - [3.4 New Item](#34-new-item)
+  - [3.5 Scan Lookup](#35-scan-lookup)
+  - [3.6 Scan-to-PDF](#36-scan-to-pdf)
+  - [3.7 Calendar](#37-calendar)
+  - [3.8 Analytics](#38-analytics)
+  - [3.9 Alerts](#39-alerts)
+  - [3.10 Activity Log](#310-activity-log)
+  - [3.11 Teams](#311-teams)
+  - [3.12 AI Chat](#312-ai-chat)
+  - [3.13 AI Privacy and Data](#313-ai-privacy-and-data)
+  - [3.14 Admin Panel](#314-admin-panel)
+  - [3.15 Bulk Import](#315-bulk-import)
+  - [3.16 Bulk Export](#316-bulk-export)
+- [4. Role-Based Guides](#4-role-based-guides)
+  - [4.1 Warehouse Operator](#41-warehouse-operator)
+  - [4.2 Inventory Manager](#42-inventory-manager)
+  - [4.3 Department Lead / Manager](#43-department-lead--manager)
+  - [4.4 Operations Owner / Executive](#44-operations-owner--executive)
+  - [4.5 System Admin](#45-system-admin)
+- [5. Admin and Setup](#5-admin-and-setup)
+  - [5.1 First-Time System Setup](#51-first-time-system-setup)
+  - [5.2 Configuration File](#52-configuration-file)
+  - [5.3 Environment Variables](#53-environment-variables)
+  - [5.4 Running the Web Application](#54-running-the-web-application)
+  - [5.5 Running the Document Ingestion Service](#55-running-the-document-ingestion-service)
+  - [5.6 Running Multiple Workflows](#56-running-multiple-workflows)
+  - [5.7 Windows Deployment](#57-windows-deployment)
+  - [5.8 Docker Deployment](#58-docker-deployment)
+  - [5.9 Railway Deployment](#59-railway-deployment)
+  - [5.10 Setting Up AI](#510-setting-up-ai)
+  - [5.11 Setting Up Email (Password Resets)](#511-setting-up-email-password-resets)
+  - [5.12 Scanner and Network Share Setup](#512-scanner-and-network-share-setup)
+  - [5.13 Health Monitoring](#513-health-monitoring)
+- [6. Troubleshooting](#6-troubleshooting)
+- [Appendix A: Roles and Permissions Matrix](#appendix-a-roles-and-permissions-matrix)
+- [Appendix B: Configuration Reference](#appendix-b-configuration-reference)
+- [Appendix C: Glossary](#appendix-c-glossary)
+- [Appendix D: Known Gaps](#appendix-d-known-gaps)
 
 ---
 
-## 1. What Is BarcodeBuddy?
+## 1. Quick Start
 
-BarcodeBuddy is two things:
+### 1.1 What This System Is
 
-1. **A document ingestion service** — a headless hot-folder watcher that picks up scanned paperwork (packing slips, proof-of-delivery, invoices, receiving slips), reads the barcode on each document, converts it to PDF, and files it automatically by barcode value. No manual renaming. No clerk intervention.
+BarcodeBuddy is a barcode-driven document filing and inventory management system. It has two parts:
 
-2. **A web application** — a multi-user system for inventory management, monitoring, analytics, alerts, team collaboration, and AI-assisted operations.
+1. **A document ingestion service** that watches a folder on your computer or server. When you drop a scanned document into that folder, the service reads the barcode on the document, converts it to a PDF, and files it into the right place automatically. No renaming. No manual sorting.
 
-The ingestion service runs as `main.py`. The web application runs as `stats.py`. They share the same configuration file and data directories but run as separate processes.
+2. **A web application** where you manage inventory, track stock, scan barcodes, view analytics, get alerts, collaborate with your team, and talk to an AI assistant about your operations.
 
----
+These two parts run as separate programs but share the same data.
 
-## 2. Quick Start by Role
+### 1.2 What It Does
 
-Find your role below. This tells you what BarcodeBuddy does for you and where to go first.
+For **warehouse and dock workers:** You scan a packing slip, proof-of-delivery, or invoice. Drop it in a folder. It gets filed by barcode. Done.
 
-### 2.1 Scanner Operator / Warehouse Clerk
+For **inventory managers:** You track every item with barcodes, quantities, locations, and costs. You get alerts when stock is low. You see analytics on what is moving and what is sitting.
 
-**What you do:** Drop scanned documents into a folder. BarcodeBuddy files them automatically.
+For **managers and leads:** You organize your team, assign tasks, and see reports on throughput, failures, and stock health across the operation.
 
-**Your workflow:**
-1. Scan your document (packing slip, POD, invoice) using your desktop scanner or scan app
-2. Save or send the scan to the designated input folder (your IT team will tell you which one)
-3. Done. BarcodeBuddy picks it up, reads the barcode, converts it to PDF, and files it
+For **the person who runs it:** You manage user accounts, configure the system, set up AI, and monitor system health.
 
-**If something goes wrong:** The document lands in the `rejected` folder with a `.meta.json` file explaining why. Common reasons: no barcode found, unreadable file, duplicate (if reject mode is on). Tell your supervisor.
+### 1.3 How to Access It
 
-**Web app pages you'll use:**
-- **Scan** (`/scan`) — look up an item by typing or scanning a barcode
-- **Inventory** (`/inventory`) — view and adjust stock
-- **Scan to PDF** (`/scan-to-pdf`) — scan multiple barcodes and generate a PDF report
+Open a web browser and go to the URL your IT team gave you. It is typically:
 
-### 2.2 Inventory Manager
+```text
+http://your-server:8080
+```
 
-**What you do:** Track stock levels, manage items, handle adjustments, monitor alerts.
+If your organization uses a Cloudflare tunnel, it may be at a custom domain like `app.yourcompany.com`.
 
-**Start here:**
-1. Log in at your BarcodeBuddy URL
-2. Go to **Items** in the sidebar to see your inventory
-3. Go to **Alerts** to see low-stock and overstock warnings
-4. Go to **Analytics** for valuation, velocity, and stock health reports
+You need an account to get in. If this is the very first time anyone is accessing the system, see [Section 5.1: First-Time System Setup](#51-first-time-system-setup).
 
-**Key tasks:**
-- Create items: **Items → New Item** (or sidebar "New Item")
-- Adjust stock: Open any item → click **Adjust Qty** → enter change, reason, and notes
-- Import stock: **Import CSV** in the sidebar → upload a CSV or JSON file
-- Export stock: **Items** page → Export button (top right) or **Bulk** page → Export tab
-- Generate barcodes: Every item gets a barcode automatically; download or print from the item detail page
+### 1.4 Your First Five Minutes
 
-### 2.3 Department Lead / Manager
+**If you already have an account:**
 
-**What you do:** Manage your team, assign tasks, review workflow-specific reports.
+1. Go to the login page. Enter your email and password.
+2. You land on the **Dashboard**. This shows the operational health of the document processing system.
+3. Click **Items** in the left sidebar. This is your inventory.
+4. If the list is empty, you either need to create items or import them. Click **New Item** to create one, or **Import CSV** to upload a spreadsheet.
+5. Click **Scan** to try looking up an item by barcode. Type a barcode value and hit Lookup.
 
-**Start here:**
-1. Log in → go to **Team** in the sidebar
-2. Create a team (requires manager role or above)
-3. Add members and assign roles (lead, member, viewer)
-4. Create tasks with priorities and due dates
+**If nobody has used the system yet:**
 
-**Monitoring:**
-- **Dashboard** (`/`) — processing throughput, success/failure rates, queue state
-- **Analytics** (`/analytics`) — inventory valuation, stock movement velocity, health distribution
-- **Activity Log** (`/activity`) — who did what, when, with full audit trail
-
-### 2.4 Operations Owner / Executive
-
-**What you do:** See the big picture across all operations.
-
-**Start here:**
-1. Log in → **Dashboard** shows real-time processing state
-2. **Analytics** shows inventory valuation by category and location, top movers, stock health
-3. **Activity Log** shows all system activity with date range and category filters
-4. **Admin Panel** shows user accounts, system settings, and the full audit log
-
-**What you're looking for:**
-- Queue backlog (dashboard) — are documents piling up?
-- Failure rate (dashboard) — are scans failing more than usual?
-- Low stock count (inventory summary) — are we running out of things?
-- Transaction trends (analytics) — is activity increasing or decreasing?
-
-### 2.5 System Administrator
-
-**What you do:** Manage users, roles, system settings, and AI configuration.
-
-**Start here:**
-1. Log in as owner or admin
-2. **Admin Panel** (`/admin`) — manage users, toggle open signup, view audit log
-3. **AI Setup** (`/ai/setup`) — configure AI providers (owner only)
-4. **AI Settings** (`/ai/settings`) — adjust models, rate limits, API keys (owner only)
-
-**Key responsibilities:**
-- Promote users to admin/manager roles via Admin Panel
-- Enable or disable open signup
-- Configure AI (Ollama local, Anthropic cloud, OpenAI cloud)
-- Review audit log for security-relevant actions
-- Transfer ownership if needed
-
-### 2.6 IT / Infrastructure Admin
-
-**What you do:** Install, configure, and maintain the BarcodeBuddy deployment.
-
-**Start here:**
-1. Read [Section 16: System Setup and Deployment](#16-system-setup-and-deployment)
-2. Choose your deployment: Windows service, Docker, or Railway
-3. Configure `config.json` with your paths and barcode settings
-4. Set environment variables (`BB_OWNER_EMAIL`, `BB_SECRET_KEY`, SMTP if needed)
-5. Set up scanner profiles to save to the input folder
-6. Share the input folder over SMB if scanners are on a different machine
+1. The first person to sign up becomes the **owner** (the top-level admin).
+2. You must sign up using the email address configured in the system (ask your IT person what it is).
+3. Go to `/auth/signup`, enter your name, that email, and a password.
+4. You now have full access. Go to **Admin Panel** to enable signup for other users.
 
 ---
 
-## 3. Getting In — Authentication
+## 2. Core Workflows
 
-### 3.1 First-Time Setup (Owner Account)
+These are the real jobs the system handles. Each workflow walks you through the complete sequence of actions, not just isolated features.
 
-The very first person to sign up becomes the **owner**. This signup must use the email address configured in the `BB_OWNER_EMAIL` environment variable (default: `mferragamo@danpack.com`).
+### 2.1 Receiving a Shipment
 
-1. Navigate to `http://your-server:8080/auth/signup`
-2. Enter a display name, the owner email, and a password
-3. You are now the owner with full system access
+**Situation:** A delivery truck arrives. You have packing slips that need to be scanned and filed against the correct purchase order.
 
-No other accounts can be created until you enable open signup or create accounts yourself.
+**Steps:**
 
-### 3.2 Signing Up
+1. Take the packing slips to the scanner.
+2. Scan each document. Your scanner should be configured to save files to the BarcodeBuddy input folder (ask IT which folder).
+3. Use the "one file per scan" setting on your scanner (not "one file per page"). Save as PDF at 300 DPI or higher.
+4. Drop the scanned files into the input folder. If your scanner saves directly to that folder, this happens automatically.
+5. BarcodeBuddy picks up each file within a few seconds. It reads the barcode on the packing slip, converts the file to PDF, and moves it to the output folder organized by year and month. The filename becomes the barcode value.
+6. If the barcode cannot be read, the file goes to the **rejected** folder. A small `.meta.json` file appears next to it explaining what went wrong. See [2.7: Investigating a Rejected Document](#27-investigating-a-rejected-document).
 
-After the owner account exists, additional users can sign up only if **open signup** is enabled (the owner or an admin toggles this in the Admin Panel).
+**What you should see:** Processed files disappear from the input folder. They show up in `output/YYYY/MM/BARCODE.pdf`. On the web dashboard, the processing count ticks up.
 
-1. Navigate to `/auth/signup`
-2. Enter your display name, email, and password
-3. You will be assigned the **user** role by default
-4. An admin or the owner can promote you to **manager** or **admin** later
+**If you also need to update inventory:** After receiving, go to the web app. Find the item via **Scan** (type or scan the barcode). Click the item to open its detail page. Click **Adjust Qty**, enter the quantity received, select "Received" as the reason, and add any notes.
 
-### 3.3 Logging In
+### 2.2 Looking Up an Item on the Floor
 
-1. Navigate to `/auth/login`
-2. Enter your email and password
-3. You will be redirected to the dashboard
+**Situation:** You are standing in the warehouse holding an item (or its label). You need to know what it is, how many you should have, or where it belongs.
 
-Login is rate-limited to 10 attempts per 60 seconds per IP address. If you exceed this, wait one minute.
+**Steps:**
 
-### 3.4 Resetting Your Password
+1. Open BarcodeBuddy on your phone or a nearby computer. Go to **Scan** in the sidebar.
+2. **Option A — Camera:** Click **Start Camera**. Point your phone or laptop camera at the barcode on the item. The system reads it automatically and shows the matching item.
+3. **Option B — Type it:** Type the barcode value or SKU into the search box and press Enter.
+4. The results table shows: item name, SKU, current quantity, location, category, and status.
+5. Click the item name to see its full detail page, including all past quantity adjustments.
 
-1. On the login page, click **Forgot password?**
-2. Enter your email address
-3. If SMTP is configured, you will receive a reset email with a one-time link
-4. Click the link and enter your new password
-5. The reset token is valid for 1 hour
+**Note:** Camera scanning requires Chrome or Edge. It does not work in Firefox.
 
-If SMTP is not configured (common in LAN deployments), ask your admin to reset your password via the Admin Panel.
+### 2.3 Running a Physical Inventory Count
 
-### 3.5 Sessions and Security
+**Situation:** You need to walk the warehouse, scan items, and produce a count report.
 
-- Your session lasts 24 hours. After that, you need to log in again.
-- Sessions are stored as secure HTTP-only cookies (`bb_session`).
-- An admin can deactivate your account, which immediately revokes all sessions.
-- All login attempts, logouts, and password changes are recorded in the audit log.
+**Steps:**
+
+1. Go to **Scan to PDF** in the sidebar.
+2. Walk through the warehouse with your phone or tablet.
+3. For each item, scan its barcode using one of three methods:
+   - **Camera tab:** Point your camera at the barcode. It is detected automatically and added to your list.
+   - **Manual tab:** Type the barcode value and press Enter. Supports pasting multiple codes at once (one per line).
+   - **Upload tab:** If you took photos of barcode labels, drag and drop the images here. Barcodes are extracted automatically.
+4. As each barcode is scanned, the system looks it up in inventory and fills in the item name, SKU, location, and category. If the barcode is not in inventory, it still appears in the list with the raw barcode value.
+5. When finished, enter a title for the report (e.g., "Warehouse B Count - April 4").
+6. Click **Export PDF**. A professional PDF report downloads with all scanned items and their details.
+
+**Your session is saved automatically.** If your browser closes or you navigate away, come back to Scan to PDF and your scanned items are still there. Click **Clear** when you want to start a new session.
+
+**After the count:** If quantities are wrong, go to each item's detail page and use **Adjust Qty** with the reason "Adjusted" to correct the count.
+
+### 2.4 Handling a Stock Adjustment
+
+**Situation:** Stock has changed and you need to record it. Maybe you sold 10 units, received a return, found damaged goods, or corrected a count.
+
+**Steps:**
+
+1. Find the item: Go to **Items** and search by name, SKU, or barcode. Or go to **Scan** and look it up directly.
+2. Click the item to open its detail page.
+3. Click **Adjust Qty**.
+4. Enter the change amount:
+   - Positive number to add stock (e.g., `50` to add 50 units)
+   - Negative number to remove stock (e.g., `-10` to remove 10 units)
+5. Select the reason:
+   - **Received** — new stock arrived
+   - **Sold** — stock went out to a customer
+   - **Adjusted** — correcting a count or reconciliation
+   - **Damaged** — stock lost to damage
+   - **Returned** — stock returned from a customer
+6. Add notes if needed (e.g., "PO-2026-0042" or "damaged in transit").
+7. Click **Apply**.
+
+**What happens:** The system creates an immutable transaction record. It stores the old quantity, the change, and the new quantity. Nothing is overwritten. Every adjustment appears in the item's transaction history and in the system-wide Activity Log.
+
+### 2.5 Setting Up Inventory from Scratch
+
+**Situation:** You are starting fresh. You have a spreadsheet of items or you need to enter them one by one.
+
+**Path A — Bulk import from a spreadsheet:**
+
+1. Prepare a CSV file. The only required column is `name`. Other useful columns: `sku`, `quantity`, `location`, `category`, `cost`, `min_quantity`, `barcode_value`.
+2. Go to **Import CSV** in the sidebar.
+3. Click the **CSV** tab.
+4. Drag and drop your file (or click to browse).
+5. A preview of the first 50 rows appears. Review it.
+6. Click **Import**.
+7. Items are created. If any SKUs already exist, those items are updated instead of duplicated.
+
+**Path B — Create items one at a time:**
+
+1. Go to **New Item** in the sidebar.
+2. Fill in at least the name. Everything else is optional.
+3. A barcode is generated automatically (Code128 by default). You can change the format or enter a custom value.
+4. If AI is set up, click the lightbulb icon next to Min Quantity, Location, or Category for a suggestion based on your existing inventory patterns.
+5. Click **Create Item**.
+6. Your form draft is saved in the browser. If you accidentally navigate away, come back and your data is still there.
+
+**After setup:** Set `min_quantity` on important items so the alert system can warn you when stock is low.
+
+### 2.6 Scanning Documents into the System
+
+**Situation:** You need to file documents (packing slips, invoices, PODs, quality certificates) so they end up organized by barcode value.
+
+**What you need:** The document ingestion service (`main.py`) must be running. Ask IT if it is.
+
+**Steps:**
+
+1. Scan your document with the scanner. Save as PDF, JPG, or PNG. Use 300 DPI or higher.
+2. Place the file in the designated input folder. This varies by workflow:
+   - Receiving documents go to the receiving input folder
+   - Shipping/POD documents go to the shipping input folder
+   - Quality/compliance documents go to the quality input folder
+   - Your IT team will tell you which folder maps to which workflow
+3. The file disappears from the input folder within a few seconds. That means the system picked it up.
+4. Check the output folder for the result: `output/YYYY/MM/BARCODE.pdf`.
+
+**If the file appears in the rejected folder instead**, see [2.7: Investigating a Rejected Document](#27-investigating-a-rejected-document).
+
+**Tips for good scans:**
+- Make sure the barcode on the document is fully visible and not wrinkled or smudged.
+- Scan at 300 DPI or higher. Lower DPI makes barcode detection unreliable.
+- Use "one file per scan" in your scanner settings, not "one file per page." Multi-page documents should stay as one file.
+- If you are scanning double-sided, use the duplex setting.
+
+### 2.7 Investigating a Rejected Document
+
+**Situation:** A file appeared in the rejected folder instead of the output folder.
+
+**Steps:**
+
+1. Go to the rejected folder for your workflow.
+2. Find the file. Next to it, there will be a file with the same name plus `.meta.json` at the end. For example, if your file was `scan001.pdf`, the sidecar is `scan001.pdf.meta.json`.
+3. Open the `.meta.json` file in any text editor. It tells you what went wrong.
+
+**Common rejection reasons and what to do:**
+
+| Error in meta.json | What it means | What to do |
+|---------------------|--------------|-----------|
+| `NO_BARCODE` | The system scanned the document and found no barcode. | Re-scan at higher quality. Make sure the barcode is not cut off, wrinkled, or obscured. The system tries 4 rotations, so orientation is not the issue. |
+| `INVALID_FORMAT` | The file is not a PDF, JPG, or PNG. The system checks the actual file content, not just the extension. | Re-scan in a supported format. Do not rename a file to trick it — it checks the file's internal header. |
+| `PATTERN_MISMATCH` | A barcode was found but its value does not match the business rules configured for this workflow. | The barcode value does not look like what the system expects (e.g., it does not match the expected PO number format). Check whether this document belongs in a different workflow. |
+| `DUPLICATE_REJECTED` | A document with this barcode value was already processed, and the workflow is in "reject" mode. | If the rescan was intentional (a corrected copy), the workflow may need to be in "timestamp" mode instead. Talk to IT. If it was a mistake, discard the duplicate. |
+| `FILE_LOCKED` | The file was still being written when the system tried to process it. | This usually resolves itself — the system waits for files to stabilize. If it keeps happening, your scanner may be holding a lock on the file. Try a different scan-to-folder setting. |
+
+### 2.8 Responding to Low-Stock Alerts
+
+**Situation:** You see a red badge on the alert bell in the sidebar, or you get a webhook notification that stock is low.
+
+**Steps:**
+
+1. Click the alert bell in the sidebar (or go to **Alerts** in the sidebar).
+2. You see a list of alerts. Each one tells you: which item, what the threshold is, and what the current quantity is.
+3. Click the item name to go to its detail page.
+4. Decide what to do:
+   - **Order more stock:** Note the item, SKU, and location for your purchasing process.
+   - **Adjust the threshold:** If the min quantity is wrong, edit the item and change `min_quantity`.
+   - **Nothing:** Maybe this is expected. Dismiss the alert.
+5. Back on the alerts page: **Mark as read** to acknowledge, or **Dismiss** to clear. Dismissed alerts do not come back unless the condition triggers again.
+
+**How alerts work behind the scenes:** A background job runs every 5 minutes. It checks every item's quantity against its `min_quantity`. If quantity is at or below the threshold, an alert is created. If you have configured a webhook URL in alert settings, the alert is also POSTed to that URL.
+
+**To set up alerts for an item:** Go to the item's detail page. Set a `min_quantity` value. That is all that is needed — the system does the rest.
+
+### 2.9 Onboarding a New Team Member
+
+**Situation:** A new person needs access to the system.
+
+**If you are the owner or admin:**
+
+1. Go to **Admin Panel** in the sidebar.
+2. Check whether **Open Signup** is on. If not, toggle it on temporarily.
+3. Give the new person the URL and tell them to go to `/auth/signup`.
+4. They create an account with their name, email, and password. They get the "user" role by default.
+5. If they need more access, change their role in the Admin Panel:
+   - **Manager** — can create teams and view other users' inventory
+   - **Admin** — can manage all users and system settings
+6. If you want to restrict signups again, toggle Open Signup back off.
+
+**Adding them to a team:**
+
+1. Go to **Team** in the sidebar.
+2. Open the relevant team.
+3. Go to the **Members** tab.
+4. Click **Add Member**. Select them from the dropdown.
+5. Assign a role:
+   - **Lead** — can manage other members and create/edit/delete tasks
+   - **Member** — can work on tasks assigned to them
+   - **Viewer** — can see the team's tasks but not change anything
+
+### 2.10 Running an End-of-Day Review
+
+**Situation:** You want to see what happened today across the operation before you leave.
+
+**Steps:**
+
+1. Start at the **Dashboard** (`/`). Check:
+   - **Processing counts** — how many documents were processed today? How many succeeded vs. failed?
+   - **Queue state** — is there a backlog of unprocessed files? If so, the ingestion service may have fallen behind.
+   - **Service health** — is the ingestion worker running? When was its last heartbeat?
+
+2. Go to **Activity Log** in the sidebar. Set the date range to today. Check:
+   - How many inventory adjustments happened?
+   - Were there any imports or exports?
+   - Any unusual activity (unexpected deletions, new signups)?
+
+3. Go to **Alerts**. Clear any alerts you have already addressed. Note any new ones for tomorrow.
+
+4. Go to **Analytics** and check the **Stock Health** tab. Are there new out-of-stock or low-stock items since this morning?
+
+5. Go to **Calendar**. Today's cell shows the transaction count. Click it to see the detail of what moved.
+
+### 2.11 Asking the AI for Help
+
+**Situation:** You have a question about your inventory or operations and you do not want to dig through screens to find the answer.
+
+**Prerequisites:** The system owner must have completed AI setup first (see [5.10: Setting Up AI](#510-setting-up-ai)). If AI is not configured, the chat page shows an error.
+
+**Steps:**
+
+1. Click the **floating chat button** in the bottom-right corner of any page. Or go to **AI Chat** in the sidebar.
+2. Type a question in plain English. Examples:
+   - "What items are low on stock?"
+   - "Show me everything in Warehouse B"
+   - "What were the top 5 fastest-moving items this month?"
+   - "Adjust SKU-12345 by +50 units, reason received, shipment from Acme"
+   - "What is the total inventory value by category?"
+   - "Summarize this week's transactions"
+3. The AI responds using your actual inventory data. If it needs to look something up or make a change, it tells you which tool it is using.
+4. If the AI makes a stock adjustment on your behalf, it shows up in the item's transaction history and the Activity Log, just like a manual adjustment.
+
+**Conversations are saved.** You can have multiple threads. Switch between them or delete old ones from the chat page.
+
+**What the AI can do:** Look up items, search by SKU, adjust stock quantities, pull analytics, view transaction history, list low-stock items, analyze categories, generate barcodes, preview and analyze CSV imports, and suggest item field values.
+
+**What the AI cannot do:** Delete items, create new items, change system settings, manage users, or access the document ingestion service.
+
+### 2.12 Generating a Scan Report
+
+**Situation:** You need to produce a PDF document from a batch of barcodes — for a count report, a receiving log, a shipping manifest, or any other use.
+
+**Steps:**
+
+1. Go to **Scan to PDF** in the sidebar.
+2. Scan barcodes using any of the three input methods:
+   - **Camera:** Click the Camera tab, then Start Camera. Point at each barcode.
+   - **Manual:** Click the Manual tab. Type barcodes one at a time (press Enter after each) or paste a list (one per line).
+   - **Upload:** Click the Upload tab. Drag and drop images or PDFs that contain barcodes. The system extracts them automatically.
+3. Each scanned barcode appears in the session table. If the barcode matches an item in your inventory, the table fills in the item name, SKU, location, and category automatically.
+4. Remove any accidental scans by clicking the delete button on that row.
+5. Enter a title for the report at the top (e.g., "Receiving Count - April 4, 2026").
+6. Click **Export PDF**. The report downloads.
+
+The report includes every scanned barcode, its format, the matched item details, and the scan timestamp.
 
 ---
 
-## 4. Navigation
+## 3. Feature Reference
 
-The web application uses a persistent **left sidebar** with the following sections:
+Every page in the system, what it shows, and what you can do on it.
 
-**INVENTORY**
-| Link | Page | What it does |
-|------|------|-------------|
-| Scan | `/scan` | Look up items by barcode or SKU (manual entry or camera) |
-| Scan to PDF | `/scan-to-pdf` | Scan multiple barcodes and generate a PDF report |
-| Items | `/inventory` | Full inventory list with search and filters |
-| Calendar | `/calendar` | Month/day calendar of inventory activity |
-| New Item | `/inventory/new` | Create a new inventory item |
-| Import CSV | `/inventory/import` | Import items from CSV or JSON |
+### 3.1 Dashboard
 
-**MONITOR**
-| Link | Page | What it does |
-|------|------|-------------|
-| Dashboard | `/` | Processing stats, queue state, health, throughput |
-| Analytics | `/analytics` | Valuation, velocity, and stock health reports |
-| Activity Log | `/activity` | Full audit trail of all system activity |
-| Alerts | `/alerts` | Low-stock and overstock alert management |
+**URL:** `/` (the homepage after login)
 
-**AI**
-| Link | Page | What it does |
-|------|------|-------------|
-| AI Chat | `/ai/chat` | Conversational AI assistant with inventory tools |
-| Privacy & Data | `/ai/privacy` | How AI handles your data |
-| AI Settings | `/ai/settings` | Configure AI providers and models (owner/admin) |
-| AI Setup | `/ai/setup` | First-time AI configuration wizard (owner/admin) |
+**What it shows:**
+- Total documents processed, succeeded, and failed
+- Input queue (files waiting) and processing queue (files in-flight)
+- Service health status and last heartbeat from the ingestion worker
+- P50, P95, P99 processing latency
+- 24-hour activity summary
+- Top failure reasons (most common error codes)
+- Hourly throughput chart
+- Quality analytics (barcode format distribution)
 
-**SYSTEM**
-| Link | Page | What it does |
-|------|------|-------------|
-| Team | `/team` | Team management, members, and tasks |
-| Admin Panel | `/admin` | User management, settings, audit log (admin/owner) |
+**What you can do:** View only. Data refreshes automatically.
 
-The sidebar collapses to icons on narrow screens. There is also a **floating AI chat button** in the bottom-right corner for quick access to the AI assistant from any page.
-
-The top area includes:
-- **Alert bell** with unread count badge
-- **Recent activity drawer** (latest 20 events)
-- **User profile** at the sidebar bottom with your name, role badge, and sign-out link
-
----
-
-## 5. Dashboard
-
-**URL:** `/` (homepage after login)
-
-The dashboard shows real-time operational state:
-
-| Section | What it shows |
-|---------|--------------|
-| **Processing counts** | Total documents processed, successful, failed |
-| **Queue state** | Files waiting in the input folder, files currently processing |
-| **Service health** | Whether the ingestion worker is running, last heartbeat time |
-| **Latency** | P50, P95, P99 processing times |
-| **24-hour summary** | Activity breakdown for the last 24 hours |
-| **Top failure reasons** | Most common error codes from recent failures |
-| **Hourly throughput** | Documents processed per hour (chart) |
-| **Quality analytics** | Average quality scores, common issues, barcode format breakdown |
-
-All data refreshes automatically. The dashboard reads from the JSONL processing logs and the ingestion worker's heartbeat.
-
----
-
-## 6. Inventory Management
-
-### 6.1 Viewing Your Inventory
+### 3.2 Items List
 
 **URL:** `/inventory`
 
-The inventory list shows all your items in a searchable, filterable table.
+**What it shows:** A searchable, filterable table of all inventory items.
 
-**Search and filter:**
-- Type in the search bar to filter by name, SKU, barcode, location, or tags
-- Use the category dropdown to filter by category
-- Items are sorted by most recently updated
+**Summary bar:** Active items count, total units, number of categories, low stock count, out-of-stock count.
 
-**Table columns:**
-| Column | Description |
-|--------|-------------|
-| Name | Item name (click to open detail page) |
-| SKU | Stock keeping unit identifier |
-| Qty | Current quantity (color-coded: red = out of stock, yellow = low, green = healthy) |
-| Location | Storage location |
-| Category | Item category |
-| Barcode | Barcode value |
-| Status | Active or Archived |
+**Table columns:** Name (clickable), SKU, Quantity (color-coded: red = out of stock, yellow = low, green = healthy), Location, Category, Barcode value, Status (Active or Archived).
 
-**Summary bar** at the top shows: active items count, total units, categories, low stock count, and out-of-stock count.
+**What you can do:**
+- Search by name, SKU, barcode, location, or tags using the search bar
+- Filter by category using the dropdown
+- Click any item name to open its detail page
+- Export using the button in the top right
 
-Each user sees only their own inventory. Managers and above can view other users' inventory.
+**Each user sees only their own inventory.** Managers and above can view other users' items.
 
-### 6.2 Creating an Item
-
-**URL:** `/inventory/new`
-
-Fill in the form:
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| Name | Yes | Item name |
-| SKU | No | Stock keeping unit (auto-generated if left blank) |
-| Description | No | Free text description |
-| Quantity | No | Starting quantity (default: 0) |
-| Unit | No | Unit of measure (e.g., "pcs", "kg", "boxes") |
-| Min Quantity | No | Threshold for low-stock alerts |
-| Cost | No | Unit cost (for valuation reports) |
-| Tags | No | Comma-separated tags for filtering |
-| Location | No | Storage location |
-| Category | No | Category grouping |
-| Barcode Type | No | Code128, QR, EAN-13, Code39, or DataMatrix (default: Code128) |
-| Barcode Value | No | Custom value or leave empty for auto-generation |
-| Notes | No | Additional notes |
-
-**AI suggestions:** If AI is configured, click the lightbulb button next to Min Quantity, Location, or Category for AI-powered suggestions based on your existing inventory patterns.
-
-**Autosave:** Your draft is saved to your browser's local storage. If you navigate away and come back, your draft will be restored.
-
-Click **Create Item** to save. The item gets a barcode automatically.
-
-### 6.3 Viewing Item Details
+### 3.3 Item Detail
 
 **URL:** `/inventory/{item_id}`
 
-The detail page shows everything about one item:
+**What it shows:**
+- All item fields: name, SKU, description, quantity (large, color-coded), unit, location, category, tags, notes, cost, min quantity, status
+- Barcode image (sticky panel on the right): with Download and Print buttons
+- Transaction history table: every stock change with date, amount, running total, reason, and notes
 
-**Left panel:**
-- All item fields (quantity shown large and color-coded)
-- Action buttons: **Adjust Qty**, **Edit**, **Delete**
-- Full transaction history table (date, quantity change, running total, reason, notes)
+**What you can do:**
+- **Adjust Qty** — open a dialog to add or remove stock with a reason
+- **Edit** — toggle all fields into edit mode, save or cancel
+- **Delete** — permanently remove the item
+- **Download barcode** — save the barcode as a PNG image
+- **Print barcode** — open the browser print dialog for label printing
 
-**Right panel (sticky):**
-- Barcode image (Code128 or QR depending on type)
-- **Download** button — saves barcode as PNG
-- **Print** button — opens print dialog for the barcode label
+### 3.4 New Item
 
-### 6.4 Editing an Item
+**URL:** `/inventory/new`
 
-On the item detail page, click **Edit**. All fields become editable. Make your changes and click **Save**. Click **Cancel** to discard.
+**Fields:**
 
-Changes are logged in the activity log.
+| Field | Required | Notes |
+|-------|----------|-------|
+| Name | Yes | |
+| SKU | No | Auto-generated if blank |
+| Description | No | |
+| Quantity | No | Default: 0 |
+| Unit | No | e.g., "pcs", "kg", "boxes" |
+| Min Quantity | No | Low-stock alert threshold. AI suggestion available. |
+| Cost | No | Unit cost for valuation reports |
+| Tags | No | Comma-separated |
+| Location | No | AI suggestion available |
+| Category | No | AI suggestion available |
+| Barcode Type | No | Code128 (default), QR, EAN-13, Code39, DataMatrix |
+| Barcode Value | No | Custom value or leave blank for auto-generation |
+| Notes | No | |
 
-### 6.5 Adjusting Stock Quantity
+**AI suggestion buttons** (lightbulb icon) appear next to Min Quantity, Location, and Category if AI is configured. They suggest values based on patterns in your existing inventory.
 
-On the item detail page, click **Adjust Qty**. A dialog appears:
+**Autosave:** Your draft is saved to browser local storage. Navigate away and come back — your data is still there.
 
-| Field | Description |
-|-------|-------------|
-| Change | Positive number to add, negative to remove (e.g., +50 or -10) |
-| Reason | Select one: Received, Sold, Adjusted, Damaged, Returned |
-| Notes | Optional explanation |
-
-Click **Apply**. The adjustment creates an immutable transaction record. The previous quantity and new quantity are both stored — nothing is overwritten.
-
-Every adjustment appears in the transaction history on the item detail page and in the activity log.
-
-### 6.6 Deleting an Item
-
-On the item detail page, click **Delete**. Confirm the deletion. This permanently removes the item and its transaction history.
-
-For bulk deletion, use the **Bulk** page.
-
-### 6.7 Barcode Generation
-
-Every inventory item gets a barcode automatically when created. Supported formats:
-
-| Format | Best for |
-|--------|----------|
-| Code128 | General purpose, alphanumeric, most common |
-| QR | Mobile scanning, holds more data |
-| EAN-13 | Retail products (13-digit numeric) |
-| Code39 | Legacy systems, alphanumeric |
-| DataMatrix | Small labels, industrial marking |
-
-From the item detail page:
-- **Download** — saves the barcode as a PNG image file
-- **Print** — opens your browser's print dialog with the barcode sized for label printing
-
-To preview a barcode before creating an item, the system generates a live preview on the new item form.
-
-### 6.8 Barcode / SKU Scan Lookup
+### 3.5 Scan Lookup
 
 **URL:** `/scan`
 
-This page lets you look up inventory items instantly:
+**Left side:**
+- Text input for manual barcode/SKU lookup
+- Camera scanner with device selector and start/stop button
 
-**Manual lookup:**
-1. Type a barcode value or SKU in the text field
-2. Click **Lookup** or press Enter
-3. Matching items appear in the results table
+**Right side:**
+- Results table: Name, SKU, Quantity, Location, Category, Barcode, Status
+- Click any result to go to that item's detail page
 
-The results show: name, SKU, quantity, location, category, barcode, and status. Click any item to go to its detail page.
-
-### 6.9 Camera Scanning
-
-On the **Scan** page (`/scan`), click **Start Camera**:
-
-1. Select your camera device from the dropdown (if you have multiple)
-2. Point the camera at a barcode
-3. The browser's BarcodeDetector API reads the barcode automatically
-4. The item is looked up and shown in the results
-
-Camera scanning also works on the **Scan to PDF** page for batch operations.
-
-**Requirements:** Camera scanning uses the browser's built-in BarcodeDetector API. This works in Chrome, Edge, and other Chromium browsers. Firefox does not support this API natively.
-
-### 6.10 Bulk Import (CSV / JSON)
-
-**URL:** `/inventory/import`
-
-**CSV import:**
-1. Click the **CSV** tab
-2. Drag and drop your CSV file (or click to browse)
-3. A preview of the first 50 rows appears
-4. Review and click **Import**
-
-**Expected CSV columns:**
-| Column | Required | Notes |
-|--------|----------|-------|
-| name | Yes | Item name |
-| sku | No | If provided, used for duplicate detection |
-| quantity | No | Starting stock (default: 0) |
-| unit | No | Unit of measure |
-| location | No | Storage location |
-| category | No | Category |
-| cost | No | Unit cost |
-| min_quantity | No | Low-stock threshold |
-| description | No | Description |
-| tags | No | Comma-separated |
-| notes | No | Additional notes |
-| barcode_type | No | Code128, QR, etc. |
-| barcode_value | No | Custom barcode value |
-
-**Conflict handling:** If a SKU already exists in your inventory, the import updates the existing item rather than creating a duplicate.
-
-**JSON import:** Same fields, but as a JSON array of objects.
-
-### 6.11 Bulk Export (CSV / JSON)
-
-**URL:** `/inventory/bulk` → Export tab
-
-1. Choose format: **CSV** or **JSON**
-2. Optionally filter by: Status (active/archived/all), Category, Location
-3. A live preview shows the count, total quantity, and total value of matching items
-4. Click **Download**
-
-You can also export directly from the Items page using the **Export** button in the top right.
-
-### 6.12 Bulk Actions
-
-**URL:** `/inventory/bulk`
-
-Select multiple items and perform batch operations:
-- **Bulk update:** Change location, category, or status for all selected items
-- **Bulk delete:** Remove multiple items at once
-
----
-
-## 7. Scan-to-PDF
+### 3.6 Scan-to-PDF
 
 **URL:** `/scan-to-pdf`
 
-Scan-to-PDF lets you scan multiple barcodes in a session and generate a professional PDF report. This is useful for:
-- Physical inventory counts
-- Receiving inspections
-- Shipping manifests
-- Any situation where you need to scan a batch and produce a document
+**Input methods (tabs):**
+- **Manual:** Type barcode values (supports pasting a list, one per line)
+- **Camera:** Live camera feed with automatic barcode detection
+- **Upload:** Drag-drop PNG, JPG, PDF, TIFF, or BMP files; barcodes extracted automatically
 
-**Three input methods:**
+**Session table:** Shows all scanned codes with: barcode value, format, matched item name, location, timestamp, and a delete button per row.
 
-| Tab | How it works |
-|-----|-------------|
-| **Manual** | Type barcode values (supports pasting multiple codes, one per line) |
-| **Camera** | Point your camera at barcodes; they are detected and added automatically |
-| **Upload** | Drag-drop or browse for PNG, JPG, PDF, TIFF, or BMP files; barcodes are extracted automatically |
+**Actions:**
+- **Export PDF** — generates and downloads a report
+- **Clear** — wipes the session to start fresh
+- Report title field at the top
 
-**Building your session:**
-1. Scan or enter barcodes using any of the three methods
-2. Each barcode is automatically enriched with inventory data (item name, SKU, location, category) if a match exists
-3. Your session table shows all scanned codes with their details
-4. Remove any entry by clicking the delete button on that row
+**Session persistence:** Saved in browser local storage. Survives page reloads and tab closures.
 
-**Generating the report:**
-1. Enter a title for your report (optional)
-2. Click **Export PDF**
-3. A professional PDF is generated and downloaded containing all scanned items with their details
-
-**Session persistence:** Your scan session is saved in your browser's local storage. If you close the tab and come back, your scanned items are still there. Click **Clear** to start a new session.
-
----
-
-## 8. Calendar View
+### 3.7 Calendar
 
 **URL:** `/calendar`
 
-The calendar shows a month-view grid of inventory activity. Each day cell shows the count of transactions that occurred.
+A month-view grid. Each day cell shows the count of inventory transactions. Days with more activity are shaded darker.
 
-**Using the calendar:**
-1. Navigate between months using the arrow buttons
-2. Click any day to see that day's details
-3. The day detail shows: transactions (with item name, change, reason) and items created that day
+**Navigation:** Arrow buttons to move between months.
 
-**Color coding:** Days with higher activity are shaded more intensely so you can spot busy periods at a glance.
+**Click a day** to see its transactions (item name, quantity change, reason) and items created that day.
 
----
-
-## 9. Analytics
+### 3.8 Analytics
 
 **URL:** `/analytics`
 
-Analytics has three tabs. All data is based on a configurable time window (default: 30 days). Adjust the date range to see different periods.
+Three tabs. Configurable date range (default: 30 days).
 
-### 9.1 Valuation
+**Valuation tab:**
+- Summary cards: total inventory value, active items, items with cost data, items missing cost
+- Category breakdown: item count and total value per category with proportional bars
+- Location breakdown: item count and total value per location with proportional bars
+- Barcode format breakdown: count of items per format
 
-Shows the financial picture of your inventory:
+**Velocity tab:**
+- Top movers: items with the most transactions (by count and by volume)
+- Activity bars showing relative movement
 
-| Section | What it shows |
-|---------|--------------|
-| **Summary cards** | Total inventory value, active items, items with cost data, items missing cost |
-| **Category breakdown** | Each category with its item count, total value, and proportional bar |
-| **Location breakdown** | Each location with its item count, total value, and proportional bar |
-| **Barcode format breakdown** | Count of items by barcode type (Code128, QR, etc.) |
+**Stock Health tab:**
+- Summary cards: total items, out of stock, low stock, healthy
+- Out of stock list: items at zero quantity with location
+- Low stock list: items below min quantity
+- Overstocked list: items significantly above expected levels
 
-### 9.2 Velocity
-
-Shows what is moving and what is sitting:
-
-| Section | What it shows |
-|---------|--------------|
-| **Top movers** | Items with the most transactions (by count and by volume) |
-| **Activity bars** | Visual indication of relative movement for each item |
-
-Use this to identify fast-selling items, frequently adjusted items, or items that never move.
-
-### 9.3 Stock Health
-
-Shows the health of your stock levels:
-
-| Section | What it shows |
-|---------|--------------|
-| **Summary cards** | Total items, out of stock, low stock, healthy |
-| **Out of stock list** | Items with zero quantity (with location and min quantity) |
-| **Low stock list** | Items below their minimum quantity threshold |
-| **Overstocked list** | Items significantly above expected levels |
-
----
-
-## 10. Alerts
+### 3.9 Alerts
 
 **URL:** `/alerts`
 
-Alerts notify you when inventory items cross critical thresholds.
+**What it shows:** List of alerts triggered by stock threshold breaches.
 
-**Alert types:**
-- **Low stock** — item quantity dropped below its minimum threshold
-- **Overstock** — item quantity exceeds expected maximum
-
-**Alert states:**
-| State | Meaning |
-|-------|---------|
-| Unread | New alert, not yet seen |
-| Read | You have seen it |
-| Dismissed | You have acknowledged and cleared it |
+**Each alert shows:** Item name, threshold value, current quantity, severity level, and status (unread, read, dismissed).
 
 **Actions:**
-- **Mark as read** — removes the unread badge but keeps the alert visible
-- **Dismiss** — hides the alert (it won't come back unless the condition triggers again)
-- **Dismiss all** — clears all current alerts
+- **Mark as read** — clears the unread badge but keeps the alert visible
+- **Dismiss** — hides the alert; it does not return unless the condition triggers again
+- **Dismiss all** — clears everything
 
-**How alerts are generated:** A background job checks all items against their min/max thresholds every 5 minutes. When a threshold is breached, an alert is created. If a webhook URL is configured, the alert is also sent to that URL.
+**Navigation badge:** The alert bell in the sidebar shows the unread count, updating in real time.
 
-**Configuring alerts:** Set the `min_quantity` on any item (via the item detail page or during creation). The alert system uses this as the low-stock threshold.
+**How alerts are generated:** A background job runs every 5 minutes and checks every item's quantity against its `min_quantity`. Breaches create alerts. If a webhook URL is configured, the alert is also sent there.
 
-**Navigation badge:** The alert bell in the sidebar shows the count of unread alerts. This updates in real time.
-
----
-
-## 11. Activity Log
+### 3.10 Activity Log
 
 **URL:** `/activity`
 
-The activity log is an append-only audit trail of everything that happens in the system.
+An append-only audit trail of every action in the system. Nothing is ever deleted from this log.
 
-**Categories:**
-| Category | What it tracks |
-|----------|---------------|
-| `inventory` | Item create, update, delete, stock adjustments |
-| `auth` | Login, logout, signup, password changes |
-| `admin` | Role changes, user activation/deactivation, settings changes |
-| `scan` | Barcode scan lookups |
-| `import` | CSV/JSON import operations |
-| `export` | CSV/JSON export operations |
-| `alert` | Alert creation, dismissal |
-| `system` | Background jobs, scheduler events |
+**Categories:** inventory, auth, admin, scan, import, export, alert, system.
 
-**Filtering:**
-- Filter by date range (start and end date)
-- Filter by category (dropdown)
-- Search text in the summary field
+**Filtering:** By date range, by category, or by text search in the summary field.
 
-**Summary stats** at the top show: today's activity count, this week's count, and a breakdown by category.
+**Summary stats at the top:** Today's count, this week's count, breakdown by category.
 
-**Recent activity drawer:** Accessible from the sidebar, shows the latest 20 events without leaving your current page.
+**Recent activity drawer:** Click the activity icon in the navigation to see the latest 20 events without leaving your current page.
 
----
-
-## 12. Team Management
+### 3.11 Teams
 
 **URL:** `/team`
 
-Teams let you organize users into groups with shared tasks and role-based access.
+**Left panel:** List of teams you belong to (admins see all teams). Shows team name, member count, and task count. Create Team button (managers and above).
 
-### 12.1 Creating a Team
+**Right panel (when a team is selected):**
 
-Requires **manager** role or above.
+- **Team Info tab:** Name, description, edit and delete buttons
+- **Members tab:** Table of members (name, email, team role, actions). Add Member button. Role dropdown (Lead, Member, Viewer). Remove button.
+- **Tasks tab:** Task list with status filter buttons (To Do, In Progress, Done, Blocked). Each task shows: checkbox, title, priority badge (Low/Medium/High/Urgent), due date, assigned person. Create Task button. Click to edit.
 
-1. Go to **Team** in the sidebar
-2. Click **Create Team**
-3. Enter a team name and description
-4. Click **Create**
+**Team roles:**
+| Role | Can do |
+|------|--------|
+| Lead | Manage members, create/edit/delete tasks |
+| Member | Update status of tasks assigned to them |
+| Viewer | Read-only |
 
-### 12.2 Managing Members
-
-Team leads (and admins/owner) can manage membership.
-
-**Adding a member:**
-1. Open the team → **Members** tab
-2. Click **Add Member**
-3. Select a user from the dropdown
-4. Assign a team role:
-   - **Lead** — can manage members, create/edit/delete tasks
-   - **Member** — can update their own task status
-   - **Viewer** — read-only access to team tasks and info
-
-**Changing a role:** Use the role dropdown next to any member.
-
-**Removing a member:** Click the remove button next to their name.
-
-### 12.3 Tasks
-
-Team leads and above can create tasks.
-
-**Creating a task:**
-1. Open the team → **Tasks** tab
-2. Click **Create Task**
-3. Fill in: title, description, assigned to (team member), priority, due date
-4. Click **Create**
-
-**Task priorities:** Low, Medium, High, Urgent (color-coded badges).
-
-**Task statuses:** To Do, In Progress, Done, Blocked.
-
-**Filtering tasks:** Use the status filter buttons to show only tasks in a specific state.
-
-**Updating tasks:** Click a task to edit its title, description, status, priority, assignee, or due date. Members can update the status of tasks assigned to them.
-
----
-
-## 13. AI Assistant
-
-BarcodeBuddy includes an AI assistant that can help with inventory queries, analysis, and operations using natural language.
-
-### 13.1 Setup Wizard
-
-**URL:** `/ai/setup` (owner only)
-
-Before using AI, the owner must complete setup:
-
-1. **Choose mode:**
-   - **Local** — uses Ollama running on your machine (private, no data leaves your network)
-   - **Cloud** — uses Anthropic (Claude) or OpenAI (GPT) cloud APIs
-   - **Hybrid** — local for some tasks, cloud for others
-
-2. **Configure Ollama** (if local/hybrid): Enter the Ollama base URL (default: `http://localhost:11434`) and select a model
-
-3. **Configure cloud** (if cloud/hybrid): Enter your API key for Anthropic or OpenAI and select models
-
-4. **Assign models to tasks:** Choose which model handles chat, vision, CSV analysis, and item suggestions
-
-5. **Complete setup**
-
-### 13.2 AI Chat
+### 3.12 AI Chat
 
 **URL:** `/ai/chat`
 
-The chat interface lets you have conversations with the AI about your inventory and operations.
+A conversational interface for querying your inventory and operations in plain English.
 
-**How to use it:**
-1. Type a question or instruction in the message box
-2. Press Enter or click Send
-3. The AI responds using your inventory data as context
+**Layout:** Conversation list on the left, chat messages on the right, input box at the bottom.
 
-**Example queries:**
-- "What items are low on stock?"
-- "Show me the top 5 fastest-moving items this month"
-- "Adjust the quantity of SKU-12345 by +50, reason: received"
-- "Generate a barcode for item ABC"
-- "What's the total value of items in Warehouse B?"
-- "Summarize my inventory transactions for this week"
+**What the AI can do (11 tools):**
+- Look up items by name, SKU, or barcode
+- Adjust stock quantities with reasons
+- Pull inventory analytics and summaries
+- View transaction history for any item
+- List low-stock items
+- Analyze categories
+- Generate barcodes
+- Preview and analyze CSV data
+- Suggest item field values
 
-**Conversations are persistent:** Your chat history is saved. You can have multiple conversations, switch between them, and delete old ones.
+**Conversations are saved.** Multiple conversations supported. Delete old ones from the list.
 
-The AI assistant is also accessible via the **floating chat button** in the bottom-right corner of any page.
+**Also accessible** via the floating chat button in the bottom-right corner of any page.
 
-### 13.3 AI Tools
-
-The AI assistant has 11 built-in tools that let it take actions on your behalf:
-
-| Tool | What it does |
-|------|-------------|
-| Item lookup | Find items by name, SKU, or barcode |
-| SKU lookup | Search specifically by SKU |
-| Quick stock adjustment | Adjust quantity with reason and notes |
-| Inventory analytics | Get summary statistics |
-| Transaction history | View recent transactions for any item |
-| Low stock alerts | List items below threshold |
-| Category analysis | Breakdown by category |
-| Barcode generation | Generate barcode image for an item |
-| CSV preview | Analyze and summarize uploaded CSV data |
-| Item suggestion | Suggest field values based on patterns |
-| CSV analysis | Deep analysis of CSV imports |
-
-The AI always tells you what tool it is using and what action it is taking. All AI-initiated changes are logged in the activity log.
-
-### 13.4 AI Settings
-
-**URL:** `/ai/settings` (owner only)
-
-Configure:
-- Ollama connection (base URL, chat model, vision model)
-- Cloud provider (Anthropic or OpenAI) and API key
-- Model assignments for each task type (chat, vision, CSV, suggestions)
-- Rate limits (max tokens per request, max requests per minute)
-- Enable/disable toggle
-
-API keys are encrypted at rest. They are never exposed through the API — only the presence of a key is indicated.
-
-### 13.5 Privacy and Data Handling
+### 3.13 AI Privacy and Data
 
 **URL:** `/ai/privacy`
 
-This page documents exactly how your data is handled:
+Documents how user data is handled by the AI system:
+- **Local mode (Ollama):** No data leaves your machine.
+- **Cloud mode:** Queries and inventory context are sent to the configured provider (Anthropic or OpenAI). Their data policies apply.
+- **No silent fallback:** If a provider is unavailable, the system returns an error. It never secretly switches providers.
+- **API keys** are encrypted at rest.
 
-- **Local mode (Ollama):** All processing happens on your machine. No data leaves your network.
-- **Cloud mode:** Your queries and relevant inventory context are sent to the cloud provider. The provider's data retention policies apply.
-- **No silent fallback:** If your configured provider is unavailable, the AI returns an error. It never silently switches to a different provider.
-- **User control:** You can disable cloud providers entirely and use only local AI.
-- **API key security:** Cloud API keys are encrypted using the `cryptography` library before storage in the database.
-
----
-
-## 14. Admin Panel
+### 3.14 Admin Panel
 
 **URL:** `/admin` (admin and owner roles only)
 
-### 14.1 User Management
+**Stats cards:** Total users, active users, admins, regular users.
 
-The admin panel shows a table of all user accounts:
+**Open Signup toggle:** Controls whether new users can self-register.
 
-| Column | Description |
-|--------|-------------|
-| Name | Display name |
-| Email | Account email |
-| Role | owner, admin, manager, or user |
-| Status | Active or Inactive |
-| Created | Account creation date |
-| Actions | Role change, activate/deactivate, reset password, delete |
+**User management table:** Name, Email, Role, Status (Active/Inactive), Created date, Actions.
 
-### 14.2 Role Assignments
+**Actions per user:**
+- Change role via dropdown (user, manager, admin)
+- Activate / Deactivate account
+- Reset password
+- Delete account
+- Transfer Ownership (owner only, irreversible)
 
-Change a user's role using the dropdown in the actions column. The role hierarchy:
+**Audit log** at the bottom: Last 100 administrative actions (role changes, deactivations, ownership transfers, etc.) with actor, timestamp, and detail.
 
-| Role | Privilege Level | Capabilities |
-|------|----------------|-------------|
-| **Owner** | Highest | Everything. Only one owner exists at a time. |
-| **Admin** | High | Manage all users and roles (except owner). Full system access. |
-| **Manager** | Medium | Create teams. Manage team members and tasks. View cross-user inventory. |
-| **User** | Standard | CRUD on own inventory. View analytics and activity. Join teams. |
+The owner account cannot be modified or deleted through this panel except via ownership transfer.
 
-You cannot change the owner's role through the admin panel. Use ownership transfer instead.
+### 3.15 Bulk Import
 
-### 14.3 Open/Closed Signup
+**URL:** `/inventory/import`
 
-Toggle the **Open Signup** switch to control whether new users can create accounts:
-- **On:** Anyone can sign up at `/auth/signup`
-- **Off:** Only existing admins/owner can create accounts (by directly adding users or temporarily enabling signup)
+**CSV tab:**
+1. Drag-drop or click to upload a CSV file
+2. Preview of first 50 rows
+3. Click Import
 
-### 14.4 Ownership Transfer
+**Required column:** `name`. All others optional: `sku`, `quantity`, `unit`, `location`, `category`, `cost`, `min_quantity`, `description`, `tags`, `notes`, `barcode_type`, `barcode_value`.
 
-The owner can transfer ownership to another user:
+If a SKU already exists, the existing item is updated.
 
-1. In the Admin Panel, find the target user
-2. Click **Transfer Ownership**
-3. Confirm the transfer
+**JSON tab:** Same fields, uploaded as a JSON array of objects.
 
-This is irreversible. The previous owner is demoted to admin. The new owner gets full control.
+### 3.16 Bulk Export
 
-### 14.5 Audit Log
+**URL:** `/inventory/bulk` (Export tab)
 
-The bottom of the admin panel shows the last 100 audit entries:
+1. Select format: CSV or JSON
+2. Filter by: Status (active/archived/all), Category, Location
+3. Live preview shows count, total quantity, and total value of matching items
+4. Click Download
 
-| Column | Description |
-|--------|-------------|
-| Time | When the action occurred |
-| Actor | Who performed the action |
-| Action | What was done (role_change, deactivate_user, transfer_ownership, etc.) |
-| Detail | JSON payload with specifics |
-
-This is separate from the Activity Log. The audit log specifically tracks administrative and security-relevant actions.
+Also available from the Items page via the Export button.
 
 ---
 
-## 15. Document Ingestion Service
+## 4. Role-Based Guides
 
-The ingestion service (`main.py`) is the headless file processor that watches a folder and automatically files scanned documents.
+### 4.1 Warehouse Operator
 
-### 15.1 How It Works
+**Your job in the system:** Scan documents, look up items, adjust stock.
 
-```
-[Scanner] → [Input Folder] → [BarcodeBuddy] → [Output Folder]
-                                    ↓
-                             [Rejected Folder]
-```
+**Pages you use daily:**
+- **Scan** — look up items by barcode when you need to identify something
+- **Items** — find items by name or SKU
+- **Item Detail** — adjust quantities after receiving, shipping, or counting
+- **Scan to PDF** — when you need to produce a count report or a receiving log
 
-1. You (or your scanner) drop a file into the **input folder**
-2. BarcodeBuddy detects the new file via OS-level file watching
-3. It waits for the file to stabilize (stop changing) — default: 2 seconds
-4. It atomically moves the file to the **processing folder** and creates a recovery journal
-5. It validates the file format (must be PDF, JPG, JPEG, or PNG)
-6. It extracts barcodes using zxing-cpp with OpenCV preprocessing
-7. It tries multiple rotations (0°, 90°, 180°, 270°) to find barcodes
-8. If a barcode is found and passes business-rule validation, the file is converted to PDF and placed in the **output folder** organized as `YYYY/MM/barcode.pdf`
-9. If no barcode is found or validation fails, the file goes to the **rejected folder** with a `.meta.json` sidecar explaining why
+**Pages you probably do not need:**
+- Admin Panel (you do not have access)
+- AI Settings / AI Setup (admin only)
+- Analytics (useful but not your daily concern)
 
-### 15.2 Supported File Formats
+**Your typical day:**
+1. Receive a shipment → scan the packing slips into the input folder → adjust inventory quantities for received items
+2. Ship an order → scan the POD into the input folder → adjust inventory for sold/shipped items
+3. Find an item → use Scan page with camera or type the barcode
+4. End of shift → check Alerts for any low-stock warnings to report to your manager
 
-| Format | Support |
-|--------|---------|
-| PDF | Full support (multi-page, barcode extracted per page) |
-| JPG / JPEG | Full support (converted to PDF on output) |
-| PNG | Full support (converted to PDF on output) |
-| TIFF | Not yet supported (planned) |
+### 4.2 Inventory Manager
 
-Files are validated by magic bytes (file header), not by extension. Renaming a `.txt` to `.pdf` will not fool the validator.
+**Your job in the system:** Maintain accurate inventory, set up alerts, analyze stock health, run reports.
 
-### 15.3 Barcode Detection
+**Pages you use daily:**
+- **Items** — your home base. Search, filter, review quantities.
+- **Item Detail** — adjust stock, edit item data, review transaction history
+- **Alerts** — respond to low-stock and overstock warnings
+- **Analytics** — Stock Health tab to see what needs attention. Valuation tab for financial reporting. Velocity tab to see what is moving.
+- **Calendar** — spot patterns in activity over time
+- **Scan to PDF** — generate count reports during physical inventory
 
-**Supported barcode types:** Configured per workflow in `config.json` under `barcode_types`. Common values: `code128`, `qr`, `ean13`, `code39`, `datamatrix`, `auto` (try all).
+**Pages you use occasionally:**
+- **Import CSV** — bulk loading new items or updating data
+- **Bulk Export** — pulling data for reports or sharing with other systems
+- **New Item** — adding items one at a time
+- **AI Chat** — asking questions about your inventory without digging through screens
 
-**Detection process:**
-1. Each page is rendered at the configured DPI (default: 300)
-2. OpenCV preprocessing enhances the image
-3. Optionally upscaled by the configured factor
-4. zxing-cpp attempts to decode barcodes
-5. If nothing found, the image is rotated 90°, 180°, 270° and retried
+**Key setup tasks:**
+- Set `min_quantity` on every item that matters. Without it, the alert system has nothing to check.
+- Add cost data to items if you want valuation reports to be accurate.
+- Assign locations and categories consistently so analytics group correctly.
 
-**Barcode selection when multiple are found:**
-1. Business-rule match (matches a pattern in `barcode_value_patterns`) wins
-2. Then: largest bounding box
-3. Then: earliest page
-4. Then: scan order (top-left to bottom-right)
+### 4.3 Department Lead / Manager
 
-**Business-rule patterns:** Configure `barcode_value_patterns` in `config.json` as an array of regex strings. Only barcodes whose decoded value matches at least one pattern are accepted. If the array is empty, all barcodes are accepted.
+**Your job in the system:** Oversee your team's work, assign tasks, review operational reports.
 
-### 15.4 What Happens to Your Files
+**Pages you use daily:**
+- **Team** — check task progress, assign new work, manage membership
+- **Dashboard** — see processing throughput and failures
+- **Activity Log** — review what your team did today
+- **Alerts** — check for unresolved stock issues
 
-| Outcome | Where the file goes | Details |
-|---------|-------------------|---------|
-| **Success** | `output/YYYY/MM/BARCODE.pdf` | PDF named after the barcode value |
-| **Success (timestamp mode)** | `output/YYYY/MM/BARCODE_20260404_120000.pdf` | Timestamp appended to prevent overwrite |
-| **Rejection** | `rejected/ORIGINAL_FILENAME` + `rejected/ORIGINAL_FILENAME.meta.json` | Original file preserved, sidecar explains why |
+**Pages you use weekly:**
+- **Analytics** — review stock health and velocity trends
+- **Calendar** — look at activity patterns over the past weeks
 
-**Output organization:** Files are placed in year/month subdirectories automatically.
+**Manager-specific capabilities:**
+- You can create teams (regular users cannot)
+- You can view other users' inventory (regular users can only see their own)
+- You can add and remove team members and assign them roles
 
-### 15.5 Duplicate Handling
+### 4.4 Operations Owner / Executive
 
-Two modes, configured per workflow:
+**Your job in the system:** See the big picture. Make sure the operation is healthy.
 
-| Mode | Behavior | Best for |
-|------|----------|----------|
-| `timestamp` | Appends a timestamp to the filename; both copies are kept | Shipping/POD (rescans are normal) |
-| `reject` | Second file with the same barcode is rejected | Receiving (duplicates = clerical error) |
+**What to look at:**
+- **Dashboard** — is the document processing pipeline running? What is the failure rate? Is there a backlog?
+- **Analytics → Valuation** — what is the total inventory value? How is it distributed across categories and locations?
+- **Analytics → Stock Health** — how many items are out of stock or low?
+- **Activity Log** — high-level view of system usage and any unusual patterns
+- **Admin Panel → Audit Log** — security-relevant events (role changes, new signups, ownership transfers)
 
-### 15.6 Rejections
+**As the owner, you also control:**
+- AI configuration (setup wizard and settings)
+- Ownership transfer to another person
+- Everything admins can do (user management, signup settings)
 
-When a file is rejected, two things happen:
-1. The original file is moved to the `rejected` folder (unchanged)
-2. A `.meta.json` sidecar is created next to it with:
-   - The original filename
-   - The reason for rejection (error code and message)
-   - Timestamp
-   - Workflow identifier
+### 4.5 System Admin
 
-**Common rejection reasons:**
-| Error | Meaning | What to do |
-|-------|---------|-----------|
-| `NO_BARCODE` | No barcode found in the document | Check scan quality, ensure barcode is visible |
-| `INVALID_FORMAT` | File is not PDF, JPG, or PNG | Re-scan in a supported format |
-| `PATTERN_MISMATCH` | Barcode found but doesn't match business rules | Check the barcode value against your configured patterns |
-| `DUPLICATE_REJECTED` | Same barcode already processed (reject mode) | Intentional rescan? Switch to timestamp mode. Mistake? Discard the duplicate. |
-| `FILE_LOCKED` | File was still being written when processing started | Retry — the scanner may not have finished writing |
+**Your job in the system:** Manage users, configure the platform, keep it running.
 
-### 15.7 Workflows
+**Your responsibilities:**
 
-BarcodeBuddy is designed to run one workflow per instance. The recommended workflows are:
+1. **User management** — promote/demote roles, activate/deactivate accounts, reset passwords via Admin Panel
+2. **Signup control** — toggle open signup on or off
+3. **AI setup** — complete the setup wizard, configure providers and models, manage API keys (owner only, but admins often coordinate this)
+4. **System health** — monitor the Dashboard and health endpoint
+5. **Audit trail** — review the audit log for security-relevant actions
 
-| Workflow | Purpose | Duplicate mode |
-|----------|---------|---------------|
-| `receiving` | Packing slips, PO attachments | `reject` |
-| `shipping_pod` | Proof-of-delivery, shipping paperwork | `timestamp` |
-| `quality_compliance` | Traceability docs, certifications | `reject` |
-
-Each workflow has its own:
-- Input folder (where operators drop files)
-- Output folder (where filed PDFs land)
-- Rejected folder (where failures go)
-- Log directory
-- Configuration file
-- Barcode type and pattern rules
-
-To run multiple workflows, run multiple instances of `main.py` with different config files. See [Section 16.10](#1610-running-multiple-workflows).
+**For infrastructure tasks** (deployment, config files, environment variables, network shares), see [Section 5: Admin and Setup](#5-admin-and-setup).
 
 ---
 
-## 16. System Setup and Deployment
+## 5. Admin and Setup
 
-### 16.1 Requirements
+This section is for the person installing, configuring, and maintaining the system.
 
-- **Python:** 3.10, 3.11, 3.12, or 3.13
-- **OS:** Windows or Linux
-- **Storage:** All managed paths (input, processing, output, rejected, logs) must be on the same filesystem volume
-- **For camera scanning:** Chrome, Edge, or other Chromium browser
-- **For AI (local):** Ollama installed and running
-- **For AI (cloud):** Anthropic or OpenAI API key
-- **For password reset emails:** SMTP server (optional)
+### 5.1 First-Time System Setup
 
-### 16.2 Installation
+1. **Install Python** 3.10, 3.11, 3.12, or 3.13.
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Set the owner email** (the email that the first user must use to sign up):
+   ```bash
+   export BB_OWNER_EMAIL="owner@yourcompany.com"
+   ```
+4. **Set a persistent JWT secret** (so sessions survive server restarts):
+   ```bash
+   export BB_SECRET_KEY="a-long-random-string-at-least-32-characters"
+   ```
+5. **Start the web application:**
+   ```bash
+   python stats.py
+   ```
+6. **Open a browser** and go to `http://localhost:8080/auth/signup`. Sign up with the owner email. You are now the owner.
+7. **Start the ingestion service** (if you need document processing):
+   ```bash
+   python main.py
+   ```
 
-```bash
-# Clone the repository
-git clone <repo-url>
-cd BarcodeBuddy
+### 5.2 Configuration File
 
-# Install dependencies
-pip install -r requirements.txt
+All configuration lives in a single JSON file. The default location is `./config.json`, overridable with `--config` or the `BB_CONFIG` environment variable.
 
-# Copy and edit your config
-cp config.json config.json  # or use a workflow template from configs/
+Every key is validated on startup. Unknown keys are rejected. Invalid values cause an immediate error.
 
-# Set the owner email
-export BB_OWNER_EMAIL="your-email@company.com"
+See [Appendix B: Configuration Reference](#appendix-b-configuration-reference) for the full list of keys, types, defaults, and constraints.
 
-# Start the web application
-python stats.py
+**Critical validation rules:**
+- All five directory paths (input, processing, output, rejected, logs) must be distinct. No path can be a parent or child of another.
+- All five directory paths must be on the same filesystem volume.
+- `barcode_value_patterns` entries are compiled as regex on startup. A bad regex pattern causes an immediate startup failure.
 
-# Start the ingestion service (separate terminal)
-python main.py
-```
+### 5.3 Environment Variables
 
-### 16.3 Configuration Reference
-
-Configuration lives in a single JSON file. Every key is validated on startup — unknown keys are rejected.
-
-**Required settings:**
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `input_path` | string | Folder where scanned documents are dropped |
-| `processing_path` | string | Temporary folder for files being processed |
-| `output_path` | string | Destination for successfully filed PDFs |
-| `rejected_path` | string | Destination for failed files + meta sidecars |
-| `log_path` | string | Processing logs, daily archives, and database |
-| `barcode_types` | array | Barcode formats to scan for (e.g., `["code128", "auto"]`) |
-| `scan_all_pages` | bool | Scan all pages (`true`) or first page only (`false`) |
-| `duplicate_handling` | string | `"timestamp"` or `"reject"` |
-| `file_stability_delay_ms` | int | Milliseconds to wait for file to stop changing (min: 500) |
-| `max_pages_scan` | int | Maximum pages to scan per document (min: 1, default: 50) |
-
-**Optional settings:**
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `workflow_key` | string | `"default"` | Identifier for this workflow (used in logs and lock files) |
-| `barcode_value_patterns` | array | `[]` | Regex patterns for barcode value validation |
-| `poll_interval_ms` | int | `500` | Folder polling interval in ms (min: 100) |
-| `barcode_scan_dpi` | int | `300` | DPI for PDF page rendering (min: 72) |
-| `barcode_upscale_factor` | float | `1.0` | Image upscale factor before decode (min: 1.0) |
-| `server_host` | string | `"0.0.0.0"` | Web server bind address |
-| `server_port` | int | `8080` | Web server port (1–65535) |
-| `secret_key` | string | `""` | JWT secret for session persistence across restarts |
-
-**Validation rules:**
-- All five managed paths must be distinct (no overlaps)
-- All five managed paths must be on the same filesystem volume
-- `barcode_types` must contain at least one entry
-- `barcode_value_patterns` are compiled as regex on startup — invalid patterns cause startup failure
-
-### 16.4 Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BB_CONFIG` | `config.json` | Path to config file (overridden by `--config` CLI flag) |
-| `BB_SECRET_KEY` | (empty) | JWT secret key (overrides config `secret_key`) |
-| `BB_OWNER_EMAIL` | `mferragamo@danpack.com` | Owner account email for first signup |
-| `BB_SMTP_HOST` | (empty) | SMTP server for password reset emails |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `BB_CONFIG` | `config.json` | Config file path (overridden by `--config` flag) |
+| `BB_SECRET_KEY` | (empty) | JWT secret for session persistence. **Set this in production.** If empty, a random key is generated per startup, meaning all user sessions are invalidated on every restart. |
+| `BB_OWNER_EMAIL` | `mferragamo@danpack.com` | The email address that the first signup must use. This person becomes the system owner. |
+| `BB_SMTP_HOST` | (empty) | SMTP server hostname for password reset emails |
 | `BB_SMTP_PORT` | `587` | SMTP port |
 | `BB_SMTP_USER` | (empty) | SMTP username |
 | `BB_SMTP_PASSWORD` | (empty) | SMTP password |
 | `BB_SMTP_USE_TLS` | `true` | Enable TLS for SMTP |
 | `BB_RESET_FROM` | (empty) | "From" address for reset emails |
 
-**Important:** If `BB_SECRET_KEY` is empty and config `secret_key` is empty, a random key is generated on each startup. This means all user sessions are invalidated every time the server restarts. For production, always set a persistent secret key.
-
-**Important:** If `BB_SMTP_HOST` and `BB_RESET_FROM` are not set, password reset emails are silently skipped. This is acceptable for LAN deployments where admins can reset passwords manually.
-
-### 16.5 Running the Web Application
+### 5.4 Running the Web Application
 
 ```bash
 python stats.py [--config PATH] [--host HOST] [--port PORT] [--refresh-seconds N] [--history-days N] [--recent-limit N]
@@ -1072,45 +818,77 @@ python stats.py [--config PATH] [--host HOST] [--port PORT] [--refresh-seconds N
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--config` | `BB_CONFIG` or `config.json` | Config file path |
-| `--host` | from config | Bind address |
-| `--port` | from config | Bind port |
-| `--refresh-seconds` | `15` | Browser auto-refresh interval (min: 5) |
-| `--history-days` | `14` | Days of activity history on dashboard (min: 1) |
-| `--recent-limit` | `25` | Recent documents shown on dashboard (min: 1) |
+| `--host` | from config or `0.0.0.0` | Bind address |
+| `--port` | from config or `8080` | Bind port |
+| `--refresh-seconds` | `15` | Dashboard auto-refresh interval (minimum 5) |
+| `--history-days` | `14` | Days of history on dashboard (minimum 1) |
+| `--recent-limit` | `25` | Recent documents on dashboard (minimum 1) |
 
-The web app creates the database at `{log_path}/barcode_buddy.db` (SQLite with WAL mode). Tables are created automatically on first run.
+The database is created automatically at `{log_path}/barcode_buddy.db` using SQLite with WAL mode. All tables are created on first run.
 
-API documentation is available at `http://your-server:8080/docs` (Swagger UI).
+API documentation (Swagger UI) is available at `http://your-server:8080/docs`.
 
-### 16.6 Running the Ingestion Service
+### 5.5 Running the Document Ingestion Service
 
 ```bash
 python main.py [--config PATH]
 ```
 
-The service:
-1. Validates and locks the config
-2. Creates all required directories
-3. Acquires an exclusive lock per workflow (prevents duplicate instances)
-4. Recovers any in-flight files from the journal
-5. Begins watching the input folder
+On startup, the service:
+1. Loads and validates the configuration
+2. Creates all required directories if they do not exist
+3. Acquires an exclusive lock per workflow (prevents duplicate instances of the same workflow)
+4. Recovers any in-flight files from the `processing/.journal/` directory
+5. Begins watching the input folder using OS-level file notifications
 
-**Graceful shutdown:** Send SIGINT (Ctrl+C) or SIGTERM. The service finishes any in-flight file before exiting.
+**Shutdown:** Send SIGINT (Ctrl+C) or SIGTERM. The service finishes any file currently being processed before exiting.
 
-### 16.7 Windows Deployment
+**Lock file:** Created at `{log_path}/.service.lock` with JSON metadata (workflow, PID, config version, timestamp). If a stale lock file exists from a crashed process, the service detects and replaces it.
 
-**Quick start (with Cloudflare Tunnel):**
+### 5.6 Running Multiple Workflows
+
+For organizations with separate document types (receiving, shipping/POD, quality/compliance), run one ingestion service per workflow:
+
+```bash
+python main.py --config configs/config.receiving.json
+python main.py --config configs/config.shipping-pod.json
+python main.py --config configs/config.quality-compliance.json
+```
+
+Each workflow needs:
+- Its own config file with a unique `workflow_key`
+- Its own five directories (input, processing, output, rejected, logs)
+- Its own barcode type and pattern rules
+- Its own duplicate handling mode (`reject` for receiving and quality; `timestamp` for shipping/POD)
+
+Example directory layout:
+
+```text
+D:\barcodebuddy\receiving\input
+D:\barcodebuddy\receiving\processing
+D:\barcodebuddy\receiving\output
+D:\barcodebuddy\receiving\rejected
+D:\barcodebuddy\receiving\logs
+
+D:\barcodebuddy\shipping-pod\input
+D:\barcodebuddy\shipping-pod\output
+...
+```
+
+The web application (`stats.py`) only needs to run once — it is not per-workflow.
+
+### 5.7 Windows Deployment
+
+**Quick start with Cloudflare Tunnel:**
 ```powershell
 powershell -ExecutionPolicy Bypass -File start-app.ps1
 ```
 
-This starts the web application and a Cloudflare tunnel on port 8080. It watches both processes and restarts either if they crash.
+This starts the web app and a Cloudflare tunnel on port 8080. It watches both processes and restarts either if they crash. The public URL is saved to `data/logs/tunnel-url.txt`.
 
-**Tunnel modes:**
-- **Named tunnel:** Requires `~/.cloudflared/barcodebuddy.yml` and a DNS CNAME at `app.danpack.com`. Provides a permanent URL.
-- **Quick tunnel:** Temporary URL generated by Cloudflare. Good for testing.
+**Named tunnel** (permanent URL): Requires `~/.cloudflared/barcodebuddy.yml` and a DNS CNAME (e.g., `app.danpack.com`).
 
-The public URL is saved to `data/logs/tunnel-url.txt`.
+**Quick tunnel** (temporary URL): Works out of the box for testing.
 
 **Autostart on login:**
 ```powershell
@@ -1118,77 +896,82 @@ The public URL is saved to `data/logs/tunnel-url.txt`.
 powershell -ExecutionPolicy Bypass -File install-autostart.ps1
 ```
 
-This creates a Windows scheduled task named "BarcodeBuddy" that runs `start-app.ps1` at user logon with automatic crash restart.
+Creates a scheduled task named "BarcodeBuddy" that starts on login with automatic crash restart.
 
 **To remove autostart:**
 ```powershell
 Unregister-ScheduledTask -TaskName "BarcodeBuddy" -Confirm:$false
 ```
 
-### 16.8 Docker Deployment
+### 5.8 Docker Deployment
 
 ```bash
 docker build -t barcodebuddy .
 docker run -p 8080:8080 -v /your/data:/app/data barcodebuddy
 ```
 
-The container:
-- Runs as non-root user `appuser`
-- Exposes port 8080
-- Health check at `/health` (30-second interval)
-- Starts the web application only — the ingestion service should run separately
+The container runs as non-root (`appuser`), exposes port 8080, and includes a health check at `/health`.
 
-**For the ingestion service in Docker:** Run a second container with `python main.py` as the command and shared volume mounts for the data directories.
+**Important:** The container runs the web application only. For document ingestion, run a second container (or a host process) with `python main.py` and shared volume mounts.
 
-### 16.9 Railway Deployment
+### 5.9 Railway Deployment
 
-Push to Railway. The `railway.toml` configures:
-- Nixpacks builder (auto-detects Python)
-- Start command: `python stats.py --host 0.0.0.0 --port $PORT`
-- Health check on `/health`
+Push the repository to Railway. The `railway.toml` file configures automatic builds with Nixpacks and health checks on `/health`.
 
-### 16.10 Running Multiple Workflows
+### 5.10 Setting Up AI
 
-For organizations with multiple document types (receiving, shipping, quality):
+The owner must complete this before anyone can use the AI chat.
+
+1. Log in as the owner.
+2. Go to **AI Setup** in the sidebar (or navigate to `/ai/setup`).
+3. Choose a mode:
+   - **Local** — requires Ollama running on the same machine (default URL: `http://localhost:11434`). All data stays on your network.
+   - **Cloud** — requires an API key from Anthropic or OpenAI. Data is sent to the provider.
+   - **Hybrid** — uses local for some tasks, cloud for others.
+4. Follow the wizard steps to configure connection details, select models, and assign them to task types (chat, vision, CSV analysis, item suggestions).
+5. Complete the wizard.
+
+**After setup:** All users can access AI Chat. Settings can be changed later at `/ai/settings`.
+
+**API keys are encrypted at rest.** They are never returned by the API — only a boolean indicating whether a key is present.
+
+### 5.11 Setting Up Email (Password Resets)
+
+If you want the password reset flow to send emails:
 
 ```bash
-# Terminal 1: Receiving workflow
-python main.py --config configs/config.receiving.json
-
-# Terminal 2: Shipping/POD workflow
-python main.py --config configs/config.shipping-pod.json
-
-# Terminal 3: Quality/Compliance workflow
-python main.py --config configs/config.quality-compliance.json
-
-# Terminal 4: Web application (shared)
-python stats.py
+export BB_SMTP_HOST="smtp.yourcompany.com"
+export BB_SMTP_PORT="587"
+export BB_SMTP_USER="noreply@yourcompany.com"
+export BB_SMTP_PASSWORD="your-smtp-password"
+export BB_SMTP_USE_TLS="true"
+export BB_RESET_FROM="noreply@yourcompany.com"
 ```
 
-Each workflow instance needs:
-- Its own config file
-- Its own set of five directories (input, processing, output, rejected, logs)
-- Its own `workflow_key`
-- Its own barcode types and patterns
-- Its own duplicate handling mode
+If these are not set, password resets are silently skipped. Users must ask an admin to reset their password manually via the Admin Panel.
 
-**Network share setup:** Share only the input folders over SMB so scanners on other machines can drop files:
-```
+For LAN-only deployments where everyone is in the same building, this is fine. Admins can reset passwords directly.
+
+### 5.12 Scanner and Network Share Setup
+
+**Scanner profile recommendations:**
+- Output format: PDF (not TIFF — TIFF is not yet supported)
+- DPI: 300 or higher
+- Mode: "one file per scan" (not "one file per page")
+- Destination: the BarcodeBuddy input folder for the relevant workflow
+- Duplex: enabled if the scanner supports it
+
+**Network shares (SMB):** If scanners are on different machines than the server, share only the input folders:
+
+```text
 \\server\receiving-input    → D:\barcodebuddy\receiving\input
 \\server\shipping-input     → D:\barcodebuddy\shipping-pod\input
 \\server\quality-input      → D:\barcodebuddy\quality-compliance\input
 ```
 
-**Scanner profile tips:**
-- Set output format to PDF (not TIFF)
-- Use 300 DPI or higher
-- Use "one file per scan" (not "one file per page")
-- Send each document type to its designated input folder
-- Enable duplex scanning if your hardware supports it
+Do not share the processing, output, or rejected folders over the network. They are managed by the system.
 
----
-
-## 17. Health and Monitoring
+### 5.13 Health Monitoring
 
 **Health endpoint:** `GET /health`
 
@@ -1196,67 +979,84 @@ Returns HTTP 200 only when:
 1. The ingestion worker's heartbeat is recent
 2. The service lock file exists
 
-Use this for load balancer checks, Docker health checks, Kubernetes probes, or uptime monitoring.
+Use this for load balancers, Docker health checks, Kubernetes probes, or uptime monitoring.
 
-**Prometheus metrics:** `GET /metrics`
+**Prometheus metrics:** `GET /metrics` — exposes Prometheus-compatible gauges.
 
-Exposes Prometheus-compatible gauges for integration with Grafana or other monitoring systems.
+**Processing logs:** JSONL files at `{log_path}/processing_log.jsonl` with daily rotation. Every event includes schema version, workflow, hostname, instance ID, config version, processing stage, duration, and error code.
 
-**Processing logs:** JSONL files at `{log_path}/processing_log.jsonl` with daily rotation. Every processing event includes:
-- Schema version, workflow key, hostname, instance ID
-- Config version (12-character SHA256 checksum)
-- Processing stage, duration, and error code (if any)
-
-**Database backups:** Automatic backups with 14-day rolling retention at `{log_path}/barcode_buddy.{timestamp}.db`.
+**Database backups:** Automatic with 14-day rolling retention at `{log_path}/barcode_buddy.{timestamp}.db`.
 
 ---
 
-## 18. Troubleshooting
+## 6. Troubleshooting
 
-| Problem | Likely cause | Solution |
-|---------|-------------|----------|
-| Can't sign up | Open signup is disabled | Ask an admin to enable it in the Admin Panel |
-| Can't sign up (first user) | Wrong email | Use the email in `BB_OWNER_EMAIL` for the first signup |
-| Login fails | Wrong credentials or rate limited | Check email/password. If rate limited, wait 60 seconds. |
-| Session expired | 24-hour session timeout | Log in again |
-| No password reset email | SMTP not configured | Ask admin to reset your password via Admin Panel |
-| Files not being processed | Ingestion service not running | Start `main.py` in a separate terminal |
-| Files going to rejected folder | No barcode / wrong format / pattern mismatch | Check the `.meta.json` sidecar for the specific reason |
-| "No barcode found" rejections | Poor scan quality or barcode not visible | Re-scan at higher DPI, ensure barcode is unobstructed |
-| Duplicate rejections | Same barcode already processed | Expected if using `reject` mode. Switch to `timestamp` if rescans are intentional. |
-| Camera scanning not working | Browser doesn't support BarcodeDetector API | Use Chrome or Edge. Firefox is not supported. |
-| AI not responding | AI not configured or provider down | Owner must complete AI setup at `/ai/setup` |
-| AI returns errors | API key invalid or rate limited | Check AI settings. Verify API key. Check rate limits. |
-| Lock file error on startup | Another instance already running | Stop the other instance, or check if a stale lock file exists |
-| Database locked | Multiple writers | Ensure only one `stats.py` instance is running per database |
-| Alerts not firing | No min_quantity set on items | Set a min_quantity on items you want to monitor |
-| Server restarts log everyone out | No persistent secret key | Set `BB_SECRET_KEY` environment variable |
+### Authentication Problems
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Cannot sign up | Open signup is disabled | Ask an admin to turn it on in Admin Panel |
+| Cannot sign up (first user) | Wrong email address | You must use the email configured in `BB_OWNER_EMAIL`. Ask IT. |
+| Login fails after correct password | Rate limited (10 attempts per 60 seconds) | Wait 60 seconds and try again |
+| Logged out unexpectedly | 24-hour session expired | Log in again. If it happens on every server restart, tell IT to set `BB_SECRET_KEY`. |
+| Password reset email never arrives | SMTP not configured | Ask an admin to reset your password via Admin Panel |
+
+### Document Ingestion Problems
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Files sit in the input folder and nothing happens | Ingestion service is not running | Tell IT to start `main.py` |
+| File goes to rejected folder | See the `.meta.json` sidecar for the exact reason | See [2.7: Investigating a Rejected Document](#27-investigating-a-rejected-document) |
+| "No barcode found" on a document that has a barcode | Poor scan quality, barcode partially cut off, or DPI too low | Re-scan at 300 DPI or higher. Ensure the barcode is fully visible and not wrinkled. |
+| Duplicate rejection on an intentional rescan | Workflow is in `reject` mode | If rescans are normal for this workflow (e.g., shipping/POD), IT should switch to `timestamp` mode |
+| Lock file error on startup | Another instance of the same workflow is running | Stop the other instance first. If it crashed, the stale lock is cleaned up automatically. |
+
+### Inventory and Web App Problems
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Alerts not firing for an item | `min_quantity` is not set | Edit the item and set a min_quantity value |
+| Camera scanning does not work | Unsupported browser | Use Chrome or Edge. Firefox does not support the BarcodeDetector API. |
+| AI chat shows an error | AI is not configured | The owner needs to complete AI setup at `/ai/setup` |
+| AI returns "provider unavailable" | Ollama is down or cloud API key is invalid | Check AI settings. For Ollama, make sure the Ollama service is running. For cloud, verify the API key. |
+| Items list is empty but you know items exist | You are viewing your own inventory and the items belong to another user | Ask a manager or admin to check. Managers+ can view cross-user inventory. |
+| Database locked errors | Multiple `stats.py` instances running against the same database | Only one instance of `stats.py` should run per database file |
+| Imported CSV created duplicates | CSV rows had no `sku` column | The system uses SKU for duplicate detection during import. Without it, every row creates a new item. |
+
+### System-Level Problems
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| All users logged out after server restart | No persistent `BB_SECRET_KEY` | Set the `BB_SECRET_KEY` environment variable to a fixed, random string of at least 32 characters |
+| "Unknown config key" on startup | Config file has a typo or unsupported key | Check the config file against [Appendix B](#appendix-b-configuration-reference). Every key is validated. |
+| "Paths must be on same volume" on startup | Config paths span different drives | Move all five directories (input, processing, output, rejected, logs) to the same drive |
+| Startup crashes with regex error | Invalid pattern in `barcode_value_patterns` | Fix the regex syntax in your config file. Test your patterns at regex101.com first. |
 
 ---
 
-## 19. Roles and Permissions Reference
+## Appendix A: Roles and Permissions Matrix
 
 | Capability | Owner | Admin | Manager | User |
 |-----------|-------|-------|---------|------|
 | View own inventory | Yes | Yes | Yes | Yes |
-| Create/edit/delete own items | Yes | Yes | Yes | Yes |
+| Create, edit, delete own items | Yes | Yes | Yes | Yes |
 | Adjust stock quantities | Yes | Yes | Yes | Yes |
-| Import/export inventory | Yes | Yes | Yes | Yes |
-| Scan barcode lookup | Yes | Yes | Yes | Yes |
+| Import and export inventory | Yes | Yes | Yes | Yes |
+| Barcode scan lookup | Yes | Yes | Yes | Yes |
 | Scan to PDF | Yes | Yes | Yes | Yes |
 | View analytics | Yes | Yes | Yes | Yes |
 | View activity log | Yes | Yes | Yes | Yes |
-| View/manage own alerts | Yes | Yes | Yes | Yes |
+| View and manage own alerts | Yes | Yes | Yes | Yes |
 | Use AI chat | Yes | Yes | Yes | Yes |
 | View calendar | Yes | Yes | Yes | Yes |
 | Join teams | Yes | Yes | Yes | Yes |
 | Create teams | Yes | Yes | Yes | No |
-| View cross-user inventory | Yes | Yes | Yes | No |
-| Manage team members | Yes | Yes | As lead | No |
+| View other users' inventory | Yes | Yes | Yes | No |
+| Manage team members (as team lead) | Yes | Yes | Yes | No |
 | Manage all users | Yes | Yes | No | No |
 | Change user roles | Yes | Yes | No | No |
 | Activate/deactivate users | Yes | Yes | No | No |
-| View audit log | Yes | Yes | No | No |
+| View admin audit log | Yes | Yes | No | No |
 | Toggle open signup | Yes | Yes | No | No |
 | Configure AI settings | Yes | No | No | No |
 | Run AI setup wizard | Yes | No | No | No |
@@ -1264,23 +1064,72 @@ Exposes Prometheus-compatible gauges for integration with Grafana or other monit
 
 ---
 
-## 20. Glossary
+## Appendix B: Configuration Reference
 
-| Term | Definition |
-|------|-----------|
-| **Barcode value** | The decoded text content of a barcode (e.g., "PO-2026-0042") |
-| **Barcode type** | The encoding format (Code128, QR, EAN-13, Code39, DataMatrix) |
-| **Business-rule pattern** | A regex in `barcode_value_patterns` that barcodes must match to be accepted |
-| **Duplicate handling** | How the system treats a second file with the same barcode (`timestamp` = keep both, `reject` = reject the second) |
-| **Hot folder** | A directory that the ingestion service watches for new files |
-| **Ingestion service** | The `main.py` process that watches the input folder and processes files |
-| **Journal** | A recovery file in `processing/.journal/` that tracks in-flight files for crash recovery |
-| **Meta sidecar** | A `.meta.json` file placed next to a rejected file explaining why it was rejected |
-| **Owner** | The highest-privilege account, created by the first signup. Only one exists. |
-| **Rejection** | When a file cannot be processed (no barcode, wrong format, pattern mismatch, duplicate in reject mode) |
-| **SKU** | Stock Keeping Unit — a unique identifier for an inventory item |
-| **Transaction** | An immutable record of a quantity change (received, sold, adjusted, damaged, returned) |
-| **WAL mode** | Write-Ahead Logging — SQLite mode that allows concurrent reads during writes |
-| **Web application** | The `stats.py` process that serves the browser-based UI |
-| **Workflow** | A named configuration for a specific document type (receiving, shipping_pod, quality_compliance) |
-| **Workflow key** | The identifier string in config that names the workflow |
+### Required Settings
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `input_path` | string | Folder where scanned documents are dropped |
+| `processing_path` | string | Temporary folder for files being processed |
+| `output_path` | string | Destination for successfully filed PDFs |
+| `rejected_path` | string | Destination for failed files and meta sidecars |
+| `log_path` | string | Processing logs, daily archives, and database |
+| `barcode_types` | string[] | Barcode formats to scan for. At least one required. Values: `code128`, `qr`, `ean13`, `code39`, `datamatrix`, `auto` |
+| `scan_all_pages` | bool | `true` = scan every page. `false` = first page only. |
+| `duplicate_handling` | string | `"timestamp"` (keep both, append timestamp) or `"reject"` (reject the second file) |
+| `file_stability_delay_ms` | int | Wait this many ms for file to stop changing before processing. Minimum: 500. |
+| `max_pages_scan` | int | Maximum pages to scan per document. Minimum: 1. Default: 50. |
+
+### Optional Settings
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `workflow_key` | string | `"default"` | Identifier for this workflow. Lowercase alphanumeric with hyphens/underscores, max 64 chars. |
+| `barcode_value_patterns` | string[] | `[]` | Regex patterns barcodes must match. Empty = accept all. |
+| `poll_interval_ms` | int | `500` | Folder polling interval. Minimum: 100. |
+| `barcode_scan_dpi` | int | `300` | DPI for rendering PDF pages. Minimum: 72. |
+| `barcode_upscale_factor` | float | `1.0` | Image upscale factor before barcode decode. Minimum: 1.0. |
+| `server_host` | string | `"0.0.0.0"` | Web server bind address. |
+| `server_port` | int | `8080` | Web server bind port. Range: 1–65535. |
+| `secret_key` | string | `""` | JWT secret for session persistence. Empty = random per startup. |
+
+---
+
+## Appendix C: Glossary
+
+| Term | Meaning |
+|------|---------|
+| **Barcode value** | The text encoded in a barcode (e.g., "PO-2026-0042"). This is what the system reads and uses as the filename. |
+| **Barcode type** | The encoding format: Code128, QR, EAN-13, Code39, or DataMatrix. |
+| **Business-rule pattern** | A regex pattern in the config that barcodes must match. Used to filter out stray or irrelevant barcodes. |
+| **Duplicate handling** | What happens when a second document has the same barcode. `timestamp` keeps both. `reject` blocks the second. |
+| **Hot folder** | The input directory that the ingestion service watches for new files. |
+| **Ingestion service** | The `main.py` process that automatically picks up, reads, and files scanned documents. |
+| **Journal** | A crash-recovery file in `processing/.journal/` that tracks files mid-processing. If the service crashes, it uses the journal to recover. |
+| **Meta sidecar** | A `.meta.json` file that appears next to a rejected document, explaining why it was rejected. |
+| **Min quantity** | The stock level below which an item triggers a low-stock alert. Set per item. |
+| **Owner** | The top-level account. Created during first signup. Only one exists at a time. Full system control. |
+| **SKU** | Stock Keeping Unit. A unique identifier you assign to an inventory item. Used for lookups and deduplication during imports. |
+| **Transaction** | An immutable record of a stock quantity change (received, sold, adjusted, damaged, returned). Cannot be edited or deleted. |
+| **WAL mode** | Write-Ahead Logging. A SQLite mode that allows reads and writes to happen at the same time without locking. |
+| **Workflow** | A named configuration for a specific document type (receiving, shipping_pod, quality_compliance). Each workflow runs as its own ingestion service instance. |
+
+---
+
+## Appendix D: Known Gaps
+
+These are things the system does not do yet. They are documented here so you do not waste time looking for them.
+
+| Gap | Status | Notes |
+|-----|--------|-------|
+| **TIFF file support** | Planned | The ingestion service accepts PDF, JPG, and PNG only. TIFF documents must be converted before scanning. |
+| **Multi-document batch splitting** | Not started | If one PDF contains multiple documents (e.g., a batch of packing slips), the system treats it as a single document. You must split them before scanning. |
+| **Scan Record Workbench** | Not started | A planned feature for deep-diving into a single scan record's full lifecycle (processing history, linked obligations, notes, attachments). |
+| **Operations Planner** | Not started | A planned feature for multi-record planning: scan obligations, shift reports, daily close-outs, tomorrow forecasts, and workload control. |
+| **Environment variable overrides for config** | Not started | Config values can only be set in the JSON file (except `BB_SECRET_KEY` which overrides `secret_key`). |
+| **Admin-created accounts** | Not available | Admins cannot create accounts directly. They must enable open signup, have the person sign up, then disable signup again. |
+| **Bulk item creation via UI** | Not available | You can bulk import from CSV/JSON, but there is no multi-item creation form. |
+| **Firefox camera scanning** | Browser limitation | The BarcodeDetector API is not supported in Firefox. Use Chrome or Edge. |
+| **Mobile app** | Does not exist | The web app works in mobile browsers but there is no native app. |
+| **Email notifications for alerts** | Not available | Alerts appear in the web UI and can be sent to a webhook URL. There is no built-in email notification for stock alerts. |
