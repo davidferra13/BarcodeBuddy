@@ -611,12 +611,15 @@ function esc(s) {{ const d = document.createElement('div'); d.textContent = s ||
 // ── Data loading ──
 
 async function loadTeams() {{
-  const r = await fetch('/team/api/teams');
-  const d = await r.json();
-  teams = d.teams;
-  renderTeamList();
-  renderOverviewStats();
-  if (selectedTeamId) loadTeamDetail(selectedTeamId);
+  try {{
+    const r = await fetch('/team/api/teams');
+    if (!r.ok) {{ toast('Failed to load teams', 'error'); return; }}
+    const d = await r.json();
+    teams = d.teams;
+    renderTeamList();
+    renderOverviewStats();
+    if (selectedTeamId) loadTeamDetail(selectedTeamId);
+  }} catch(e) {{ toast('Failed to load teams — check your connection', 'error'); }}
 }}
 
 async function loadTeamDetail(teamId) {{
@@ -632,9 +635,12 @@ async function loadTeamDetail(teamId) {{
 
 async function loadAvailableUsers() {{
   if (!IS_MANAGER) return;
-  const r = await fetch('/team/api/available-users');
-  const d = await r.json();
-  allUsers = d.users;
+  try {{
+    const r = await fetch('/team/api/available-users');
+    if (!r.ok) return;
+    const d = await r.json();
+    allUsers = d.users;
+  }} catch(e) {{}}
 }}
 
 // ── Rendering ──
@@ -817,6 +823,7 @@ async function deleteTask(taskId) {{
 // ── Modals ──
 
 function closeModal() {{ document.getElementById('modal-root').innerHTML = ''; }}
+document.addEventListener('keydown', e => {{ if (e.key === 'Escape') closeModal(); }});
 
 function showCreateTeamModal() {{
   document.getElementById('modal-root').innerHTML = `
