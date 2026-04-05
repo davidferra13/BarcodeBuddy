@@ -95,8 +95,8 @@ Everything below is what BarcodeBuddy is supposed to be when finished. Status is
 | --- | --- |
 | JWT cookie-based authentication with bcrypt hashing | Done |
 | Role-based access control (owner, admin, manager, user) | Done |
-| First signup gated to owner email (`BB_OWNER_EMAIL`) | Done |
-| Admin-controlled open/closed signup | Done |
+| First signup becomes owner (email gated only when `BB_OWNER_EMAIL` is set) | Done |
+| Open signup by default, admin-controlled toggle | Done |
 | Password reset with email token validation | Done |
 | Session management with expiry and revocation | Done |
 | Rate-limited auth endpoints (10 req/60s per IP) | Done |

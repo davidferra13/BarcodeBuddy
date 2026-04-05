@@ -298,12 +298,9 @@ class TestPasswordReset:
 # ═════════════════════════════════════════════════════��═════════════
 
 def _setup_multi_user(client: TestClient) -> dict:
-    """Create owner + enable signup + create admin, manager, user. Returns cookies dict."""
+    """Create owner + admin, manager, user. Returns cookies dict."""
     owner = _signup(client, _owner_email(), "Owner")
     owner_cookies = owner["cookies"]
-
-    # Enable signup directly in DB (owner is the only user, open_signup defaults to False)
-    _enable_open_signup()
 
     admin = _signup(client, "admin@test.com", "Admin")
     manager = _signup(client, "manager@test.com", "Manager")
@@ -444,13 +441,13 @@ class TestAdminOperations:
 # ═══════════════════════════════════════════════════════════════════
 
 class TestOwnershipTransfer:
-    def test_transfer_ownership_rejected_for_non_reserved_email(self, client):
+    def test_transfer_ownership_to_any_active_user(self, client):
         ctx = _setup_multi_user(client)
         admin_id = ctx["user_ids"]["admin@test.com"]
         resp = client.post("/admin/api/transfer-ownership",
                            json={"target_user_id": admin_id}, cookies=ctx["owner"])
-        assert resp.status_code == 403
-        assert _owner_email() in resp.json()["error"]
+        assert resp.status_code == 200
+        assert resp.json()["user"]["role"] == "owner"
 
     def test_non_owner_cannot_transfer(self, client):
         ctx = _setup_multi_user(client)

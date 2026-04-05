@@ -25,7 +25,7 @@ v3.0.0 changes:
 
 - JWT cookie-based authentication with bcrypt password hashing and session management
 - role-based access control: owner, admin, manager, user
-- first signup must use owner email (`BB_OWNER_EMAIL` env var or default)
+- first signup becomes owner (email enforced only when `BB_OWNER_EMAIL` is explicitly set)
 - full inventory management: CRUD, quantity adjustments, barcode generation, scan lookup, camera scanning
 - CSV bulk import/export, bulk delete/update
 - inventory calendar view (month and day)

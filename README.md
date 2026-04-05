@@ -103,7 +103,7 @@ Available options:
 
 ### Authentication and Roles
 
-First-time users are prompted to create an account at `/auth/signup`. The first signup must use the owner email (set via `BB_OWNER_EMAIL` env var, defaults to `mferragamo@danpack.com`). Roles: owner, admin, manager, user — each with increasing access levels.
+First-time users are prompted to create an account at `/auth/signup`. The first person to sign up becomes the system owner. If `BB_OWNER_EMAIL` is set, that email is required for the first signup. Roles: owner, admin, manager, user — each with increasing access levels. Signup is open by default.
 
 ### Dashboard
 
@@ -173,7 +173,7 @@ BarcodeBuddy includes a full inventory management system accessible at `/invento
 - **Bulk actions** — select multiple items to update location, category, status, or delete
 - **Barcode generation** — each item gets a downloadable barcode image (Code128, QR, etc.)
 - **Dashboard** — overview with total items, units, value, low stock alerts, category/location breakdown
-- **Multi-user** — each user's inventory is isolated; first signup becomes admin
+- **Multi-user** — each user's inventory is isolated; first signup becomes owner
 
 ### Accessing
 

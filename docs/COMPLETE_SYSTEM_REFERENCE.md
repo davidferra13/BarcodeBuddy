@@ -489,7 +489,7 @@ Lock file: `log_path/.service.lock`
 |----------|---------|
 | `BB_CONFIG` | Config file path (CLI `--config` takes precedence) |
 | `BB_SECRET_KEY` | Secret key (takes precedence over config file) |
-| `BB_OWNER_EMAIL` | Owner email for first-user signup (default: `mferragamo@danpack.com`) |
+| `BB_OWNER_EMAIL` | If set, restricts first signup to this email. If not set, any email can claim owner. |
 | `BB_SMTP_HOST` | SMTP server for password reset emails |
 | `BB_SMTP_PORT` | SMTP port (default: 587) |
 | `BB_SMTP_USER` | SMTP username |
@@ -519,10 +519,10 @@ Three starter configs in `configs/`:
 
 ### 10.2 First-User Signup (Owner Onboarding)
 
-1. If user count == 0, the first signup **must** use `BB_OWNER_EMAIL` (default: `mferragamo@danpack.com`)
-2. If signup email ≠ owner email → **403 Forbidden**: "The owner account must be created with {OWNER_EMAIL}"
-3. First user automatically assigned role: **owner**
-4. All subsequent signups are gated by `SystemSettings.open_signup` (default: False)
+1. If user count == 0, the first signup becomes the **owner**
+2. If `BB_OWNER_EMAIL` is explicitly set and signup email does not match → **403 Forbidden**
+3. If `BB_OWNER_EMAIL` is not set, any email can claim owner; `OWNER_EMAIL` is locked to the email used
+4. All subsequent signups are gated by `SystemSettings.open_signup` (default: True)
 5. If open_signup is False → **403 Forbidden**: "Signup is currently disabled"
 
 ### 10.3 Signup Validation
@@ -613,7 +613,7 @@ Token extraction priority: Cookie first, then `Authorization: Bearer` header.
 ### 11.2 Ownership Transfer
 
 - Only the current owner can initiate
-- Target must have email == `BB_OWNER_EMAIL` and be active
+- Target must be an active user
 - Cannot transfer to self
 - Current owner demoted to "admin", target promoted to "owner"
 - Logged in audit with both old and new owner IDs
@@ -1536,7 +1536,7 @@ Run command: `py -3.12 -B -m pytest tests/ -x -q`
 | Reset token expiry | 1 hour |
 | Rate limit (auth) | 10 req / 60s per IP |
 | SMTP timeout | 15 seconds |
-| Owner email default | mferragamo@danpack.com |
+| Owner email default | (not set — first signup claims owner) |
 
 ### Inventory
 
