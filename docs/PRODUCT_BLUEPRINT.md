@@ -1,6 +1,6 @@
 # BarcodeBuddy Product Blueprint
 
-Last updated: 2026-04-04.
+Last updated: 2026-04-05.
 
 This is the master document. It defines everything BarcodeBuddy is, everything it does today, and everything it is supposed to become. The roadmap at the end sequences what remains.
 
@@ -258,6 +258,8 @@ Specs: `docs/operations-planner-product-spec.md`, `docs/operations-planner-techn
 | External log shipping (syslog, Loki, etc.) | Not started |
 | Backup automation (DB backup at 00:15 via APScheduler) | Done |
 | Session revocation sweep (hourly via APScheduler) | Done |
+| In-app feedback widget (bug reports, feature requests, questions) | Done |
+| Update script (`update-app.ps1`) for safe patch delivery | Done |
 
 ### 4.14 ERP and External Integration — NOT STARTED
 

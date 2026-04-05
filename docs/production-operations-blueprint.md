@@ -1,24 +1,38 @@
 # Production Operations Blueprint
 
-Last updated: 2026-04-03.
+Last updated: 2026-04-05.
 
-This document is the concrete production-operating blueprint for the current BarcodeBuddy repository. It is written against the code that exists today, with explicit notes where production controls are still required.
+This document is the concrete production-operating blueprint for the current BarcodeBuddy repository. It is written against the code that exists today (v3.0.0), with explicit notes where production controls are still required.
 
 ## 0. System Boundary
 
 Current runtime shape:
 
-- one polling worker process from `main.py`
-- one read-only local stats server from `stats.py`
+- one polling worker process from `main.py` (document ingestion — hot-folder watcher, barcode scanner, PDF output)
+- one multi-user web application from `stats.py` (FastAPI + Uvicorn) serving:
+  - JWT cookie-based authentication with bcrypt password hashing and RBAC (owner, admin, manager, user)
+  - full inventory management with CRUD, barcode generation, scan lookup, bulk import/export
+  - stock alerts with webhook dispatch, analytics dashboards, calendar views
+  - team management with roles and task tracking
+  - AI chatbot integration (Ollama local, Anthropic, OpenAI cloud providers)
+  - scan-to-PDF report generation
+  - unified activity log and admin audit trail
+  - processing dashboard with health, queue, and latency metrics
+- SQLite database in WAL mode (`data/logs/barcodebuddy.db`) for all persistent application state
 - filesystem-managed state in `input`, `processing`, `output`, `rejected`, and `logs`
-- append-only local JSONL audit log with daily local archives plus rejection sidecars
-- no database, no write API, no auth layer, and no external service dependency in the current code
+- append-only local JSONL processing audit log with daily archives plus rejection sidecars
+- APScheduler background jobs: stock alert checks (every 5 min), database backup (daily at 00:15), session revocation sweep (hourly)
+- Prometheus `/metrics` endpoint and `/health` heartbeat-derived endpoint
+- CSRF middleware (content-type enforcement) and rate-limited auth endpoints (10 req/60s per IP)
+
 Recommended production topology:
 
-- one workflow per config file and per managed folder set
+- one workflow per config file and per managed folder set for the ingestion service
 - one service wrapper or scheduler entry per workflow instance
 - local filesystem for the hot-folder lifecycle on a single volume
-- local stats server bound to loopback only unless an authenticated reverse proxy is added
+- the web application binds to `0.0.0.0:8080` by default; use Cloudflare Tunnel or a reverse proxy for public access
+- `start-app.ps1` provides self-healing startup with Cloudflare Tunnel integration and automatic restart
+- `install-autostart.ps1` registers a Windows scheduled task for daemon-mode operation
 - off-host monitoring and log shipping layered on top of the local runtime, not replacing it
 
 ## 1. Integrations And Data Contracts
@@ -30,7 +44,7 @@ Recommended production topology:
 | Config deployment -> `config.json` | JSON file loaded once at startup by `load_settings()` | Config must be source-controlled, schema-checked before deploy, and read-only to the runtime account | deployment pipeline credential or admin operator | missing keys, invalid regex, unknown keys, duplicate paths, cross-volume paths, stale config version | startup fails on invalid config | rollback to last-known-good config; block deploy if schema validation fails |
 | Internal file lifecycle: `input -> processing -> output/rejected` | Files are moved through managed directories | All managed paths must stay on one filesystem volume and remain service-owned | filesystem ACL only | non-atomic cross-volume move, disk full, rename collision, crash between commit and cleanup, dual-instance race | current repo validates same-volume and distinct paths at config load, acquires a per-workflow startup lock, and keeps a durable journal under `processing/.journal` | keep singleton startup locking in place; define bounded retry policy and add stronger startup reconciliation telemetry before widening throughput |
 | Parser stack: `PyMuPDF`, `Pillow`, `zxing-cpp` | Barcode and document processing happen in-process | Treat all input files as untrusted parser input | none at protocol level; host isolation is the control | malformed PDF/image, decompression bomb, parser exception, high CPU, high memory, library CVE, crafted payload | runtime now validates PDF/JPEG/PNG magic bytes before deep parse; remaining parse faults become rejection or `UNEXPECTED_ERROR` | isolate host, patch dependencies, keep spoofed-file tests, and add a quarantine path for suspicious files if operations require retention |
-| Local stats surface: `stats.py` -> `/`, `/api/stats`, `/health` | Read-only local HTTP server backed by the JSONL log | Bind to loopback by default; reverse proxy only if explicitly needed | none in current repo; exposure is network-boundary only | accidental external exposure, stale data from log lag, schema drift, log corruption, high refresh frequency | local-only default, no write behavior | keep loopback binding; add reverse-proxy auth only if the page is exposed beyond localhost |
+| Web application: `stats.py` -> all routes | Multi-user FastAPI application with JWT auth, RBAC, database, write APIs, AI integration, and processing dashboard | Use Cloudflare Tunnel or reverse proxy for public access; enforce HTTPS in production | JWT cookie-based auth with bcrypt, per-IP rate limiting on auth endpoints, CSRF middleware, encrypted API key storage | accidental external exposure without tunnel, session hijacking, CSRF, brute-force login, SSRF via webhook URLs, database corruption, AI provider API key leak | binds to 0.0.0.0:8080 by default; auth required for all protected routes; SameSite=Lax cookies; SSRF prevention on webhook URLs | use `start-app.ps1` with Cloudflare Tunnel for public access; set `BB_SECRET_KEY` env var for persistent sessions across restarts; back up `data/logs/barcodebuddy.db` regularly (automated daily at 00:15) |
 | Downstream document consumer -> `output_path` and `rejected_path` | Consumers are expected to read committed PDFs and rejection sidecars | Downstream must be read-only and must never write back into managed folders | filesystem ACL only | stale reads, case-sensitivity mismatch, manual tampering, consumer outage, duplicate semantics mismatch | no direct coupling in current runtime | downstream outage must not block ingest; alert on disk growth if output backlog accumulates |
 | Logging and monitoring pipeline | Active JSONL file at `data/logs/processing_log.jsonl` with local daily archives `processing_log.YYYY-MM-DD.jsonl` | Off-host shipping, retention, and log-write monitoring are still required | local service account for file writes; shipper credential if forwarding is added | disk full, log write failure, dropped shipping agent, corrupted line, schema drift | rotates locally only | keep local write path simple; ship archives off-host and alert on any log write failure |
 
@@ -225,7 +239,7 @@ User-level or workflow-level visibility:
 - page-count distribution and raw detection counts for troubleshooting
 - document-level lookup by `processing_id` from logs or sidecars
 
-The local stats page in `stats.py` is acceptable for local visibility, but it is not sufficient as the production monitoring system.
+The web application provides comprehensive local visibility through the processing dashboard, inventory analytics, activity log, and alert system. The Prometheus `/metrics` endpoint enables integration with external monitoring (Grafana, Alertmanager). The `/health` endpoint supports external uptime checks. For production monitoring beyond the built-in surfaces, wire the Prometheus metrics into an external alerting pipeline using the thresholds defined in Section 3.3.
 
 ### 3.2 Logging standards
 
@@ -297,7 +311,10 @@ Step sequence:
 | extension spoofing | runtime now validates magic bytes and rejects mismatches as `UNSUPPORTED_FORMAT` | keep spoofed-file tests and preserve suspicious files when operations require review | quarantine policy plus parser regression coverage | App |
 | crash recovery still lacks policy depth | current startup uses a durable per-file journal plus recovery log records, but there is no bounded retry policy or quarantine branch | preserve journal files and recovery logs during incidents | add explicit retry policy, quarantine handling, and startup telemetry | App |
 | observability loss | logs are local only | ship logs off-host and alert on write failure | add monitored shipper and retention policy | Platform + SRE |
-| auth drift on shares | filesystem ACLs are the main auth boundary | baseline ACLs now and remove human write access from managed paths | scheduled ACL audit and deployment automation | Platform + Security |
+| auth drift on shares | filesystem ACLs are the main auth boundary for the ingestion pipeline; the web application uses JWT auth with RBAC | baseline ACLs now and remove human write access from managed paths; set `BB_SECRET_KEY` for session persistence | scheduled ACL audit and deployment automation; rotate `BB_SECRET_KEY` periodically | Platform + Security |
+| web application exposure | the web app binds to 0.0.0.0 by default and includes write APIs, auth, and AI features | use Cloudflare Tunnel or reverse proxy; never expose port 8080 directly to the public internet without TLS | enforce HTTPS via tunnel or proxy; monitor tunnel health via `start-app.ps1` watchdog | Platform + Security |
+| database integrity | SQLite in WAL mode; automated daily backup at 00:15; no replication | ensure backup job runs and backups are retained off-host | add backup verification and off-host backup shipping | Platform + App |
+| AI provider key security | API keys encrypted at rest with Fernet derived from `secret_key` | set a strong `BB_SECRET_KEY`; rotate if compromised | monitor AI usage via rate limiting and activity log | Security + App |
 | docs and runtime drift | already happened in this repo | keep docs in the same PR as code changes | enforce artifact and test gates in CI | App |
 
 Immediate next actions:

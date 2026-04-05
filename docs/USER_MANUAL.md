@@ -1,6 +1,6 @@
 # BarcodeBuddy User Manual
 
-Last updated: 2026-04-04 (audit pass).
+Last updated: 2026-04-05.
 
 ---
 
@@ -42,6 +42,7 @@ Last updated: 2026-04-04 (audit pass).
   - [3.15 Admin Panel](#315-admin-panel)
   - [3.16 Bulk Import](#316-bulk-import)
   - [3.17 Bulk Export](#317-bulk-export)
+  - [3.18 Help & Feedback](#318-help--feedback)
 - [4. Role-Based Guides](#4-role-based-guides)
   - [4.1 Warehouse Operator](#41-warehouse-operator)
   - [4.2 Inventory Manager](#42-inventory-manager)
@@ -62,6 +63,7 @@ Last updated: 2026-04-04 (audit pass).
   - [5.11 Setting Up Email (Password Resets)](#511-setting-up-email-password-resets)
   - [5.12 Scanner and Network Share Setup](#512-scanner-and-network-share-setup)
   - [5.13 Health Monitoring](#513-health-monitoring)
+  - [5.14 Updating the System](#514-updating-the-system)
 - [6. Troubleshooting](#6-troubleshooting)
 - [Appendix A: Roles and Permissions Matrix](#appendix-a-roles-and-permissions-matrix)
 - [Appendix B: Configuration Reference](#appendix-b-configuration-reference)
@@ -661,6 +663,19 @@ If a SKU already exists, the existing item is updated.
 
 Also available from the Items page via the Export button.
 
+### 3.18 Help & Feedback
+
+**URL:** `/feedback`
+
+Use this page to report bugs, request features, or ask questions. Your feedback goes directly to the developer.
+
+1. Click **Help & Feedback** in the sidebar under System
+2. Choose a type: Bug Report, Feature Request, or Question
+3. Describe the issue or idea (up to 2,000 characters)
+4. Click **Send Feedback**
+
+Your message is saved locally alongside your email and the current app version. The developer retrieves these during maintenance. No external service is involved.
+
 ---
 
 ## 4. Role-Based Guides
@@ -994,6 +1009,37 @@ Use this for load balancers, Docker health checks, Kubernetes probes, or uptime 
 **Processing logs:** JSONL files at `{log_path}/processing_log.jsonl` with daily rotation. Every event includes schema version, workflow, hostname, instance ID, config version, processing stage, duration, and error code.
 
 **Database backups:** Automatic with 14-day rolling retention at `{log_path}/barcode_buddy.{timestamp}.db`.
+
+### 5.14 Updating the System
+
+BarcodeBuddy includes an update script that pulls the latest code, updates dependencies, verifies the build, and restarts the service.
+
+**To update:**
+
+1. Open PowerShell
+2. Navigate to the BarcodeBuddy folder
+3. Run: `.\update-app.ps1`
+
+The script will:
+
+- Stop the running service (if using the scheduled task)
+- Pull the latest code from the repository
+- Update Python dependencies
+- Verify that the code compiles correctly
+- Restart the service
+- Report the old and new version numbers
+
+If the update fails at any step, it stops and tells you what went wrong. Your data is never affected — the database and logs are separate from the application code.
+
+**To roll back an update:**
+
+```powershell
+git checkout <previous-commit-hash>
+pip install -r requirements.txt
+.\start-app.ps1
+```
+
+Your developer will provide the commit hash if a rollback is needed.
 
 ---
 

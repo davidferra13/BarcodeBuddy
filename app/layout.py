@@ -108,6 +108,12 @@ _ICONS: dict[str, str] = {
         '<circle cx="7" cy="6" r="3"/><circle cx="14" cy="7" r="2.5"/>'
         '<path d="M1 17v-1a4 4 0 018 0v1"/><path d="M11 17v-1a3 3 0 016 0v1"/></svg>'
     ),
+    "feedback": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M2 4a2 2 0 012-2h12a2 2 0 012 2v9a2 2 0 01-2 2H7l-4 3v-3a1 1 0 01-1-1V4z"/>'
+        '<line x1="7" y1="7" x2="13" y2="7"/><line x1="7" y1="10" x2="11" y2="10"/></svg>'
+    ),
 }
 
 
@@ -1181,6 +1187,7 @@ _NAV_SECTIONS: list[tuple[str, list[tuple[str, str, str, str]]]] = [
     ("System", [
         ("team", "Team", "/team", "team"),
         ("admin", "Admin Panel", "/admin", "admin"),
+        ("feedback", "Help & Feedback", "/feedback", "feedback"),
     ]),
 ]
 
