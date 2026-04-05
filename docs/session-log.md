@@ -66,3 +66,13 @@ Each entry follows this format:
 - Commits: 429cf32
 - Build state on departure: green (317 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: When BB_OWNER_EMAIL env var is set, owner email enforcement is preserved (production security). When not set, any email claims owner on first signup and OWNER_EMAIL is locked to that address. open_signup now defaults to True in SystemSettings. Auth constraint file updated. One new test added (test_first_user_any_email_becomes_owner_when_env_not_set). Existing test updated (test_signup_disabled_blocks_new_users now requires explicit disable). New test_signup_open_by_default added.
+
+## 2026-04-05 — Doc Alignment + Ownership Transfer Fix
+
+- Agent: general
+- Task: Fixed ownership transfer (was broken — is_owner_email check made transfer impossible since owner email is unique). Aligned 6 docs to reflect zero-friction auth changes (README, PRODUCT_BLUEPRINT, COMPLETE_SYSTEM_REFERENCE, current-system-truth, admin_routes, test_auth_rbac).
+- Status: completed
+- Files touched: app/admin_routes.py, README.md, docs/PRODUCT_BLUEPRINT.md, docs/COMPLETE_SYSTEM_REFERENCE.md, docs/current-system-truth.md, tests/test_auth_rbac.py, docs/build-state.md, docs/session-log.md
+- Commits: 01438ac
+- Build state on departure: green (317 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: Ownership transfer now works for any active user — the require_owner dependency is sufficient security. Removed is_owner_email and OWNER_EMAIL imports from admin_routes.py. All documentation now reflects the zero-friction auth model consistently.

@@ -1,14 +1,14 @@
 # Build State
 
-> Last updated: 2026-04-04
-> Updated by: zero-friction auth session
+> Last updated: 2026-04-05
+> Updated by: doc alignment + ownership transfer fix session
 
 ## Current State
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | 429cf32 | 2026-04-04 |
-| Tests (`pytest`) | **GREEN** (317 passed, 65 subtests, 0 warnings) | 429cf32 | 2026-04-04 |
+| Compilation (`compileall`) | **GREEN** | 01438ac | 2026-04-05 |
+| Tests (`pytest`) | **GREEN** (317 passed, 65 subtests, 0 warnings) | 01438ac | 2026-04-05 |
 
 ## Current Blockers
 
@@ -18,6 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-05 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 01438ac | doc alignment + transfer fix |
 | 2026-04-04 | compileall + pytest | GREEN (317 passed, 65 subtests, 0 warnings) | 429cf32 | zero-friction auth |
 | 2026-04-04 | compileall + pytest | GREEN (316 passed, 65 subtests, 0 warnings) | 2d68493 | test hardening |
 | 2026-04-04 | compileall + pytest | GREEN (262 passed, 65 subtests) | 5a548f1 | system audit |
