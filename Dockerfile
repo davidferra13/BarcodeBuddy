@@ -1,3 +1,7 @@
+# Python 3.12 pinned for reproducibility (supports 3.10-3.13).
+# This image runs the web application only. The ingestion service (main.py)
+# requires local filesystem access to hot-folder directories and should be
+# run separately on the host or in a companion container with volume mounts.
 FROM python:3.12-slim
 
 # System dependencies for OpenCV, PyMuPDF, and zxing-cpp

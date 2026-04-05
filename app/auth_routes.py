@@ -70,9 +70,18 @@ def _reset_rate_limiter() -> None:
         _auth_limiter._hits.clear()
 
 
+def _get_client_ip(request: Request) -> str:
+    """Extract the real client IP, respecting X-Forwarded-For from reverse proxies."""
+    forwarded = (request.headers.get("x-forwarded-for") or "").strip()
+    if forwarded:
+        # First entry is the original client; later entries are proxies
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _check_rate_limit(request: Request) -> JSONResponse | None:
     """Return a 429 response if the client IP exceeds the rate limit, else None."""
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _get_client_ip(request)
     if not _auth_limiter.is_allowed(client_ip):
         return JSONResponse(status_code=429, content={"error": "Too many requests. Please try again later."})
     return None

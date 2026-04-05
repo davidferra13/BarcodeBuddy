@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json as json_mod
+import logging
 import uuid
 from calendar import monthrange
 from collections import defaultdict
@@ -418,8 +419,8 @@ async def api_import_json(
         text = content.decode("latin-1")
     try:
         data = json_mod.loads(text)
-    except json_mod.JSONDecodeError as exc:
-        return JSONResponse(status_code=400, content={"error": f"Invalid JSON: {exc}"})
+    except json_mod.JSONDecodeError:
+        return JSONResponse(status_code=400, content={"error": "Invalid JSON format"})
 
     # Accept either a list of items or an object with an "items" key
     if isinstance(data, dict):
@@ -852,7 +853,8 @@ def api_barcode_image(
     try:
         img_bytes = generate_barcode_bytes(item.barcode_value, format=item.barcode_type, scale=scale)
     except Exception as exc:
-        return JSONResponse(status_code=500, content={"error": f"Barcode generation failed: {exc}"})
+        logging.getLogger(__name__).exception("Barcode generation failed for item %s", item_id)
+        return JSONResponse(status_code=500, content={"error": "Barcode generation failed"})
     return Response(content=img_bytes, media_type="image/png",
                     headers={"Cache-Control": "public, max-age=3600"})
 
@@ -869,7 +871,8 @@ def api_barcode_preview(
     try:
         img_bytes = generate_barcode_bytes(value.strip(), format=format, scale=scale)
     except Exception as exc:
-        return JSONResponse(status_code=500, content={"error": f"Generation failed: {exc}"})
+        logging.getLogger(__name__).exception("Barcode preview generation failed")
+        return JSONResponse(status_code=500, content={"error": "Barcode generation failed"})
     return Response(content=img_bytes, media_type="image/png")
 
 

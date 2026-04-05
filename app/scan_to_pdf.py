@@ -13,6 +13,8 @@ Session data lives client-side (localStorage). The server handles:
 
 from __future__ import annotations
 
+import logging
+
 import html as html_mod
 import io
 from datetime import datetime, timezone
@@ -55,7 +57,8 @@ async def decode_upload(
         else:
             results = _decode_image(content)
     except Exception as exc:
-        return JSONResponse(status_code=400, content={"error": f"Failed to process file: {exc}"})
+        logging.getLogger(__name__).exception("Failed to decode barcodes from upload")
+        return JSONResponse(status_code=400, content={"error": "Failed to process the uploaded file"})
 
     return JSONResponse(content={
         "filename": file.filename or "upload",

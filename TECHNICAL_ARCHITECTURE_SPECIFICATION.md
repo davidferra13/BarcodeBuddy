@@ -150,7 +150,7 @@ Out of scope:
 | Can do | write JSON Lines; flush after each entry; assign sequence numbers; write startup, shutdown, state, retry, recovery, and terminal events |
 | Cannot do | make processing decisions; mutate jobs; suppress failures; rotate non-log files |
 | Inputs | event payloads from all other modules |
-| Outputs | append-only log lines in `data/logs/barcodebuddy-YYYY-MM-DD.jsonl` |
+| Outputs | append-only log lines in `data/logs/processing_log.jsonl` (archived daily as `processing_log.YYYY-MM-DD.jsonl.gz`) |
 | Dependencies | Configuration Manager, NTFS filesystem |
 
 ### 2.7 Configuration Manager
@@ -355,7 +355,7 @@ Example:
 | `STABILIZING` | `FAILURE` | file exceeds stabilization timeout or cannot be claimed after final retry |
 | `PROCESSING` | `VALIDATING` | Processor completed checksum, format detection, page inspection, barcode scan, and PDF staging without technical failure |
 | `PROCESSING` | `FAILURE` | technical failure before validation: corrupt file, unsupported format, processing timeout, output staging failure after final retry, or internal error |
-| `VALIDATING` | `SUCCESS` | Validator accepts the document and Output Manager atomically commits `data/output/{selected_danpack_document_id}.pdf` |
+| `VALIDATING` | `SUCCESS` | Validator accepts the document and Output Manager atomically commits `data/output/YYYY/MM/{selected_danpack_document_id}.pdf` |
 | `VALIDATING` | `FAILURE` | validation failure: invalid barcode format or duplicate output filename |
 
 ### 4.3 Failure Paths
@@ -393,10 +393,10 @@ Retries do not create new states. A retry repeats work inside the current non-te
 6. The Processor updates the job journal on every state transition and sets `target_output_path` before the final output rename.
 
 ### 5.2 Success Path
-1. Validator confirms `data/output/{selected_danpack_document_id}.pdf` does not already exist.
-2. If `detected_format = PDF`, Output Manager atomically renames the claimed source file directly to `data/output/{selected_danpack_document_id}.pdf`.
+1. Validator confirms `data/output/YYYY/MM/{selected_danpack_document_id}.pdf` does not already exist (YYYY/MM derived from processing timestamp).
+2. If `detected_format = PDF`, Output Manager atomically renames the claimed source file directly to `data/output/YYYY/MM/{selected_danpack_document_id}.pdf`.
 3. If `detected_format != PDF`, Processor creates `data/processing/{job_id}.pdf.tmp`.
-4. For image inputs, Output Manager flushes the temp PDF to disk and atomically renames it to `data/output/{selected_danpack_document_id}.pdf`.
+4. For image inputs, Output Manager flushes the temp PDF to disk and atomically renames it to `data/output/YYYY/MM/{selected_danpack_document_id}.pdf`.
 5. For image inputs, Output Manager deletes the claimed source file from `data/processing`.
 6. Output Manager deletes `data/processing/{job_id}.job.json`.
 
@@ -446,7 +446,7 @@ Retries do not create new states. A retry repeats work inside the current non-te
 | `UNSUPPORTED_FORMAT` | file format is outside the accepted set | file is not PDF, PNG, JPEG, or JPG | no | move source to `data/rejected`; log terminal failure |
 | `PROCESSING_TIMEOUT` | processing exceeded the hard execution budget | one attempt exceeds 15 seconds from processor start to terminal action, or page count exceeds the 50-page processing ceiling | yes | abort current attempt, clean temp files, retry |
 | `FILE_TOO_LARGE` | file is too large for V1 limits | `size_bytes > 52428800` | no | move source to `data/rejected`; log terminal failure |
-| `DUPLICATE_FILE` | the final output filename already exists | `data/output/{barcode}.pdf` already exists at validation time and duplicate handling is `reject` | no | move source to `data/rejected`; log terminal failure |
+| `DUPLICATE_FILE` | the final output filename already exists | `data/output/YYYY/MM/{barcode}.pdf` already exists at validation time and duplicate handling is `reject` | no | move source to `data/rejected`; log terminal failure |
 | `OUTPUT_WRITE_FAILED` | final output artifact could not be written or renamed | temp PDF write, flush, or final rename fails | yes | clean temp file if possible; retry |
 | `CONFIG_INVALID` | runtime configuration is invalid | startup validation fails | no | service does not start; write fatal log entry |
 | `INTERNAL_ERROR` | unclassified runtime fault in controlled code path | uncaught exception inside Processor, Watcher, Validator, Barcode Engine, or Output Manager | yes | clean temp files; retry; final failure after attempt 3 |
@@ -618,7 +618,7 @@ The following values are not configurable:
 - output filename pattern: `{barcode}.pdf`
 - rejected filename pattern: `{job_id}__{error_code}__{original_file_name}`
 - processing filename pattern: `{job_id}__{original_file_name}`
-- log file pattern: `barcodebuddy-YYYY-MM-DD.jsonl`
+- log file pattern: `processing_log.jsonl` (active); `processing_log.YYYY-MM-DD.jsonl.gz` (archived)
 - final filename safety regex: `^[A-Za-z0-9_-]{4,64}$`
 
 ### 11.3 Precedence Rules
@@ -643,7 +643,7 @@ Highest to lowest:
 
 ### 12.1 Log Format
 - File format: JSON Lines
-- File name: `data/logs/barcodebuddy-YYYY-MM-DD.jsonl`
+- File name: `data/logs/processing_log.jsonl` (active); daily archives as `processing_log.YYYY-MM-DD.jsonl.gz`
 - Encoding: UTF-8 without BOM
 - Flush policy: flush after every line
 
@@ -751,7 +751,7 @@ For barcode-validation events, the following are also required:
 - Rejected filename is exactly `{job_id}__{error_code}__{original_file_name}`.
 
 ### 14.3 Duplicate Handling
-- Duplicate detection is path-based against `data/output/{selected_danpack_document_id}.pdf`.
+- Duplicate detection is path-based against `data/output/YYYY/MM/{selected_danpack_document_id}.pdf`.
 - If that path exists and duplicate handling is `reject`, the job fails with `DUPLICATE_FILE`.
 - Duplicate detection does not inspect file content; filename collision alone is authoritative.
 

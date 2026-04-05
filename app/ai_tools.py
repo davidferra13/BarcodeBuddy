@@ -8,6 +8,7 @@ result back so the model can formulate a natural-language answer.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func
@@ -186,7 +187,8 @@ async def execute_tool(tool_name: str, arguments: dict, db: Session, user: User,
             return await handler(arguments, db, user, settings)
         return await handler(arguments, db, user)
     except Exception as exc:
-        return json.dumps({"error": f"Tool execution failed: {exc}"})
+        logging.getLogger(__name__).exception("Tool execution failed: %s", tool_name)
+        return json.dumps({"error": "Tool execution failed"})
 
 
 async def _tool_query_inventory(args: dict, db: Session, user: User) -> str:
@@ -289,7 +291,8 @@ async def _tool_processing_stats(args: dict, db: Session, user: User, settings=N
             "latency_p90": latency.get("p90", 0),
         })
     except Exception as exc:
-        return json.dumps({"error": f"Could not read processing stats: {exc}"})
+        logging.getLogger(__name__).exception("Could not read processing stats")
+        return json.dumps({"error": "Could not read processing stats"})
 
 
 async def _tool_recent_activity(args: dict, db: Session, user: User) -> str:
@@ -563,7 +566,8 @@ async def _tool_system_health(args: dict, db: Session, user: User, settings=None
             "latency_p99": latency.get("p99", 0),
         })
     except Exception as exc:
-        return json.dumps({"error": f"Could not read system health: {exc}"})
+        logging.getLogger(__name__).exception("Could not read system health")
+        return json.dumps({"error": "Could not read system health"})
 
 
 # ---------------------------------------------------------------------------

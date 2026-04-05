@@ -158,9 +158,11 @@ class OllamaProvider(AIProvider):
         except httpx.ConnectError:
             return AICompletionResponse(error="Could not connect to Ollama. Is it running?")
         except httpx.HTTPStatusError as exc:
-            return AICompletionResponse(error=f"Ollama error: {exc.response.status_code} — {exc.response.text[:200]}")
+            logger.warning("Ollama HTTP error: %s %s", exc.response.status_code, exc.response.text[:200])
+            return AICompletionResponse(error="Ollama returned an error. Check server logs for details.")
         except Exception as exc:
-            return AICompletionResponse(error=f"Ollama error: {exc}")
+            logger.exception("Ollama completion failed")
+            return AICompletionResponse(error="AI request failed. Check server logs for details.")
 
         message = data.get("message", {})
         tool_calls = _parse_ollama_tool_calls(message)
@@ -284,7 +286,8 @@ class CloudProvider(AIProvider):
                 usage={"prompt_tokens": response.usage.input_tokens, "completion_tokens": response.usage.output_tokens},
             )
         except Exception as exc:
-            return AICompletionResponse(error=f"Anthropic API error: {exc}")
+            logger.exception("Anthropic completion failed")
+            return AICompletionResponse(error="Cloud AI request failed. Check server logs for details.")
 
     async def _complete_openai(self, request: AICompletionRequest) -> AICompletionResponse:
         try:
@@ -340,7 +343,8 @@ class CloudProvider(AIProvider):
                 },
             )
         except Exception as exc:
-            return AICompletionResponse(error=f"OpenAI API error: {exc}")
+            logger.exception("OpenAI completion failed")
+            return AICompletionResponse(error="Cloud AI request failed. Check server logs for details.")
 
     async def health_check(self) -> dict:
         if self.provider_name == "anthropic":

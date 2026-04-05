@@ -5,6 +5,7 @@ import html
 import json
 import os
 from collections import Counter
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import mean
@@ -1320,11 +1321,14 @@ def create_stats_app(
       replace_existing=True,
     )
     app.state.alert_scheduler = _alert_scheduler
-    _alert_scheduler.start()
 
-    @app.on_event("shutdown")
-    def _shutdown_alert_scheduler():
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI):
+        _alert_scheduler.start()
+        yield
         _alert_scheduler.shutdown(wait=False)
+
+    app.router.lifespan_context = _lifespan
 
     def _snapshot() -> dict[str, Any]:
         snapshot = build_stats_snapshot(
