@@ -36,3 +36,13 @@ Each entry follows this format:
 - Commits: a242145, 30bef50
 - Build state on departure: green (compilation clean, 223 passed — docs-only change, no code modified)
 - Notes: Manual covers every user-facing surface (116 routes, 21 screens). Written for first-time users. Appendix D documents known gaps (TIFF support, batch splitting, Scan Record Workbench, Operations Planner, etc.).
+
+## 2026-04-04 — System Audit
+
+- Agent: general
+- Task: Controlled audit and targeted improvement pass. Full codebase audit (source, tests, docs, config, security). Fixed webhook SSRF vulnerability in alerts.py, added 39 new alert tests (was zero coverage), fixed JWT key length warnings across 6 test files, hardened .gitignore with missing patterns.
+- Status: completed
+- Files touched: app/alerts.py, tests/test_alerts.py (new), tests/test_activity.py, tests/test_ai.py, tests/test_auth_rbac.py, tests/test_inventory.py, tests/test_scan_to_pdf.py, tests/test_teams.py, .gitignore, docs/build-state.md, docs/session-log.md
+- Commits: 5a548f1
+- Build state on departure: green (262 passed, 65 subtests, compileall clean)
+- Notes: Audit found no critical code quality or architectural issues. Source code is production-ready. Key finding was SSRF vulnerability in webhook dispatch (now fixed). Test suite grew from 223 to 262 tests. JWT warnings eliminated (375 remaining are upstream Starlette cookie deprecation). Modules without direct test coverage: ai_provider.py, ai_tools.py, watcher.py, documents.py, image_quality.py, contracts.py (all tested indirectly via e2e or route-level tests).

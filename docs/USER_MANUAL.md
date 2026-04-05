@@ -1,6 +1,6 @@
 # BarcodeBuddy User Manual
 
-Last updated: 2026-04-04.
+Last updated: 2026-04-04 (audit pass).
 
 ---
 
@@ -38,9 +38,10 @@ Last updated: 2026-04-04.
   - [3.11 Teams](#311-teams)
   - [3.12 AI Chat](#312-ai-chat)
   - [3.13 AI Privacy and Data](#313-ai-privacy-and-data)
-  - [3.14 Admin Panel](#314-admin-panel)
-  - [3.15 Bulk Import](#315-bulk-import)
-  - [3.16 Bulk Export](#316-bulk-export)
+  - [3.14 AI Settings](#314-ai-settings)
+  - [3.15 Admin Panel](#315-admin-panel)
+  - [3.16 Bulk Import](#316-bulk-import)
+  - [3.17 Bulk Export](#317-bulk-export)
 - [4. Role-Based Guides](#4-role-based-guides)
   - [4.1 Warehouse Operator](#41-warehouse-operator)
   - [4.2 Inventory Manager](#42-inventory-manager)
@@ -481,7 +482,7 @@ Every page in the system, what it shows, and what you can do on it.
 **Input methods (tabs):**
 - **Manual:** Type barcode values (supports pasting a list, one per line)
 - **Camera:** Live camera feed with automatic barcode detection
-- **Upload:** Drag-drop PNG, JPG, PDF, TIFF, or BMP files; barcodes extracted automatically
+- **Upload:** Drag-drop PNG, JPG, or PDF files; barcodes extracted automatically
 
 **Session table:** Shows all scanned codes with: barcode value, format, matched item name, location, timestamp, and a delete button per row.
 
@@ -576,7 +577,7 @@ An append-only audit trail of every action in the system. Nothing is ever delete
 
 ### 3.12 AI Chat
 
-**URL:** `/ai/chat`
+**URL:** `/chat`
 
 A conversational interface for querying your inventory and operations in plain English.
 
@@ -607,7 +608,13 @@ Documents how user data is handled by the AI system:
 - **No silent fallback:** If a provider is unavailable, the system returns an error. It never secretly switches providers.
 - **API keys** are encrypted at rest.
 
-### 3.14 Admin Panel
+### 3.14 AI Settings
+
+**URL:** `/ai/settings` (owner only)
+
+Allows the owner to reconfigure AI providers and models after the initial setup wizard. Same options as the setup wizard (provider mode, connection details, model assignments, API keys) but accessible as a standalone settings page.
+
+### 3.15 Admin Panel
 
 **URL:** `/admin` (admin and owner roles only)
 
@@ -628,7 +635,7 @@ Documents how user data is handled by the AI system:
 
 The owner account cannot be modified or deleted through this panel except via ownership transfer.
 
-### 3.15 Bulk Import
+### 3.16 Bulk Import
 
 **URL:** `/inventory/import`
 
@@ -643,7 +650,7 @@ If a SKU already exists, the existing item is updated.
 
 **JSON tab:** Same fields, uploaded as a JSON array of objects.
 
-### 3.16 Bulk Export
+### 3.17 Bulk Export
 
 **URL:** `/inventory/bulk` (Export tab)
 
@@ -1123,7 +1130,7 @@ These are things the system does not do yet. They are documented here so you do 
 
 | Gap | Status | Notes |
 |-----|--------|-------|
-| **TIFF file support** | Planned | The ingestion service accepts PDF, JPG, and PNG only. TIFF documents must be converted before scanning. |
+| **TIFF file support** | Not started | The ingestion service accepts PDF, JPG, and PNG only. TIFF documents must be converted before scanning. |
 | **Multi-document batch splitting** | Not started | If one PDF contains multiple documents (e.g., a batch of packing slips), the system treats it as a single document. You must split them before scanning. |
 | **Scan Record Workbench** | Not started | A planned feature for deep-diving into a single scan record's full lifecycle (processing history, linked obligations, notes, attachments). |
 | **Operations Planner** | Not started | A planned feature for multi-record planning: scan obligations, shift reports, daily close-outs, tomorrow forecasts, and workload control. |

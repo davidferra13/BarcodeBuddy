@@ -1,14 +1,14 @@
 # Build State
 
 > Last updated: 2026-04-04
-> Updated by: infrastructure adoption session
+> Updated by: system audit session
 
 ## Current State
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | 8b3eeff | 2026-04-04 |
-| Tests (`pytest`) | **GREEN** (223 passed, 65 subtests) | 8b3eeff | 2026-04-04 |
+| Compilation (`compileall`) | **GREEN** | 5a548f1 | 2026-04-04 |
+| Tests (`pytest`) | **GREEN** (262 passed, 65 subtests) | 5a548f1 | 2026-04-04 |
 
 ## Current Blockers
 
@@ -18,6 +18,8 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-04 | compileall + pytest | GREEN (262 passed, 65 subtests) | 5a548f1 | system audit |
+| 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | a242145 | documentation audit |
 | 2026-04-04 | compileall | GREEN | 30bef50 | user manual session |
 | 2026-04-04 | compileall + pytest | GREEN (223 passed, 65 subtests) | 8b3eeff | infrastructure adoption |
 | 2026-04-04 | Initial | Infrastructure adoption - no code changes | 4472b5e | setup |
