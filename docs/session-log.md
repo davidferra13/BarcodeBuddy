@@ -125,3 +125,13 @@ Each entry follows this format:
 - Commits: 5e792e7
 - Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: All tab CSS is now centralized in layout.py. Two variants available: .tab-bar/.tab-btn (underline) and .tab-pills/.tab-pill (pill/segment). Pages only need HTML classes, no local CSS definitions.
+
+## 2026-04-05 — Full System Audit: Profile, Logging, Security
+
+- Agent: general
+- Task: Comprehensive system-wide audit across all user types and workflows. Identified and resolved 8 high-impact gaps: (1) Added user self-service profile page with display name editing and password change; (2) Completed command palette with 7 missing nav items; (3) Added activity logging for task updates/deletes, alert config changes, alert dismissals, JSON/filtered CSV export, scan-to-PDF generation, team member role changes; (4) Fixed task update assignment validation to require team membership; (5) Added session purge job to clean revoked sessions >30 days; (6) Wrapped PDF generation in try-catch for graceful error handling; (7) Added Profile link in sidebar footer; (8) Documented profile page in USER_MANUAL.md. Added 28 new tests covering all new endpoints.
+- Status: completed
+- Files touched: app/auth_routes.py, app/database.py, app/layout.py, app/scan_to_pdf.py, app/stats.py, app/team_routes.py, app/alerts.py, app/inventory_routes.py, docs/USER_MANUAL.md, tests/test_profile.py
+- Commits: bdbbc96
+- Build state on departure: green (353 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: System audit covered all user types (owner, admin, manager, user), all workflows (inventory CRUD, team management, alerts, scanning, AI chat), security (RBAC, session management, input validation), and data integrity (activity logging completeness, session cleanup). No remaining high-impact gaps found.
