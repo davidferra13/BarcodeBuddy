@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from pathlib import Path
 
 import pytest
@@ -400,6 +401,191 @@ class TestExport:
         rows = list(reader)
         assert rows[0][0] == "name"
         assert rows[1][0] == "Export Item"
+
+
+# --- JSON Import ---
+
+class TestImportJSON:
+    def test_import_json_array(self, client, auth_user):
+        """Import a plain JSON array of items."""
+        payload = json.dumps([
+            {"name": "JSON Item A", "sku": "JA-1", "quantity": 15, "location": "Zone A"},
+            {"name": "JSON Item B", "sku": "JB-1", "quantity": 30, "category": "Parts"},
+        ])
+        files = {"file": ("import.json", payload.encode(), "application/json")}
+        resp = client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["created"] == 2
+        assert data["updated"] == 0
+        assert data["errors"] == []
+
+    def test_import_json_object_with_items_key(self, client, auth_user):
+        """Import JSON with the {items: [...]} wrapper format."""
+        payload = json.dumps({"items": [
+            {"name": "Wrapped A", "sku": "WR-A", "quantity": 5},
+        ]})
+        files = {"file": ("import.json", payload.encode(), "application/json")}
+        resp = client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        assert resp.status_code == 200
+        assert resp.json()["created"] == 1
+
+    def test_import_json_updates_existing_sku(self, client, auth_user):
+        """Existing SKU should be updated, not duplicated."""
+        _create_item(client, auth_user, sku="JDUP", quantity=5, name="Original")
+        payload = json.dumps([{"name": "Updated", "sku": "JDUP", "quantity": 50}])
+        files = {"file": ("import.json", payload.encode(), "application/json")}
+        resp = client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        data = resp.json()
+        assert data["created"] == 0
+        assert data["updated"] == 1
+        # Verify the quantity actually changed
+        items_resp = client.get("/api/inventory?q=JDUP", cookies=auth_user)
+        assert items_resp.json()["items"][0]["quantity"] == 50
+
+    def test_import_json_missing_fields_reports_errors(self, client, auth_user):
+        """Rows missing name or sku should be reported as errors."""
+        payload = json.dumps([
+            {"name": "Good", "sku": "GOOD-1", "quantity": 1},
+            {"name": "No SKU"},
+            {"sku": "NO-NAME"},
+        ])
+        files = {"file": ("import.json", payload.encode(), "application/json")}
+        resp = client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        data = resp.json()
+        assert data["created"] == 1
+        assert len(data["errors"]) == 2
+
+    def test_import_json_invalid_json_returns_400(self, client, auth_user):
+        """Malformed JSON should return a 400 error."""
+        files = {"file": ("bad.json", b"{not valid json", "application/json")}
+        resp = client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        assert resp.status_code == 400
+        assert "Invalid JSON" in resp.json()["error"]
+
+    def test_import_json_auto_generates_barcodes(self, client, auth_user):
+        """Items without barcode_value should get auto-generated barcodes."""
+        payload = json.dumps([{"name": "No BC", "sku": "NBC-1", "quantity": 1}])
+        files = {"file": ("import.json", payload.encode(), "application/json")}
+        client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        items_resp = client.get("/api/inventory?q=NBC-1", cookies=auth_user)
+        item = items_resp.json()["items"][0]
+        assert item["barcode_value"].startswith("BB-NBC-1-")
+
+    def test_import_json_creates_transactions(self, client, auth_user):
+        """New items with quantity > 0 should have an initial transaction."""
+        payload = json.dumps([{"name": "Txn Item", "sku": "TXN-J1", "quantity": 25}])
+        files = {"file": ("import.json", payload.encode(), "application/json")}
+        client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        items_resp = client.get("/api/inventory?q=TXN-J1", cookies=auth_user)
+        item_id = items_resp.json()["items"][0]["id"]
+        detail = client.get(f"/api/inventory/{item_id}", cookies=auth_user)
+        txns = detail.json()["transactions"]
+        assert len(txns) == 1
+        assert txns[0]["reason"] == "initial"
+        assert txns[0]["quantity_change"] == 25
+
+
+# --- Export JSON & Filtered CSV ---
+
+class TestExportJSON:
+    def test_export_json_basic(self, client, auth_user):
+        """Export should return valid JSON with items array."""
+        _create_item(client, auth_user, sku="EXJ-1", name="JSON Export")
+        resp = client.get("/api/inventory/export/json", cookies=auth_user)
+        assert resp.status_code == 200
+        assert "application/json" in resp.headers["content-type"]
+        data = json.loads(resp.text)
+        assert "items" in data
+        assert data["total_items"] >= 1
+        assert any(i["sku"] == "EXJ-1" for i in data["items"])
+
+    def test_export_json_filter_by_category(self, client, auth_user):
+        """Category filter should only return matching items."""
+        _create_item(client, auth_user, sku="CAT-A", category="Alpha")
+        _create_item(client, auth_user, sku="CAT-B", category="Beta")
+        resp = client.get("/api/inventory/export/json?category=Alpha", cookies=auth_user)
+        data = json.loads(resp.text)
+        skus = [i["sku"] for i in data["items"]]
+        assert "CAT-A" in skus
+        assert "CAT-B" not in skus
+
+    def test_export_json_filter_by_location(self, client, auth_user):
+        _create_item(client, auth_user, sku="LOC-A", location="Warehouse 1")
+        _create_item(client, auth_user, sku="LOC-B", location="Warehouse 2")
+        resp = client.get("/api/inventory/export/json?location=Warehouse+1", cookies=auth_user)
+        data = json.loads(resp.text)
+        skus = [i["sku"] for i in data["items"]]
+        assert "LOC-A" in skus
+        assert "LOC-B" not in skus
+
+    def test_export_json_filter_by_status(self, client, auth_user):
+        """Archived items should only appear when status=archived."""
+        item = _create_item(client, auth_user, sku="ARCH-1")
+        client.put(f"/api/inventory/{item['id']}", json={"status": "archived"}, cookies=auth_user)
+        # Default (active) should not include it
+        resp = client.get("/api/inventory/export/json", cookies=auth_user)
+        data = json.loads(resp.text)
+        assert all(i["sku"] != "ARCH-1" for i in data["items"])
+        # Explicit archived filter should include it
+        resp = client.get("/api/inventory/export/json?status=archived", cookies=auth_user)
+        data = json.loads(resp.text)
+        assert any(i["sku"] == "ARCH-1" for i in data["items"])
+
+    def test_export_json_has_content_disposition(self, client, auth_user):
+        resp = client.get("/api/inventory/export/json", cookies=auth_user)
+        assert "inventory_export.json" in resp.headers.get("content-disposition", "")
+
+
+class TestExportCSVFiltered:
+    def test_filtered_csv_basic(self, client, auth_user):
+        _create_item(client, auth_user, sku="FCSV-1", name="Filtered CSV")
+        resp = client.get("/api/inventory/export/csv/filtered", cookies=auth_user)
+        assert resp.status_code == 200
+        assert "text/csv" in resp.headers["content-type"]
+        reader = csv.reader(io.StringIO(resp.text))
+        rows = list(reader)
+        assert rows[0][0] == "name"
+        assert any(r[1] == "FCSV-1" for r in rows[1:])
+
+    def test_filtered_csv_by_category(self, client, auth_user):
+        _create_item(client, auth_user, sku="FC-A", category="CatX")
+        _create_item(client, auth_user, sku="FC-B", category="CatY")
+        resp = client.get("/api/inventory/export/csv/filtered?category=CatX", cookies=auth_user)
+        reader = csv.reader(io.StringIO(resp.text))
+        rows = list(reader)
+        skus = [r[1] for r in rows[1:]]
+        assert "FC-A" in skus
+        assert "FC-B" not in skus
+
+    def test_filtered_csv_all_statuses(self, client, auth_user):
+        """Empty status filter should return both active and archived."""
+        item = _create_item(client, auth_user, sku="ALL-1")
+        _create_item(client, auth_user, sku="ALL-2")
+        client.put(f"/api/inventory/{item['id']}", json={"status": "archived"}, cookies=auth_user)
+        resp = client.get("/api/inventory/export/csv/filtered?status=", cookies=auth_user)
+        reader = csv.reader(io.StringIO(resp.text))
+        rows = list(reader)
+        skus = [r[1] for r in rows[1:]]
+        assert "ALL-1" in skus
+        assert "ALL-2" in skus
+
+
+# --- Roundtrip: Export then Import ---
+
+class TestRoundtrip:
+    def test_json_export_reimport(self, client, auth_user):
+        """Export as JSON, then re-import — items should match."""
+        _create_item(client, auth_user, sku="RT-1", name="Roundtrip", quantity=42, cost=9.99)
+        export_resp = client.get("/api/inventory/export/json", cookies=auth_user)
+        exported = json.loads(export_resp.text)
+        assert exported["total_items"] >= 1
+        # Re-import the exported payload
+        files = {"file": ("reimport.json", export_resp.text.encode(), "application/json")}
+        import_resp = client.post("/api/inventory/import/json", files=files, cookies=auth_user)
+        data = import_resp.json()
+        assert data["errors"] == []
+        assert data["updated"] >= 1  # RT-1 should be updated (same SKU)
 
 
 # --- Summary ---

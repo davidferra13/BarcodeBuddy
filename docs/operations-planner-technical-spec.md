@@ -8,7 +8,7 @@ This document turns the planner product requirements into a builder-ready techni
 
 The design assumes:
 
-- the current Barcode Buddy ingestion runtime remains authoritative for deterministic scan processing
+- the current BarcodeBuddy ingestion runtime remains authoritative for deterministic scan processing
 - the future single-scan workbench remains the canonical detailed record page
 - the planner is a higher-level control plane for reporting, obligations, forecasting, and workload monitoring
 

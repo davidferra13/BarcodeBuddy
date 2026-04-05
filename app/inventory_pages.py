@@ -27,10 +27,16 @@ def inventory_list_page(user: User = Depends(require_user)) -> HTMLResponse:
         <p class="page-desc" style="margin-bottom:0">Track, search, and manage your inventory items.</p>
       </div>
     </div>
-    <a href="/inventory/new" class="btn btn-primary" style="padding:10px 20px;font-size:14px;">
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/></svg>
-      New Item
-    </a>
+    <div style="display:flex;gap:8px;">
+      <a href="/inventory/bulk?tab=export" class="btn btn-secondary" style="padding:10px 16px;font-size:14px;">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/><polyline points="7 10 10 7 13 10"/><line x1="10" y1="14" x2="10" y2="7"/></svg>
+        Export
+      </a>
+      <a href="/inventory/new" class="btn btn-primary" style="padding:10px 20px;font-size:14px;">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/></svg>
+        New Item
+      </a>
+    </div>
   </div>
   <div class="sr" id="sr"></div>
   <div class="search-bar">
@@ -78,12 +84,12 @@ def inventory_create_page(user: User = Depends(require_user)) -> HTMLResponse:
       </div>
       <div class="form-section">
         <div class="form-section-title">Stock &amp; Pricing</div>
-        <div class="fr3"><div class="fg"><label>Quantity</label><input type="number" id="quantity" value="0" min="0"></div><div class="fg"><label>Unit</label><input type="text" id="unit" value="each"></div><div class="fg"><label>Min Qty (alert)</label><input type="number" id="min_quantity" value="0" min="0"></div></div>
+        <div class="fr3"><div class="fg"><label>Quantity</label><input type="number" id="quantity" value="0" min="0"></div><div class="fg"><label>Unit</label><input type="text" id="unit" value="each"></div><div class="fg"><label>Min Qty (alert) <button type="button" class="ai-sug-btn" onclick="aiSuggest('min_quantity')" title="AI suggestion">&#9889; Suggest</button></label><input type="number" id="min_quantity" value="0" min="0"></div></div>
         <div class="fr"><div class="fg"><label>Cost per unit</label><input type="number" id="cost" step="0.01" min="0" placeholder="0.00"></div><div class="fg"><label>Tags (comma-separated)</label><input type="text" id="tags" placeholder="fragile, high-priority"></div></div>
       </div>
       <div class="form-section">
         <div class="form-section-title">Location &amp; Category</div>
-        <div class="fr"><div class="fg"><label>Location</label><input type="text" id="location" placeholder="Warehouse A, Shelf B3"></div><div class="fg"><label>Category</label><input type="text" id="category" placeholder="Raw Materials"></div></div>
+        <div class="fr"><div class="fg"><label>Location <button type="button" class="ai-sug-btn" onclick="aiSuggest('location')" title="AI suggestion">&#9889; Suggest</button></label><input type="text" id="location" placeholder="Warehouse A, Shelf B3"></div><div class="fg"><label>Category <button type="button" class="ai-sug-btn" onclick="aiSuggest('category')" title="AI suggestion">&#9889; Suggest</button></label><input type="text" id="category" placeholder="Raw Materials"></div></div>
       </div>
       <div class="form-section">
         <div class="form-section-title">Barcode</div>
@@ -107,7 +113,19 @@ const _as=autosaveInit('new_item',_FIELDS);
 const _guard=guardUnsaved('#cf');
 if(_as.load()){toast('Draft restored from previous session','info')}
 async function cI(e){e.preventDefault();hideMsg();const b={};_FIELDS.forEach(f=>{let v=document.getElementById(f).value;if(f==='quantity'||f==='min_quantity')v=parseInt(v)||0;else if(f==='cost')v=v?parseFloat(v):null;b[f]=v});const r=await apiCall('POST','/api/inventory',b);if(!r.ok){showErr(r.data.error||'Failed');return false}_guard.markClean();_as.clear();location.href='/inventory/'+r.data.item.id;return false}
-</script>"""
+async function aiSuggest(field){
+  const name=document.getElementById('name').value;
+  const sku=document.getElementById('sku').value;
+  if(!name){toast('Enter an item name first','warning');return}
+  const btn=event.target.closest('.ai-sug-btn');
+  const orig=btn.innerHTML;btn.disabled=true;btn.textContent='...';
+  const r=await apiCall('POST','/ai/api/suggest-item',{name,sku,field});
+  btn.disabled=false;btn.innerHTML=orig;
+  if(r.ok&&r.data.suggestion){document.getElementById(field).value=r.data.suggestion;toast('Suggestion applied','success')}
+  else{toast(r.data?.error||'No suggestion available','info')}
+}
+</script>
+<style>.ai-sug-btn{background:none;border:1px solid var(--accent);color:var(--accent);font-size:.7rem;padding:1px 7px;border-radius:10px;cursor:pointer;margin-left:6px;vertical-align:middle;}.ai-sug-btn:hover{background:var(--accent);color:#fff;}</style>"""
 
     return HTMLResponse(content=render_shell(
         title="New Item",
@@ -119,64 +137,438 @@ async function cI(e){e.preventDefault();hideMsg();const b={};_FIELDS.forEach(f=>
     ))
 
 
-# ── Import CSV ──────────────────────────────────────────────────────
+# ── Bulk Import / Export ────────────────────────────────────────────
 
 @router.get("/inventory/import", response_class=HTMLResponse)
-def inventory_import_page(user: User = Depends(require_user)) -> HTMLResponse:
+def inventory_import_redirect(user: User = Depends(require_user)) -> HTMLResponse:
+    """Legacy redirect — old import URL now goes to bulk page."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/inventory/bulk", status_code=302)  # type: ignore[return-value]
+
+
+@router.get("/inventory/bulk", response_class=HTMLResponse)
+def inventory_bulk_page(user: User = Depends(require_user)) -> HTMLResponse:
     body = """
   <div id="err" class="err"></div><div id="suc" class="suc"></div>
-  <p class="page-desc">Upload a CSV file to bulk import or update inventory items.</p>
-  <div class="panel">
-    <form onsubmit="return doImport(event)" id="import-form">
-      <div class="dropzone" id="dropzone" onclick="document.getElementById('csvf').click()">
-        <div class="dropzone-icon">
-          <svg width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/><polyline points="7 10 10 13 13 10"/><line x1="10" y1="6" x2="10" y2="13"/></svg>
-        </div>
-        <div class="dropzone-text"><strong>Click to choose a file</strong> or drag and drop</div>
-        <div class="dropzone-hint">.csv files only</div>
-        <div id="file-name" style="margin-top:10px;font-weight:600;color:var(--text);display:none"></div>
-        <input type="file" id="csvf" accept=".csv" required style="display:none">
-      </div>
-      <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <button type="submit" class="btn btn-primary" id="ibtn" style="padding:10px 24px" disabled>Import File</button>
-        <span id="import-status" style="font-size:13px;color:var(--muted)">Select a CSV file to begin</span>
-      </div>
-    </form>
-    <div id="res" style="margin-top:20px;display:none"></div>
+  <p class="page-desc">Import inventory from CSV or JSON files, or export your data with filters.</p>
+
+  <!-- ── Tab bar ── -->
+  <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--line)">
+    <button class="bulk-tab active" data-tab="import" onclick="switchTab('import')">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 10 13 13 10"/><line x1="10" y1="6" x2="10" y2="13"/><path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>
+      Import
+    </button>
+    <button class="bulk-tab" data-tab="export" onclick="switchTab('export')">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 10 7 13 10"/><line x1="10" y1="14" x2="10" y2="7"/><path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>
+      Export
+    </button>
   </div>
-  <div class="fr">
-    <div class="panel">
-      <div class="form-section-title" style="margin-bottom:12px">Expected CSV Columns</div>
-      <code style="font-size:12px;line-height:2;color:var(--muted)">name, sku, description, quantity, unit, location, category, tags, notes, barcode_value, barcode_type, min_quantity, cost</code>
+
+  <!-- ════════════════════ IMPORT TAB ════════════════════ -->
+  <div id="tab-import">
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start" id="import-grid">
+      <!-- Left: upload area -->
+      <div>
+        <div class="panel">
+          <div class="form-section-title" style="margin-bottom:12px">Upload File</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="fmt-btn active" data-fmt="csv" onclick="setImportFmt('csv')">CSV</button>
+            <button class="fmt-btn" data-fmt="json" onclick="setImportFmt('json')">JSON</button>
+          </div>
+          <form onsubmit="return doImport(event)" id="import-form">
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('csvf').click()">
+              <div class="dropzone-icon">
+                <svg width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/><polyline points="7 10 10 13 13 10"/><line x1="10" y1="6" x2="10" y2="13"/></svg>
+              </div>
+              <div class="dropzone-text">Drop a file here, or <strong>click to browse</strong></div>
+              <div class="dropzone-hint" id="accept-hint">Accepts .csv files</div>
+              <div id="file-name" style="margin-top:10px;font-weight:600;color:var(--text);display:none"></div>
+              <input type="file" id="csvf" accept=".csv,.json" style="display:none">
+            </div>
+            <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <button type="submit" class="btn btn-primary" id="ibtn" style="padding:10px 24px" disabled>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="7 10 10 13 13 10"/><line x1="10" y1="5" x2="10" y2="13"/></svg>
+                Import File
+              </button>
+              <span id="import-status" style="font-size:13px;color:var(--muted)">Select a file to begin</span>
+            </div>
+          </form>
+          <!-- Preview table -->
+          <div id="preview-area" style="display:none;margin-top:20px">
+            <div class="form-section-title" style="margin-bottom:8px">
+              Preview <span id="preview-count" style="font-weight:400;color:var(--muted);font-size:11px"></span>
+            </div>
+            <div style="overflow-x:auto;max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:8px">
+              <table id="preview-table"><thead><tr id="preview-head"></tr></thead><tbody id="preview-body"></tbody></table>
+            </div>
+          </div>
+          <!-- Results -->
+          <div id="res" style="margin-top:20px;display:none"></div>
+        </div>
+      </div>
+
+      <!-- Right: help panel -->
+      <div>
+        <div class="panel">
+          <div class="form-section-title" style="margin-bottom:12px">Expected Fields</div>
+          <code style="font-size:11.5px;line-height:2;color:var(--muted);word-break:break-word">name, sku, description, quantity, unit, location, category, tags, notes, barcode_value, barcode_type, min_quantity, cost</code>
+          <div style="margin-top:12px;font-size:12px;color:var(--muted)"><strong>name</strong> and <strong>sku</strong> are required.</div>
+        </div>
+        <div class="panel">
+          <div class="form-section-title" style="margin-bottom:12px">How It Works</div>
+          <ul style="color:var(--muted);font-size:13px;padding-left:18px;line-height:2">
+            <li>Existing SKUs are <strong style="color:var(--text)">updated</strong></li>
+            <li>New SKUs are <strong style="color:var(--text)">created</strong></li>
+            <li>Barcodes are <strong style="color:var(--text)">auto-generated</strong> if left blank</li>
+            <li>Max file size: <strong style="color:var(--text)">10 MB</strong></li>
+          </ul>
+        </div>
+        <div class="panel" style="background:var(--info-bg);border-color:var(--info-border)">
+          <div style="font-size:13px;font-weight:600;color:var(--info);margin-bottom:6px">JSON Format</div>
+          <code style="font-size:11px;line-height:1.6;color:var(--muted);white-space:pre-wrap">{"items": [
+  {"name":"Widget","sku":"W-01",
+   "quantity":50, ...}
+]}</code>
+        </div>
+      </div>
     </div>
-    <div class="panel">
-      <div class="form-section-title" style="margin-bottom:12px">How It Works</div>
-      <ul style="color:var(--muted);font-size:13px;padding-left:18px;line-height:2">
-        <li>Existing SKUs are <strong style="color:var(--text)">updated</strong></li>
-        <li>New SKUs are <strong style="color:var(--text)">created</strong></li>
-        <li>Barcodes are <strong style="color:var(--text)">auto-generated</strong> if left blank</li>
-      </ul>
-      <a href="/api/inventory/export/csv" class="btn btn-secondary btn-sm" style="margin-top:12px">Download Template / Export</a>
+  </div>
+
+  <!-- ════════════════════ EXPORT TAB ════════════════════ -->
+  <div id="tab-export" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start" id="export-grid">
+      <!-- Left: options -->
+      <div>
+        <div class="panel">
+          <div class="form-section-title" style="margin-bottom:16px">Export Settings</div>
+          <div class="fr">
+            <div class="fg">
+              <label>Format</label>
+              <select id="exp-fmt">
+                <option value="csv">CSV (.csv)</option>
+                <option value="json">JSON (.json)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Status</label>
+              <select id="exp-status">
+                <option value="active">Active only</option>
+                <option value="archived">Archived only</option>
+                <option value="">All items</option>
+              </select>
+            </div>
+          </div>
+          <div class="fr">
+            <div class="fg">
+              <label>Category</label>
+              <select id="exp-cat"><option value="">All categories</option></select>
+            </div>
+            <div class="fg">
+              <label>Location</label>
+              <select id="exp-loc"><option value="">All locations</option></select>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-success" onclick="doExport()" style="padding:10px 24px" id="exp-btn">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="7 10 10 7 13 10"/><line x1="10" y1="14" x2="10" y2="7"/></svg>
+              Download Export
+            </button>
+            <span id="exp-status-text" style="font-size:13px;color:var(--muted)"></span>
+          </div>
+        </div>
+
+        <!-- Export preview -->
+        <div class="panel" id="exp-preview-panel">
+          <div class="form-section-title" style="margin-bottom:8px">
+            Export Preview <span id="exp-count" style="font-weight:400;color:var(--muted);font-size:11px"></span>
+          </div>
+          <div id="exp-loading" style="text-align:center;padding:20px;color:var(--muted)">Loading preview...</div>
+          <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;display:none" id="exp-table-wrap">
+            <table><thead><tr>
+              <th>Name</th><th>SKU</th><th>Qty</th><th>Location</th><th>Category</th><th>Cost</th>
+            </tr></thead><tbody id="exp-tbody"></tbody></table>
+          </div>
+          <div id="exp-empty" class="empty" style="display:none">No items match the current filters.</div>
+        </div>
+      </div>
+
+      <!-- Right: summary -->
+      <div>
+        <div class="panel" id="exp-summary">
+          <div class="form-section-title" style="margin-bottom:12px">Summary</div>
+          <div id="exp-summary-content" style="color:var(--muted);font-size:13px">Loading...</div>
+        </div>
+        <div class="panel" style="background:var(--info-bg);border-color:var(--info-border)">
+          <div style="font-size:13px;font-weight:600;color:var(--info);margin-bottom:6px">Tip</div>
+          <div style="font-size:12px;color:var(--muted)">Use the CSV export as a template for bulk imports. Edit in a spreadsheet, then import the updated file.</div>
+        </div>
+      </div>
     </div>
-  </div>"""
+  </div>
+"""
+
+    head_extra = """<style>
+.bulk-tab {
+  padding: 10px 24px; border: none; background: transparent;
+  font-size: 14px; font-weight: 600; color: var(--muted);
+  cursor: pointer; transition: all .2s; font-family: inherit;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.bulk-tab:hover { color: var(--text); }
+.bulk-tab.active { color: var(--info); border-bottom-color: var(--info); }
+.fmt-btn {
+  padding: 6px 16px; border-radius: 6px; border: 1px solid var(--line);
+  background: transparent; color: var(--muted); font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit;
+}
+.fmt-btn:hover { border-color: var(--info); color: var(--text); }
+.fmt-btn.active { background: var(--info); color: #fff; border-color: var(--info); }
+#preview-table th { position: sticky; top: 0; background: var(--paper); z-index: 1; }
+@media (max-width: 900px) {
+  #import-grid, #export-grid { grid-template-columns: 1fr !important; }
+}
+</style>"""
 
     js = """<script>
-const dz=document.getElementById('dropzone'),fi=document.getElementById('csvf'),fn=document.getElementById('file-name'),ibtn=document.getElementById('ibtn'),ist=document.getElementById('import-status');
-['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag-over')}));
-['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag-over')}));
-dz.addEventListener('drop',ev=>{const files=ev.dataTransfer.files;if(files.length&&files[0].name.endsWith('.csv')){fi.files=files;fileSelected(files[0])}else{toast('Please drop a .csv file','warning')}});
-fi.addEventListener('change',()=>{if(fi.files[0])fileSelected(fi.files[0])});
-function fileSelected(f){fn.textContent=f.name+' ('+Math.round(f.size/1024)+'KB)';fn.style.display='block';ibtn.disabled=false;ist.textContent='Ready to import'}
-async function doImport(e){e.preventDefault();hideMsg();const f=fi.files[0];if(!f){showErr('Select a file');return false}ibtn.disabled=true;ist.innerHTML='<span style="color:var(--info)">Importing...</span>';const fd=new FormData();fd.append('file',f);try{const r=await fetch('/api/inventory/import/csv',{method:'POST',body:fd});const d=await r.json();if(!r.ok){showErr(d.error||'Import failed');ibtn.disabled=false;ist.textContent='Import failed';return false}showSuc(d.message);ist.innerHTML='<span style="color:var(--success)">Import complete</span>';const res=document.getElementById('res');res.style.display='block';let h='<div class="panel" style="background:var(--success-bg);border-color:var(--success-border)"><strong style="color:var(--success)">'+d.created+' created, '+d.updated+' updated</strong></div>';if(d.errors.length)h+='<div class="panel" style="background:var(--failure-bg);border-color:var(--failure-border);color:var(--failure)">'+d.errors.map(e=>'<div style="padding:2px 0">'+esc(e)+'</div>').join('')+'</div>';res.innerHTML=h}catch(er){showErr('Network error');ist.textContent='Network error'}ibtn.disabled=false;return false}
+/* ── Tab switching ── */
+function switchTab(tab) {
+  document.querySelectorAll('.bulk-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-import').style.display = tab === 'import' ? '' : 'none';
+  document.getElementById('tab-export').style.display = tab === 'export' ? '' : 'none';
+  if (tab === 'export') loadExportPreview();
+}
+{const p=new URLSearchParams(location.search);if(p.get('tab')==='export')switchTab('export');}
+
+/* ── Import format toggle ── */
+let importFmt = 'csv';
+function setImportFmt(fmt) {
+  importFmt = fmt;
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.toggle('active', b.dataset.fmt === fmt));
+  document.getElementById('accept-hint').textContent = 'Accepts .' + fmt + ' files';
+  // Reset file
+  const fi = document.getElementById('csvf');
+  fi.value = '';
+  document.getElementById('file-name').style.display = 'none';
+  document.getElementById('ibtn').disabled = true;
+  document.getElementById('import-status').textContent = 'Select a file to begin';
+  document.getElementById('preview-area').style.display = 'none';
+  document.getElementById('res').style.display = 'none';
+}
+
+/* ── Drag and drop ── */
+const dz = document.getElementById('dropzone');
+const fi = document.getElementById('csvf');
+['dragenter','dragover'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag-over'); }));
+dz.addEventListener('drop', ev => {
+  const files = ev.dataTransfer.files;
+  if (files.length) {
+    const ext = files[0].name.split('.').pop().toLowerCase();
+    if (ext === 'csv' || ext === 'json') {
+      if (ext !== importFmt) setImportFmt(ext);
+      fi.files = files;
+      fileSelected(files[0]);
+    } else {
+      toast('Please drop a .csv or .json file', 'warning');
+    }
+  }
+});
+fi.addEventListener('change', () => { if (fi.files[0]) fileSelected(fi.files[0]); });
+
+function fileSelected(f) {
+  const fn = document.getElementById('file-name');
+  fn.textContent = f.name + ' (' + (f.size < 1024 ? f.size + 'B' : Math.round(f.size / 1024) + 'KB') + ')';
+  fn.style.display = 'block';
+  document.getElementById('ibtn').disabled = false;
+  document.getElementById('import-status').textContent = 'Ready to import';
+  document.getElementById('res').style.display = 'none';
+  // Auto-detect format from extension
+  const ext = f.name.split('.').pop().toLowerCase();
+  if ((ext === 'csv' || ext === 'json') && ext !== importFmt) setImportFmt(ext);
+  // Build preview
+  buildPreview(f);
+}
+
+async function buildPreview(file) {
+  const area = document.getElementById('preview-area');
+  try {
+    const text = await file.text();
+    let rows = [];
+    if (importFmt === 'csv') {
+      const lines = text.split('\\n').filter(l => l.trim());
+      if (lines.length < 2) { area.style.display = 'none'; return; }
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      for (let i = 1; i < Math.min(lines.length, 51); i++) {
+        const vals = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const obj = {};
+        headers.forEach((h, idx) => obj[h] = vals[idx] || '');
+        rows.push(obj);
+      }
+    } else {
+      const data = JSON.parse(text);
+      const arr = Array.isArray(data) ? data : (data.items || []);
+      rows = arr.slice(0, 50);
+    }
+    if (!rows.length) { area.style.display = 'none'; return; }
+    const cols = ['name', 'sku', 'quantity', 'location', 'category', 'cost'];
+    const head = document.getElementById('preview-head');
+    const body = document.getElementById('preview-body');
+    head.innerHTML = cols.map(c => '<th>' + esc(c) + '</th>').join('');
+    body.innerHTML = rows.map(r => '<tr>' + cols.map(c => '<td>' + esc(String(r[c] || '')) + '</td>').join('') + '</tr>').join('');
+    document.getElementById('preview-count').textContent = '(' + rows.length + (rows.length >= 50 ? '+ ' : ' ') + 'rows)';
+    area.style.display = '';
+  } catch (e) { area.style.display = 'none'; }
+}
+
+/* ── Import submit ── */
+async function doImport(e) {
+  e.preventDefault(); hideMsg();
+  const f = fi.files[0];
+  if (!f) { showErr('Select a file'); return false; }
+  const ibtn = document.getElementById('ibtn');
+  const ist = document.getElementById('import-status');
+  ibtn.disabled = true;
+  ist.innerHTML = '<span style="color:var(--info)">Importing...</span>';
+  const fd = new FormData();
+  fd.append('file', f);
+  const url = importFmt === 'json' ? '/api/inventory/import/json' : '/api/inventory/import/csv';
+  try {
+    const r = await fetch(url, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) { showErr(d.error || 'Import failed'); ibtn.disabled = false; ist.textContent = 'Import failed'; return false; }
+    showSuc(d.message);
+    ist.innerHTML = '<span style="color:var(--success)">Import complete</span>';
+    const res = document.getElementById('res');
+    res.style.display = 'block';
+    let h = '<div class="panel" style="background:var(--success-bg);border-color:var(--success-border)">' +
+      '<strong style="color:var(--success)">' + d.created + ' created, ' + d.updated + ' updated</strong></div>';
+    if (d.errors && d.errors.length)
+      h += '<div class="panel" style="background:var(--failure-bg);border-color:var(--failure-border);color:var(--failure)">' +
+        d.errors.map(e => '<div style="padding:2px 0">' + esc(e) + '</div>').join('') + '</div>';
+    res.innerHTML = h;
+  } catch (er) { showErr('Network error'); ist.textContent = 'Network error'; }
+  ibtn.disabled = false;
+  return false;
+}
+
+/* ── Export: load filters and preview ── */
+let expCategories = [], expLocations = [];
+async function loadExportFilters() {
+  try {
+    const [catR, locR] = await Promise.all([
+      fetch('/api/inventory/categories').then(r => r.json()),
+      fetch('/api/inventory/locations').then(r => r.json())
+    ]);
+    expCategories = catR.categories || [];
+    expLocations = locR.locations || [];
+    const catSel = document.getElementById('exp-cat');
+    expCategories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+    const locSel = document.getElementById('exp-loc');
+    expLocations.forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l; locSel.appendChild(o); });
+  } catch (e) {}
+}
+loadExportFilters();
+
+// Debounced preview refresh
+let previewTimer = null;
+['exp-fmt', 'exp-status', 'exp-cat', 'exp-loc'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', () => { clearTimeout(previewTimer); previewTimer = setTimeout(loadExportPreview, 200); });
+});
+
+async function loadExportPreview() {
+  const status = document.getElementById('exp-status').value;
+  const cat = document.getElementById('exp-cat').value;
+  const loc = document.getElementById('exp-loc').value;
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (cat) params.set('category', cat);
+  if (loc) params.set('location', loc);
+  params.set('limit', '100');
+
+  document.getElementById('exp-loading').style.display = '';
+  document.getElementById('exp-table-wrap').style.display = 'none';
+  document.getElementById('exp-empty').style.display = 'none';
+
+  try {
+    const r = await fetch('/api/inventory?' + params.toString());
+    const d = await r.json();
+    const items = d.items || [];
+    const total = d.total || 0;
+
+    document.getElementById('exp-loading').style.display = 'none';
+
+    if (!items.length) {
+      document.getElementById('exp-empty').style.display = '';
+      document.getElementById('exp-count').textContent = '(0 items)';
+      document.getElementById('exp-summary-content').innerHTML = '<div style="font-size:24px;font-weight:700;color:var(--text);margin-bottom:4px">0</div>items to export';
+      return;
+    }
+
+    document.getElementById('exp-table-wrap').style.display = '';
+    document.getElementById('exp-count').textContent = '(' + total + ' item' + (total !== 1 ? 's' : '') + ')';
+    const tbody = document.getElementById('exp-tbody');
+    tbody.innerHTML = items.slice(0, 50).map(i =>
+      '<tr><td>' + esc(i.name) + '</td><td><code>' + esc(i.sku) + '</code></td>' +
+      '<td style="font-weight:600">' + i.quantity + '</td><td>' + esc(i.location || '—') + '</td>' +
+      '<td>' + esc(i.category || '—') + '</td>' +
+      '<td>' + (i.cost != null ? '$' + Number(i.cost).toFixed(2) : '—') + '</td></tr>'
+    ).join('');
+
+    // Summary
+    const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+    const totalVal = items.reduce((s, i) => s + (i.cost || 0) * i.quantity, 0);
+    document.getElementById('exp-summary-content').innerHTML =
+      '<div style="font-size:28px;font-weight:700;color:var(--text);margin-bottom:4px">' + total + '</div>' +
+      '<div style="margin-bottom:12px">items to export</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+      '<div class="sb" style="padding:10px"><div class="v" style="font-size:18px">' + totalQty.toLocaleString() + '</div><div class="l">Total Qty</div></div>' +
+      '<div class="sb" style="padding:10px"><div class="v" style="font-size:18px">$' + totalVal.toFixed(2) + '</div><div class="l">Value</div></div></div>';
+
+  } catch (e) {
+    document.getElementById('exp-loading').textContent = 'Failed to load preview.';
+  }
+}
+
+/* ── Export download ── */
+function doExport() {
+  const fmt = document.getElementById('exp-fmt').value;
+  const status = document.getElementById('exp-status').value;
+  const cat = document.getElementById('exp-cat').value;
+  const loc = document.getElementById('exp-loc').value;
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (cat) params.set('category', cat);
+  if (loc) params.set('location', loc);
+
+  let url;
+  if (fmt === 'json') {
+    url = '/api/inventory/export/json?' + params.toString();
+  } else {
+    url = '/api/inventory/export/csv/filtered?' + params.toString();
+  }
+
+  // Trigger download
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('Export started — check your downloads', 'success');
+  document.getElementById('exp-status-text').innerHTML = '<span style="color:var(--success)">Download started</span>';
+}
 </script>"""
 
     return HTMLResponse(content=render_shell(
-        title="Import CSV",
-        active_nav="import",
+        title="Bulk Import / Export",
+        active_nav="bulk-io",
         body_html=body,
         body_js=js,
         display_name=user.display_name,
         role=user.role,
+        head_extra=head_extra,
     ))
 
 
@@ -255,7 +647,7 @@ def inventory_detail_page(item_id: str, user: User = Depends(require_user)) -> H
     js = f"""<script>
 const ID='{safe_id}';let cur=null;
 async function load(){{const r=await apiCall('GET',`/api/inventory/${{ID}}`);if(!r.ok){{showErr('Item not found');return}}cur=r.data.item;document.getElementById('ld').style.display='none';document.getElementById('ct').style.display='block';renderD(r.data.item,r.data.transactions)}}
-function renderD(i,tx){{document.getElementById('iname').textContent=i.name;document.getElementById('isku').textContent=i.sku;document.title=i.name+' - Barcode Buddy';const bu=`/api/inventory/${{i.id}}/barcode.png?scale=5`;document.getElementById('bimg').src=bu;document.getElementById('bval').textContent=i.barcode_value;document.getElementById('bdl').href=bu;
+function renderD(i,tx){{document.getElementById('iname').textContent=i.name;document.getElementById('isku').textContent=i.sku;document.title=i.name+' - BarcodeBuddy';const bu=`/api/inventory/${{i.id}}/barcode.png?scale=5`;document.getElementById('bimg').src=bu;document.getElementById('bval').textContent=i.barcode_value;document.getElementById('bdl').href=bu;
 const qc=i.quantity===0?'qz':i.min_quantity>0&&i.quantity<=i.min_quantity?'ql':'';
 document.getElementById('dc').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Quantity</div><div style="font-size:28px;font-weight:700" class="${{qc}}">${{i.quantity}} <span style="font-size:14px;color:var(--muted)">${{esc(i.unit)}}</span></div></div><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Location</div><div style="font-size:16px">${{esc(i.location)||'—'}}</div></div><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Category</div><div>${{i.category?'<span class="badge bb">'+esc(i.category)+'</span>':'—'}}</div></div><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Status</div><div><span class="badge ${{i.status==='active'?'bg':'bgr'}}">${{i.status}}</span></div></div><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Cost</div><div>${{i.cost!=null?'$'+i.cost.toFixed(2):'—'}}</div></div><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Min Qty</div><div>${{i.min_quantity}}</div></div></div>${{i.description?'<div style="margin-top:16px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Description</div><div>'+esc(i.description)+'</div></div>':''}}${{i.tags?'<div style="margin-top:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Tags</div><div>'+i.tags.split(',').map(t=>'<span class="badge bgr" style="margin:2px">'+esc(t.trim())+'</span>').join('')+'</div></div>':''}}${{i.notes?'<div style="margin-top:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Notes</div><div style="color:var(--muted)">'+esc(i.notes)+'</div></div>':''}}<div style="margin-top:16px;font-size:11px;color:var(--muted)">Created: ${{new Date(i.created_at).toLocaleString()}} · Updated: ${{new Date(i.updated_at).toLocaleString()}}</div>`;
 document.getElementById('txb').innerHTML=tx.length?tx.map(t=>`<tr><td style="white-space:nowrap">${{new Date(t.created_at).toLocaleString()}}</td><td style="font-weight:600;color:${{t.quantity_change>=0?'var(--success)':'var(--failure)'}}">${{t.quantity_change>=0?'+':''}}\u200b${{t.quantity_change}}</td><td>${{t.quantity_after}}</td><td><span class="badge bgr">${{esc(t.reason)}}</span></td><td style="color:var(--muted)">${{esc(t.notes)}}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No transactions yet</td></tr>'}}

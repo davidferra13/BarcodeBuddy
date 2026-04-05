@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-03.
 
-Use this runbook for Barcode Buddy production incidents. Pair it with `docs/production-operations-blueprint.md`.
+Use this runbook for BarcodeBuddy production incidents. Pair it with `docs/production-operations-blueprint.md`.
 
 ## 1. Severity mapping
 

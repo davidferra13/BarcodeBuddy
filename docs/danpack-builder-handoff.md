@@ -2,9 +2,13 @@
 
 Last updated: 2026-04-03.
 
-This document is the builder-facing source of truth for the current Barcode Buddy repo state, the verified Danpack business context, and the recommended execution order for the next implementation pass.
+This document is the builder-facing source of truth for the current BarcodeBuddy repo state, the verified Danpack business context, and the recommended execution order for the next implementation pass.
 
 Use this document together with the code as the primary handoff. Treat `TECHNICAL_ARCHITECTURE_SPECIFICATION.md` as target-state design guidance, not as a statement that all of that behavior already exists in the runtime.
+
+The master product blueprint — full capability map, implementation status, and phased roadmap — is in:
+
+- `docs/PRODUCT_BLUEPRINT.md`
 
 New builder-facing interaction rules for any future UI, admin console, rejection review tool, or workflow surface are in:
 
@@ -94,16 +98,17 @@ Start from those artifacts before widening the implementation.
 - Config safeguards: rejects unknown keys, requires distinct managed paths, and enforces same-volume managed paths
 - Workflow identity: `workflow_key` is part of the config contract and should be explicit in deployed configs
 
-### 1.3 Important hard constraints already enforced
+### 1.3 Important hard constraints on the ingestion pipeline
+
+These constraints apply to the hot-folder document processing pipeline (`main.py` / `app/processor.py`), not to the web application:
 
 - No OCR
 - No document classification
-- No database
-- No external or write-capable API
-- No operator workflow UI
 - No cloud storage integration
 - No filename generation from anything other than a routable barcode
 - No non-barcoded document inference
+
+Note: the web application (`stats.py`) does include a SQLAlchemy + SQLite database, a full multi-user UI, write-capable APIs for inventory and team management, and an AI integration layer. These are separate from the ingestion pipeline constraints above.
 
 ### 1.4 Current module boundary in practice
 
@@ -164,7 +169,7 @@ The public site repeatedly describes an engineering workflow:
 4. Danpack performs ISTA-style testing where needed
 5. Danpack produces and replenishes packaging
 
-That matters because Barcode Buddy should be framed as operational document-routing infrastructure for Danpack's real workflows, not as a generic office scanner tool.
+That matters because BarcodeBuddy should be framed as operational document-routing infrastructure for Danpack's real workflows, not as a generic office scanner tool.
 
 ### 3.3 Public proof signals worth reusing
 
@@ -176,7 +181,7 @@ That matters because Barcode Buddy should be framed as operational document-rout
 - testimonials mentioning fast prototyping and tested packaging
 - galleries, testimonials, and newsletter/blog infrastructure exposed in the sitemap but not fully surfaced in navigation
 
-## 4. Danpack-Fit Operating Model For Barcode Buddy
+## 4. Danpack-Fit Operating Model For BarcodeBuddy
 
 ### 4.1 Recommended workflow split
 
@@ -447,4 +452,4 @@ Why fifth:
 
 ## 11. Bottom Line For The Next Agent
 
-Barcode Buddy is currently a deterministic barcode-routing hot-folder service with a verified baseline: runtime tests exist, stats-page tests exist, workflow config templates exist, and the Danpack operating model is documented. Danpack is a packaging-engineering business with multiple document families and stronger proof signals than the visible homepage suggests. The right next step is not broad feature expansion. It is to preserve the verified runtime, reconcile the architecture spec with the implementation, and only then harden the system with Danpack-specific barcode rules and samples. If any human-facing surface is added later, it should follow `docs/danpack-system-interaction-philosophy.md` and start as a narrow exception-first tool rather than a dashboard.
+BarcodeBuddy is currently a deterministic barcode-routing hot-folder service with a verified baseline: runtime tests exist, stats-page tests exist, workflow config templates exist, and the Danpack operating model is documented. Danpack is a packaging-engineering business with multiple document families and stronger proof signals than the visible homepage suggests. The right next step is not broad feature expansion. It is to preserve the verified runtime, reconcile the architecture spec with the implementation, and only then harden the system with Danpack-specific barcode rules and samples. If any human-facing surface is added later, it should follow `docs/danpack-system-interaction-philosophy.md` and start as a narrow exception-first tool rather than a dashboard.

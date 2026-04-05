@@ -1,4 +1,4 @@
-"""Database models and engine setup for Barcode Buddy multi-user system."""
+"""Database models and engine setup for BarcodeBuddy multi-user system."""
 
 from __future__ import annotations
 
@@ -184,6 +184,237 @@ class Alert(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
+class ActivityLog(Base):
+    """Unified activity log capturing all significant system events."""
+    __tablename__ = "activity_log"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String(80), nullable=False, index=True)
+    category = Column(String(30), nullable=False, default="system", index=True)  # inventory, auth, admin, scan, import, system
+    summary = Column(String(500), nullable=False, default="")
+    detail = Column(Text, nullable=False, default="")  # JSON blob
+    item_id = Column(String(36), nullable=True, index=True)  # optional FK to inventory item
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "action": self.action,
+            "category": self.category,
+            "summary": self.summary,
+            "detail": self.detail,
+            "item_id": self.item_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Team(Base):
+    """A team created by the owner to organize users."""
+    __tablename__ = "teams"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False, default="")
+    created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
+    tasks = relationship("TeamTask", back_populates="team", cascade="all, delete-orphan")
+    creator = relationship("User", foreign_keys=[created_by])
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class TeamMember(Base):
+    """Membership linking a user to a team with a specific team role."""
+    __tablename__ = "team_members"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    team_id = Column(String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    team_role = Column(String(20), nullable=False, default="member")  # lead, member, viewer
+    added_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    added_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    team = relationship("Team", back_populates="members")
+    user = relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "team_id": self.team_id,
+            "user_id": self.user_id,
+            "team_role": self.team_role,
+            "added_by": self.added_by,
+            "added_at": self.added_at.isoformat() if self.added_at else None,
+        }
+
+
+class TeamTask(Base):
+    """A task assigned within a team."""
+    __tablename__ = "team_tasks"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    team_id = Column(String(36), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=False, default="")
+    assigned_to = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String(20), nullable=False, default="todo")  # todo, in_progress, done, blocked
+    priority = Column(String(20), nullable=False, default="medium")  # low, medium, high, urgent
+    due_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    team = relationship("Team", back_populates="tasks")
+    assignee = relationship("User", foreign_keys=[assigned_to])
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "team_id": self.team_id,
+            "title": self.title,
+            "description": self.description,
+            "assigned_to": self.assigned_to,
+            "created_by": self.created_by,
+            "status": self.status,
+            "priority": self.priority,
+            "due_date": self.due_date.isoformat() if self.due_date else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class AIConfig(Base):
+    """AI provider configuration. Singleton row (id=1), editable from the AI setup/settings UI."""
+    __tablename__ = "ai_config"
+
+    id = Column(Integer, primary_key=True, default=1)
+
+    # Master toggle
+    ai_enabled = Column(Boolean, nullable=False, default=False)
+
+    # Ollama (local) settings
+    ollama_enabled = Column(Boolean, nullable=False, default=False)
+    ollama_base_url = Column(String(500), nullable=False, default="http://localhost:11434")
+    ollama_chat_model = Column(String(100), nullable=False, default="llama3.2")
+    ollama_vision_model = Column(String(100), nullable=False, default="llava")
+
+    # Cloud provider settings
+    cloud_enabled = Column(Boolean, nullable=False, default=False)
+    cloud_provider = Column(String(20), nullable=False, default="")  # "anthropic", "openai", ""
+    cloud_api_key_encrypted = Column(Text, nullable=False, default="")
+    cloud_chat_model = Column(String(100), nullable=False, default="")
+    cloud_vision_model = Column(String(100), nullable=False, default="")
+
+    # Per-task routing: "local" or "cloud"
+    chat_provider = Column(String(10), nullable=False, default="local")
+    vision_provider = Column(String(10), nullable=False, default="cloud")
+    csv_provider = Column(String(10), nullable=False, default="local")
+    suggest_provider = Column(String(10), nullable=False, default="local")
+
+    # Limits
+    max_tokens_per_request = Column(Integer, nullable=False, default=1024)
+    max_requests_per_minute = Column(Integer, nullable=False, default=30)
+
+    # Setup state
+    setup_completed = Column(Boolean, nullable=False, default=False)
+    setup_completed_at = Column(DateTime, nullable=True)
+
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self, *, mask_key: bool = True) -> dict:
+        return {
+            "ai_enabled": self.ai_enabled,
+            "ollama_enabled": self.ollama_enabled,
+            "ollama_base_url": self.ollama_base_url,
+            "ollama_chat_model": self.ollama_chat_model,
+            "ollama_vision_model": self.ollama_vision_model,
+            "cloud_enabled": self.cloud_enabled,
+            "cloud_provider": self.cloud_provider,
+            "cloud_api_key_set": bool(self.cloud_api_key_encrypted) if mask_key else self.cloud_api_key_encrypted,
+            "cloud_chat_model": self.cloud_chat_model,
+            "cloud_vision_model": self.cloud_vision_model,
+            "chat_provider": self.chat_provider,
+            "vision_provider": self.vision_provider,
+            "csv_provider": self.csv_provider,
+            "suggest_provider": self.suggest_provider,
+            "max_tokens_per_request": self.max_tokens_per_request,
+            "max_requests_per_minute": self.max_requests_per_minute,
+            "setup_completed": self.setup_completed,
+            "setup_completed_at": self.setup_completed_at.isoformat() if self.setup_completed_at else None,
+        }
+
+
+class ChatConversation(Base):
+    """A chat conversation between a user and the AI assistant."""
+    __tablename__ = "chat_conversations"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False, default="New conversation")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan",
+                            order_by="ChatMessage.created_at")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "message_count": len(self.messages) if self.messages else 0,
+        }
+
+
+class ChatMessage(Base):
+    """An individual message within a chat conversation."""
+    __tablename__ = "chat_messages"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    conversation_id = Column(String(36), ForeignKey("chat_conversations.id", ondelete="CASCADE"),
+                             nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # "user", "assistant", "system", "tool"
+    content = Column(Text, nullable=False)
+    tool_calls = Column(Text, nullable=False, default="")  # JSON-encoded tool calls
+    tool_call_id = Column(String(100), nullable=True)
+    model_used = Column(String(100), nullable=False, default="")
+    provider_used = Column(String(20), nullable=False, default="")  # "ollama", "anthropic", "openai"
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    conversation = relationship("ChatConversation", back_populates="messages")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "conversation_id": self.conversation_id,
+            "role": self.role,
+            "content": self.content,
+            "tool_calls": self.tool_calls,
+            "model_used": self.model_used,
+            "provider_used": self.provider_used,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class SystemSettings(Base):
     __tablename__ = "system_settings"
 
@@ -200,6 +431,18 @@ def _ensure_system_settings(session_factory: sessionmaker) -> None:
         row = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
         if not row:
             db.add(SystemSettings(id=1, open_signup=False))
+            db.commit()
+    finally:
+        db.close()
+
+
+def _ensure_ai_config(session_factory: sessionmaker) -> None:
+    """Ensure the single ai_config row exists."""
+    db = session_factory()
+    try:
+        row = db.query(AIConfig).filter(AIConfig.id == 1).first()
+        if not row:
+            db.add(AIConfig(id=1))
             db.commit()
     finally:
         db.close()
@@ -223,6 +466,7 @@ def init_db(db_path: Path) -> None:
     Base.metadata.create_all(bind=_engine)
     _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     _ensure_system_settings(_SessionLocal)
+    _ensure_ai_config(_SessionLocal)
 
 
 def get_db() -> Generator[Session, None, None]:

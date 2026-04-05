@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-03.
 
-This document is the concrete production-operating blueprint for the current Barcode Buddy repository. It is written against the code that exists today, with explicit notes where production controls are still required.
+This document is the concrete production-operating blueprint for the current BarcodeBuddy repository. It is written against the code that exists today, with explicit notes where production controls are still required.
 
 ## 0. System Boundary
 

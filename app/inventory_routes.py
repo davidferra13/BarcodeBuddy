@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json as json_mod
 import uuid
 from calendar import monthrange
 from collections import defaultdict
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from app.activity import log_activity
 from app.auth import ROLE_LEVELS, get_role_level, require_user
 from app.barcode_generator import generate_barcode_bytes
 from app.database import InventoryItem, InventoryTransaction, User, get_db
@@ -308,10 +310,201 @@ def api_export_csv(
                          item.notes, item.barcode_value, item.barcode_type,
                          item.min_quantity, item.cost or ""])
     output.seek(0)
+    log_activity(db, user=user, action="CSV Export", category="export",
+                 summary=f"Exported {len(items)} items",
+                 detail={"count": len(items)})
     return StreamingResponse(
         iter([output.getvalue()]), media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=inventory_export.csv"},
     )
+
+
+# ── Export JSON ─────────────────────────────────────────────────────
+
+@router.get("/api/inventory/export/json")
+def api_export_json(
+    category: str = "",
+    location: str = "",
+    status: str = "active",
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    target = _resolve_target_user_id(user, view_user)
+    query = db.query(InventoryItem).filter(InventoryItem.user_id == target)
+    if status:
+        query = query.filter(InventoryItem.status == status)
+    if category:
+        query = query.filter(InventoryItem.category == category)
+    if location:
+        query = query.filter(InventoryItem.location == location)
+    items = query.order_by(InventoryItem.name).all()
+    payload = {
+        "export_date": datetime.now(timezone.utc).isoformat(),
+        "total_items": len(items),
+        "items": [
+            {
+                "name": i.name, "sku": i.sku, "description": i.description,
+                "quantity": i.quantity, "unit": i.unit, "location": i.location,
+                "category": i.category, "tags": i.tags, "notes": i.notes,
+                "barcode_value": i.barcode_value, "barcode_type": i.barcode_type,
+                "min_quantity": i.min_quantity, "cost": i.cost,
+                "status": i.status,
+            }
+            for i in items
+        ],
+    }
+    return Response(
+        content=json_mod.dumps(payload, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=inventory_export.json"},
+    )
+
+
+# ── Export CSV (filtered) ──────────────────────────────────────────
+
+@router.get("/api/inventory/export/csv/filtered")
+def api_export_csv_filtered(
+    category: str = "",
+    location: str = "",
+    status: str = "active",
+    view_user: str | None = None,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    target = _resolve_target_user_id(user, view_user)
+    query = db.query(InventoryItem).filter(InventoryItem.user_id == target)
+    if status:
+        query = query.filter(InventoryItem.status == status)
+    if category:
+        query = query.filter(InventoryItem.category == category)
+    if location:
+        query = query.filter(InventoryItem.location == location)
+    items = query.order_by(InventoryItem.name).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "sku", "description", "quantity", "unit", "location",
+                     "category", "tags", "notes", "barcode_value", "barcode_type",
+                     "min_quantity", "cost"])
+    for item in items:
+        writer.writerow([item.name, item.sku, item.description, item.quantity,
+                         item.unit, item.location, item.category, item.tags,
+                         item.notes, item.barcode_value, item.barcode_type,
+                         item.min_quantity, item.cost or ""])
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=inventory_export.csv"},
+    )
+
+
+# ── Import JSON ─────────────────────────────────────────────────────
+
+_JSON_IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post("/api/inventory/import/json")
+async def api_import_json(
+    file: UploadFile = File(...),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    content = await file.read(_JSON_IMPORT_MAX_BYTES + 1)
+    if len(content) > _JSON_IMPORT_MAX_BYTES:
+        return JSONResponse(status_code=400, content={"error": "JSON file too large. Maximum size is 10 MB."})
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+    try:
+        data = json_mod.loads(text)
+    except json_mod.JSONDecodeError as exc:
+        return JSONResponse(status_code=400, content={"error": f"Invalid JSON: {exc}"})
+
+    # Accept either a list of items or an object with an "items" key
+    if isinstance(data, dict):
+        rows = data.get("items", [])
+    elif isinstance(data, list):
+        rows = data
+    else:
+        return JSONResponse(status_code=400, content={"error": "JSON must be an array or an object with an 'items' key."})
+
+    created = 0
+    updated = 0
+    errors: list[str] = []
+    for idx, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            errors.append(f"Item {idx}: not an object")
+            continue
+        name = str(row.get("name", "")).strip()
+        sku = str(row.get("sku", "")).strip()
+        if not name or not sku:
+            errors.append(f"Item {idx}: missing name or sku")
+            continue
+        existing = db.query(InventoryItem).filter(
+            InventoryItem.user_id == user.id, InventoryItem.sku == sku,
+        ).first()
+        try:
+            qty = int(row.get("quantity", 0) or 0)
+        except (ValueError, TypeError):
+            qty = 0
+        cost_val = row.get("cost")
+        cost = float(cost_val) if cost_val not in (None, "", "null") else None
+        barcode_value = str(row.get("barcode_value", "")).strip()
+        if not barcode_value:
+            barcode_value = f"BB-{sku.upper()}-{uuid.uuid4().hex[:6].upper()}"
+        if existing:
+            existing.name = name
+            existing.description = str(row.get("description", "")).strip()
+            old_qty = existing.quantity
+            existing.quantity = qty
+            existing.unit = str(row.get("unit", "each")).strip() or "each"
+            existing.location = str(row.get("location", "")).strip()
+            existing.category = str(row.get("category", "")).strip()
+            existing.tags = str(row.get("tags", "")).strip()
+            existing.notes = str(row.get("notes", "")).strip()
+            existing.barcode_type = str(row.get("barcode_type", "Code128")).strip() or "Code128"
+            existing.min_quantity = int(row.get("min_quantity", 0) or 0)
+            existing.cost = cost
+            existing.updated_at = datetime.now(timezone.utc)
+            if qty != old_qty:
+                db.add(InventoryTransaction(
+                    item_id=existing.id, user_id=user.id,
+                    quantity_change=qty - old_qty, quantity_after=qty,
+                    reason="adjusted", notes="JSON import update",
+                ))
+            updated += 1
+        else:
+            item = InventoryItem(
+                user_id=user.id, name=name, sku=sku,
+                description=str(row.get("description", "")).strip(),
+                quantity=qty, unit=str(row.get("unit", "each")).strip() or "each",
+                location=str(row.get("location", "")).strip(),
+                category=str(row.get("category", "")).strip(),
+                tags=str(row.get("tags", "")).strip(),
+                notes=str(row.get("notes", "")).strip(),
+                barcode_value=barcode_value,
+                barcode_type=str(row.get("barcode_type", "Code128")).strip() or "Code128",
+                min_quantity=int(row.get("min_quantity", 0) or 0),
+                cost=cost,
+            )
+            db.add(item)
+            db.flush()
+            if qty > 0:
+                db.add(InventoryTransaction(
+                    item_id=item.id, user_id=user.id,
+                    quantity_change=qty, quantity_after=qty,
+                    reason="initial", notes="JSON import",
+                ))
+            created += 1
+    db.commit()
+    log_activity(db, user=user, action="JSON Import", category="import",
+                 summary=f"{created} created, {updated} updated, {len(errors)} errors",
+                 detail={"created": created, "updated": updated, "errors": len(errors)})
+    return JSONResponse(content={
+        "created": created, "updated": updated, "errors": errors,
+        "message": f"Import complete: {created} created, {updated} updated, {len(errors)} errors",
+    })
 
 
 # ── Import CSV ──────────────────────────────────────────────────────
@@ -396,6 +589,9 @@ async def api_import_csv(
                 ))
             created += 1
     db.commit()
+    log_activity(db, user=user, action="CSV Import", category="import",
+                 summary=f"{created} created, {updated} updated, {len(errors)} errors",
+                 detail={"created": created, "updated": updated, "errors": len(errors)})
     return JSONResponse(content={
         "created": created, "updated": updated, "errors": errors,
         "message": f"Import complete: {created} created, {updated} updated, {len(errors)} errors",
@@ -476,6 +672,9 @@ def api_create_item(
         ))
     db.commit()
     db.refresh(item)
+    log_activity(db, user=user, action="Item Created", category="inventory",
+                 summary=f"{item.name} (SKU: {item.sku}) — qty {item.quantity}",
+                 detail={"sku": item.sku, "quantity": item.quantity}, item_id=item.id)
     return JSONResponse(status_code=201, content={"item": item.to_dict()})
 
 
@@ -534,6 +733,9 @@ def api_update_item(
     item.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(item)
+    log_activity(db, user=user, action="Item Updated", category="inventory",
+                 summary=f"{item.name} — fields: {', '.join(update_data.keys())}",
+                 detail={"fields": list(update_data.keys())}, item_id=item.id)
     return JSONResponse(content={"item": item.to_dict()})
 
 
@@ -554,8 +756,12 @@ def api_delete_item(
     ).first()
     if not item:
         return JSONResponse(status_code=404, content={"error": "Item not found"})
+    item_name, item_sku = item.name, item.sku
     db.delete(item)
     db.commit()
+    log_activity(db, user=user, action="Item Deleted", category="inventory",
+                 summary=f"{item_name} (SKU: {item_sku})",
+                 detail={"sku": item_sku, "name": item_name})
     return JSONResponse(content={"message": "Item deleted"})
 
 
@@ -589,6 +795,11 @@ def api_adjust_quantity(
     item.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(item)
+    sign = "+" if body.quantity_change > 0 else ""
+    log_activity(db, user=user, action="Quantity Adjusted", category="inventory",
+                 summary=f"{item.name} — {sign}{body.quantity_change} ({body.reason}) → {new_qty}",
+                 detail={"change": body.quantity_change, "reason": body.reason, "after": new_qty},
+                 item_id=item.id)
     return JSONResponse(content={"item": item.to_dict(), "transaction": txn.to_dict()})
 
 
@@ -615,7 +826,13 @@ def api_scan_lookup(
             InventoryItem.status == "active",
         ).first()
     if not item:
+        log_activity(db, user=user, action="Scan — No Match", category="scan",
+                     summary=f"Barcode '{code}' not found in inventory",
+                     detail={"code": code})
         return JSONResponse(status_code=404, content={"error": "No item found for this code", "code": code})
+    log_activity(db, user=user, action="Scan Lookup", category="scan",
+                 summary=f"Matched {item.name} (SKU: {item.sku})",
+                 detail={"code": code, "item_name": item.name}, item_id=item.id)
     return JSONResponse(content={"item": item.to_dict()})
 
 
@@ -695,6 +912,9 @@ def api_bulk_delete(
             db.delete(item)
             deleted += 1
     db.commit()
+    log_activity(db, user=user, action="Bulk Delete", category="inventory",
+                 summary=f"Deleted {deleted} items",
+                 detail={"deleted": deleted, "requested": len(body.item_ids)})
     return JSONResponse(content={"deleted": deleted})
 
 
@@ -721,6 +941,10 @@ def api_bulk_update(
             item.updated_at = datetime.now(timezone.utc)
             updated += 1
     db.commit()
+    changes = [k for k in ("location", "category", "status", "tags") if getattr(body, k) is not None]
+    log_activity(db, user=user, action="Bulk Update", category="inventory",
+                 summary=f"Updated {updated} items — fields: {', '.join(changes)}",
+                 detail={"updated": updated, "fields": changes})
     return JSONResponse(content={"updated": updated})
 
 

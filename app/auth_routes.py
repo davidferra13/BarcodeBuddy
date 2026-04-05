@@ -31,6 +31,7 @@ from app.auth import (
     verify_reset_token,
     COOKIE_NAME,
 )
+from app.activity import log_activity
 from app.database import SystemSettings, User, get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -99,11 +100,11 @@ def _send_reset_email(to_email: str, reset_url: str) -> bool:
         return False
 
     msg = EmailMessage()
-    msg["Subject"] = "Barcode Buddy password reset"
+    msg["Subject"] = "BarcodeBuddy password reset"
     msg["From"] = from_email
     msg["To"] = to_email
     msg.set_content(
-        "A password reset was requested for your Barcode Buddy account.\n\n"
+        "A password reset was requested for your BarcodeBuddy account.\n\n"
         f"Use this link to set a new password: {reset_url}\n\n"
         "If you did not request this, you can ignore this email."
     )
@@ -191,6 +192,9 @@ def api_signup(request: Request, body: SignupRequest, db: Session = Depends(get_
     db.refresh(user)
 
     token = create_access_token(user, db)
+    log_activity(db, user=user, action="User Signed Up", category="auth",
+                 summary=f"{user.display_name} ({user.email}) — role: {user.role}",
+                 detail={"email": user.email, "role": user.role})
     response = JSONResponse(content={"user": user.to_dict(), "redirect": "/"})
     set_auth_cookie(response, token, request=request)
     return response
@@ -208,6 +212,9 @@ def api_login(request: Request, body: LoginRequest, db: Session = Depends(get_db
         return JSONResponse(status_code=401, content={"error": "Invalid email or password"})
 
     token = create_access_token(user, db)
+    log_activity(db, user=user, action="User Logged In", category="auth",
+                 summary=f"{user.display_name} ({user.email})",
+                 detail={"email": user.email})
     response = JSONResponse(content={"user": user.to_dict(), "redirect": "/"})
     set_auth_cookie(response, token, request=request)
     return response
@@ -216,8 +223,15 @@ def api_login(request: Request, body: LoginRequest, db: Session = Depends(get_db
 @router.post("/api/logout")
 def api_logout(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
     token = request.cookies.get(COOKIE_NAME)
+    # Resolve user for activity logging before revoking
+    from app.auth import get_current_user
+    user = get_current_user(request, db) if token else None
     if token:
         revoke_token(token, db)
+    if user:
+        log_activity(db, user=user, action="User Logged Out", category="auth",
+                     summary=f"{user.display_name} ({user.email})",
+                     detail={"email": user.email})
     response = JSONResponse(content={"redirect": "/auth/login"})
     clear_auth_cookie(response)
     return response
@@ -267,6 +281,9 @@ def api_reset_confirm(body: ResetConfirmModel, db: Session = Depends(get_db)) ->
         return JSONResponse(status_code=400, content={"error": "Invalid or expired reset token"})
     user.password_hash = hash_password(body.new_password)
     db.commit()
+    log_activity(db, user=user, action="Password Reset", category="auth",
+                 summary=f"{user.display_name} reset their password",
+                 detail={"email": user.email})
     return JSONResponse(content={"message": "Password reset successfully", "redirect": "/auth/login"})
 
 
@@ -378,10 +395,10 @@ async function authSubmit(url, formId, fields) {
 def login_page() -> HTMLResponse:
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Login - Barcode Buddy</title>{_AUTH_STYLES}</head>
+<title>Login - BarcodeBuddy</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">Barcode Buddy</div>
+  <div class="brand">BarcodeBuddy</div>
   <h1>Welcome back</h1>
   <p class="subtitle">Sign in to your account</p>
   <div id="error-msg" class="error-msg"></div>
@@ -411,12 +428,12 @@ def login_page() -> HTMLResponse:
 def signup_page() -> HTMLResponse:
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign Up - Barcode Buddy</title>{_AUTH_STYLES}</head>
+<title>Sign Up - BarcodeBuddy</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">Barcode Buddy</div>
+  <div class="brand">BarcodeBuddy</div>
   <h1>Create account</h1>
-  <p class="subtitle">Get started with Barcode Buddy</p>
+  <p class="subtitle">Get started with BarcodeBuddy</p>
   <div id="error-msg" class="error-msg"></div>
   <form onsubmit="event.preventDefault(); authSubmit('/auth/api/signup', 'signup', ['email','display_name','password'])">
     <div class="form-group">
@@ -445,10 +462,10 @@ def signup_page() -> HTMLResponse:
 def reset_request_page() -> HTMLResponse:
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reset Password - Barcode Buddy</title>{_AUTH_STYLES}</head>
+<title>Reset Password - BarcodeBuddy</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">Barcode Buddy</div>
+  <div class="brand">BarcodeBuddy</div>
   <h1>Reset password</h1>
   <p class="subtitle">Enter your email to receive a reset link</p>
   <div id="error-msg" class="error-msg"></div>
@@ -472,10 +489,10 @@ def reset_request_page() -> HTMLResponse:
 def reset_page(token: str = "") -> HTMLResponse:
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Set New Password - Barcode Buddy</title>{_AUTH_STYLES}</head>
+<title>Set New Password - BarcodeBuddy</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">Barcode Buddy</div>
+  <div class="brand">BarcodeBuddy</div>
   <h1>Set new password</h1>
   <p class="subtitle">Enter your new password</p>
   <div id="error-msg" class="error-msg"></div>

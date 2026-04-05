@@ -44,7 +44,7 @@ Why this matters:
 
 - the first-mile problem is still real
 - one file per scan versus one file per page is a high-impact operator choice
-- Barcode Buddy should keep assuming a file-based intake, because that is how many operators actually work
+- BarcodeBuddy should keep assuming a file-based intake, because that is how many operators actually work
 
 ### 2. Shipping and POD workflows are increasingly mobile, but paper scan-back still exists
 
@@ -54,7 +54,7 @@ Why this matters:
 
 - `shipping_pod` should remain a separate workflow
 - rescans and corrected paperwork are normal in this lane
-- if Danpack eventually moves to mobile POD, Barcode Buddy still remains useful for paper-originated edge cases and backfile cleanup, but it should not pretend to be the mobile system
+- if Danpack eventually moves to mobile POD, BarcodeBuddy still remains useful for paper-originated edge cases and backfile cleanup, but it should not pretend to be the mobile system
 
 ### 3. Scan profile details are operational, not cosmetic
 
@@ -91,7 +91,7 @@ Paperless explicitly documents that if filesystem notifications do not work, pol
 
 Why this matters:
 
-- Barcode Buddy's polling design is not behind the market; it is aligned with how real ingestion systems survive unreliable networked filesystems
+- BarcodeBuddy's polling design is not behind the market; it is aligned with how real ingestion systems survive unreliable networked filesystems
 - the current product should keep treating hot-folder intake as a first-class deployment model
 - the next builder should not replace polling with file events just because file events look cleaner on paper
 
@@ -117,7 +117,7 @@ The platforms and case studies repeatedly separate these layers:
 
 Why this matters:
 
-- Barcode Buddy should stay the first-mile deterministic routing layer
+- BarcodeBuddy should stay the first-mile deterministic routing layer
 - it should not collapse into OCR-first invoice automation, general DMS, or a CAD repository
 - a downstream handoff contract is more valuable than trying to absorb the whole back office
 
@@ -139,7 +139,7 @@ Packaging Specialties describes digitizing multiple parts of the business for co
 
 Why this matters:
 
-- Barcode Buddy should keep framing itself as retrieval and routing infrastructure, not as "scanner software"
+- BarcodeBuddy should keep framing itself as retrieval and routing infrastructure, not as "scanner software"
 - the value proposition is speed, certainty, and fewer disputes, not document beautification
 
 ### 2. The real workflow is often a 3-way or multi-document match
@@ -149,7 +149,7 @@ DocuWare's current 3-way match guidance is explicit:
 - the invoice, PO, and packing slip all need the same order number
 - exceptions route into approval flows when the match fails
 
-This is important because Barcode Buddy is not the whole AP or receiving solution. It is the deterministic first-mile step that makes the packing slip or POD available under the right key so the larger workflow can work.
+This is important because BarcodeBuddy is not the whole AP or receiving solution. It is the deterministic first-mile step that makes the packing slip or POD available under the right key so the larger workflow can work.
 
 Why this matters:
 
@@ -170,9 +170,9 @@ The current case studies and Danpack public context support a consistent split:
 
 Those do not behave the same operationally.
 
-### 2. Adjacent systems are broader than Barcode Buddy's scope
+### 2. Adjacent systems are broader than BarcodeBuddy's scope
 
-M.H. EBY uses DocuWare not only for invoices and approvals but also to store drawings and parts information tied to manufacturing work orders. That is a real and valuable use case, but it is broader than Barcode Buddy's barcode-first ingest scope.
+M.H. EBY uses DocuWare not only for invoices and approvals but also to store drawings and parts information tied to manufacturing work orders. That is a real and valuable use case, but it is broader than BarcodeBuddy's barcode-first ingest scope.
 
 Why this matters:
 
@@ -189,7 +189,7 @@ A.B. Martin and Ludwig both show mixed-source reality:
 
 Why this matters:
 
-- Barcode Buddy should stay strict about what belongs in the barcode pipeline
+- BarcodeBuddy should stay strict about what belongs in the barcode pipeline
 - but the builder should assume the company lives in a mixed paper-plus-email-plus-ERP world
 
 ## Cross-Checked Workflow Map
@@ -224,7 +224,7 @@ Across end users, developers, and owners, the workflow keeps resolving to the sa
    - compliance
    - disputes
 
-Barcode Buddy belongs in step 2.
+BarcodeBuddy belongs in step 2.
 
 ## Where Real Workflows Break
 
@@ -250,7 +250,7 @@ Cross-checked failure modes:
 - capture-profile discipline around PDF, DPI, duplex, and one-file-per-scan behavior
 - reliable first-party data about barcode formats, destination systems, and reject patterns
 
-## Direct Product Decisions For Barcode Buddy
+## Direct Product Decisions For BarcodeBuddy
 
 ### Adopt now
 

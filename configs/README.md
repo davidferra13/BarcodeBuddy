@@ -1,6 +1,6 @@
 # Workflow Config Templates
 
-These files are starter templates for the three recommended Barcode Buddy workflows:
+These files are starter templates for the three recommended BarcodeBuddy workflows:
 
 - `config.receiving.example.json`
 - `config.shipping-pod.example.json`

@@ -1,11 +1,11 @@
-# Barcode Buddy Technical Architecture Specification
+# BarcodeBuddy Technical Architecture Specification
 
 Implementation status note: this document describes the target architecture direction. It is not a guarantee that every specified component or behavior already exists in the current runtime. For the current implementation truth and builder execution order, start with `docs/danpack-builder-handoff.md` and the code in `main.py` and `app/`.
 
 ## 1. System Architecture Overview
 
 ### 1.1 Purpose
-Barcode Buddy is a single-node, headless document-ingestion service for Danpack. It is the deterministic intake and archive layer for scanned supply-chain paperwork, specifically signed proof-of-delivery pages, packing slips, delivery notes, receiving paperwork, vendor invoices, purchase orders, and Kanban or vendor-managed-inventory replenishment paperwork. It watches a filesystem input directory, claims complete files, extracts one Danpack-valid document barcode, saves the document as a PDF named from that barcode, rejects any file that does not produce one valid document barcode, and writes an append-only audit log for every state transition and terminal outcome.
+BarcodeBuddy is a single-node, headless document-ingestion service for Danpack. It is the deterministic intake and archive layer for scanned supply-chain paperwork, specifically signed proof-of-delivery pages, packing slips, delivery notes, receiving paperwork, vendor invoices, purchase orders, and Kanban or vendor-managed-inventory replenishment paperwork. It watches a filesystem input directory, claims complete files, extracts one Danpack-valid document barcode, saves the document as a PDF named from that barcode, rejects any file that does not produce one valid document barcode, and writes an append-only audit log for every state transition and terminal outcome.
 
 ### 1.2 Runtime Topology
 - Deployment model: single process, single host, single instance.
@@ -18,11 +18,11 @@ Barcode Buddy is a single-node, headless document-ingestion service for Danpack.
 
 | Path | Role | Ownership Rule |
 | --- | --- | --- |
-| `data/input` | external drop zone for newly scanned files | external writers may create files here; Barcode Buddy may only read, stabilize, and claim |
-| `data/processing` | transient working area | Barcode Buddy exclusive ownership |
-| `data/output` | final successful PDFs | Barcode Buddy exclusive ownership |
-| `data/rejected` | final failed source files | Barcode Buddy exclusive ownership |
-| `data/logs` | append-only structured logs | Barcode Buddy exclusive ownership |
+| `data/input` | external drop zone for newly scanned files | external writers may create files here; BarcodeBuddy may only read, stabilize, and claim |
+| `data/processing` | transient working area | BarcodeBuddy exclusive ownership |
+| `data/output` | final successful PDFs | BarcodeBuddy exclusive ownership |
+| `data/rejected` | final failed source files | BarcodeBuddy exclusive ownership |
+| `data/logs` | append-only structured logs | BarcodeBuddy exclusive ownership |
 
 ### 1.4 Component Interaction
 
@@ -80,10 +80,10 @@ Out of scope:
 ### 1.6 Operating Assumptions
 - Every file dropped into `data/input` represents exactly one business document.
 - The authoritative filename barcode is a Danpack document identifier, not a product barcode, carton barcode, pallet barcode, or supplier label barcode.
-- Upstream capture systems may be network scanners, MFPs, mobile capture exports, or scan software that writes files into a watched folder. Barcode Buddy does not interact with those systems directly.
+- Upstream capture systems may be network scanners, MFPs, mobile capture exports, or scan software that writes files into a watched folder. BarcodeBuddy does not interact with those systems directly.
 - Upstream scan profiles must produce 300 DPI or higher page images for paper-originated documents.
 - Upstream scan profiles must preserve sufficient barcode signal quality: no aggressive cleanup, no barcode-destructive blank-page removal, and no high-loss compression that materially degrades edges or contrast.
-- Barcode Buddy is not an ERP matching engine, accounts-payable workflow engine, or content-management system. It is the deterministic rename-and-archive stage that precedes those systems.
+- BarcodeBuddy is not an ERP matching engine, accounts-payable workflow engine, or content-management system. It is the deterministic rename-and-archive stage that precedes those systems.
 
 ## 2. Module Architecture (Strict Boundaries)
 
@@ -381,7 +381,7 @@ Retries do not create new states. A retry repeats work inside the current non-te
 - Upstream capture must not merge multiple logical documents into one file.
 - Upstream capture may originate from a scanner, MFP, mobile delivery system export, or scan software hot folder.
 - Upstream file names are ignored after claim. Only the extracted Danpack document barcode determines the success filename.
-- Barcode Buddy accepts upstream PDF, PNG, JPEG, and JPG files only.
+- BarcodeBuddy accepts upstream PDF, PNG, JPEG, and JPG files only.
 - For paper-originated documents, upstream capture must use 300 DPI or higher, preserve page order, avoid destructive image cleanup, and avoid high-loss compression settings.
 
 ### 5.1 Source Discovery and Claim
@@ -432,7 +432,7 @@ Retries do not create new states. A retry repeats work inside the current non-te
 - Generated output PDFs contain no OCR layer, no form fields, no attachments, no JavaScript, and no encryption.
 - Generated output PDF metadata is fixed:
   - `Title = {selected_danpack_document_id}`
-  - `Producer = Barcode Buddy`
+  - `Producer = BarcodeBuddy`
   - `CreationDate = completion timestamp in UTC`
 
 ## 6. Error Taxonomy
@@ -497,7 +497,7 @@ Retries do not create new states. A retry repeats work inside the current non-te
 
 ### 8.3 File Locking Behavior
 - A file is owned by external writers while in `data/input`.
-- Ownership transfers to Barcode Buddy only after atomic rename into `data/processing`.
+- Ownership transfers to BarcodeBuddy only after atomic rename into `data/processing`.
 - Only the Watcher may move files from `data/input`.
 - Only Output Manager may move files from `data/processing` into `data/output` or `data/rejected`.
 
@@ -756,7 +756,7 @@ For barcode-validation events, the following are also required:
 - Duplicate detection does not inspect file content; filename collision alone is authoritative.
 
 ### 14.4 Directory Structure Enforcement
-- Barcode Buddy writes only to the five managed directories and `app/config`.
+- BarcodeBuddy writes only to the five managed directories and `app/config`.
 - No module may create nested subdirectories under `data/input`, `data/processing`, `data/output`, or `data/rejected`.
 - `data/output` contains only final `.pdf` files.
 - `data/rejected` contains only original source files with the rejected naming pattern.

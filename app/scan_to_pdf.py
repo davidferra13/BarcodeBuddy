@@ -315,7 +315,7 @@ def _draw_footer(page, page_height: float, page_num: int) -> None:
     )
     page.insert_text(
         fitz.Point(50, page_height - 20),
-        f"Barcode Buddy — Scan Report  |  Page {page_num}",
+        f"BarcodeBuddy — Scan Report  |  Page {page_num}",
         fontsize=8, fontname="helv", color=(0.6, 0.6, 0.6),
     )
 

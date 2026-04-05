@@ -37,3 +37,10 @@ prometheus-client>=0.20.0
 
 # --- CLI output ---
 rich>=13.0.0
+
+# --- AI integration ---
+cryptography>=42.0.0
+
+# --- AI cloud providers (optional — only needed if using cloud AI) ---
+# anthropic>=0.40.0
+# openai>=1.50.0

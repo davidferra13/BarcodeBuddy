@@ -83,6 +83,12 @@ _ICONS: dict[str, str] = {
         '<path d="M12 14v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2"/>'
         '<path d="M16 7a4 4 0 00-8 0v3h8V7z"/><rect x="6" y="10" width="8" height="6" rx="1"/></svg>'
     ),
+    "bulk-io": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M3 2h10l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V4a2 2 0 012-2z"/>'
+        '<polyline points="6 12 10 8 14 12"/><polyline points="6 16 10 12 14 16"/></svg>'
+    ),
     "scan-to-pdf": (
         '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
         ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
@@ -90,16 +96,30 @@ _ICONS: dict[str, str] = {
         '<line x1="7" y1="7" x2="7" y2="13"/><line x1="10" y1="7" x2="10" y2="13"/>'
         '<line x1="13" y1="7" x2="13" y2="13"/><polyline points="7 15 10 13 13 15"/></svg>'
     ),
+    "activity": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/>'
+        '<path d="M10 6v4l3 3"/></svg>'
+    ),
+    "team": (
+        '<svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"'
+        ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="7" cy="6" r="3"/><circle cx="14" cy="7" r="2.5"/>'
+        '<path d="M1 17v-1a4 4 0 018 0v1"/><path d="M11 17v-1a3 3 0 016 0v1"/></svg>'
+    ),
 }
 
 
 def _nav_item(icon_key: str, label: str, href: str, active: bool) -> str:
     cls = "nav-btn active" if active else "nav-btn"
     icon = _ICONS.get(icon_key, "")
+    aria = ' aria-current="page"' if active else ""
+    badge = '<span class="nav-alert-badge" id="sidebar-alert-badge" style="display:none"></span>' if icon_key == "alerts" else ""
     return (
-        f'<a class="{cls}" href="{_E(href)}"'
-        f' style="text-decoration:none;display:flex;align-items:center;gap:8px;">'
-        f'{icon}{_E(label)}</a>'
+        f'<a class="{cls}" href="{_E(href)}" role="menuitem"{aria}'
+        f' data-tooltip="{_E(label)}" tabindex="0">'
+        f'{icon}<span class="nav-label">{_E(label)}</span>{badge}</a>'
     )
 
 
@@ -117,28 +137,29 @@ def _user_section(display_name: str, role: str, is_admin: bool) -> str:
     role_e = _E(role)
     badge_bg, badge_color = _ROLE_BADGE_COLORS.get(role, _ROLE_BADGE_COLORS["user"])
     return f"""
-    <div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);">
+    <div class="sidebar-user" style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);overflow:hidden;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;
-          align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f8fafc;">
+        <div class="user-avatar" style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;
+          align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#f8fafc;flex-shrink:0;">
           {initial}
         </div>
-        <div>
-          <div style="font-size:13px;color:#fff;font-weight:600;">{name}</div>
+        <div class="user-info" style="min-width:0;overflow:hidden;">
+          <div style="font-size:13px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{name}</div>
           <span style="font-size:10px;padding:1px 6px;border-radius:4px;
-            background:{badge_bg};color:{badge_color};font-weight:600;">
+            background:{badge_bg};color:{badge_color};font-weight:600;white-space:nowrap;">
             {role_e}
           </span>
         </div>
       </div>
       <a href="#" onclick="fetch('/auth/api/logout',{{method:'POST'}}).then(()=>window.location.href='/auth/login');return false;"
-        style="display:block;padding:6px 20px;color:#a0aab4;text-decoration:none;font-size:13px;
-        transition:color 0.2s;"
+        class="signout-link"
+        style="display:flex;align-items:center;gap:6px;padding:6px 0;color:#a0aab4;text-decoration:none;font-size:13px;
+        transition:color 0.2s;white-space:nowrap;overflow:hidden;"
         onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#a0aab4'">
-        <svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20"
+        <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 20 20"
           fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 17H3a1 1 0 01-1-1V4a1 1 0 011-1h4"/><path d="M14 14l4-4-4-4"/><path d="M18 10H7"/>
-        </svg>Sign Out
+        </svg><span class="signout-text">Sign Out</span>
       </a>
     </div>"""
 
@@ -173,9 +194,19 @@ _LAYOUT_CSS = """<style>
   --track: #e0dbd2;
   --radius: 16px;
   --sidebar-width: 230px;
+  --sidebar-collapsed-width: 64px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Skip to content (accessibility) ── */
+.skip-link {
+  position: absolute; top: -100%; left: 16px;
+  padding: 8px 16px; background: var(--info); color: #fff;
+  border-radius: 0 0 8px 8px; font-size: 13px; font-weight: 600;
+  z-index: 999; text-decoration: none; transition: top 0.2s;
+}
+.skip-link:focus { top: 0; }
 
 body {
   display: flex;
@@ -197,25 +228,52 @@ body {
   position: fixed;
   top: 0; left: 0;
   z-index: 100;
-  transition: transform 0.25s ease;
+  transition: width 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
 }
 
 .sidebar-brand {
   padding: 24px 20px 20px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 70px;
 }
+
+.sidebar-brand-text { min-width: 0; overflow: hidden; }
 
 .sidebar-brand h1 {
   font-size: 18px; font-weight: 700; color: #fff;
   letter-spacing: 0.02em; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .sidebar-brand .brand-sub {
   font-size: 11px; color: var(--sidebar-text);
   margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.sidebar-nav { padding: 12px 10px; flex: 1; }
+/* Sidebar collapse toggle */
+.sidebar-toggle {
+  width: 28px; height: 28px; border: none; border-radius: 8px;
+  background: rgba(255,255,255,0.06); color: var(--sidebar-text);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.2s;
+}
+.sidebar-toggle:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.sidebar-toggle svg { transition: transform 0.25s; }
+
+.sidebar-nav {
+  padding: 12px 10px; flex: 1;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+  /* Scroll fade indicators */
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8px, black calc(100% - 8px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8px, black calc(100% - 8px), transparent 100%);
+}
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
 .nav-section { margin-bottom: 8px; }
 
@@ -223,7 +281,20 @@ body {
   font-size: 10px; text-transform: uppercase;
   letter-spacing: 0.14em; color: rgba(255,255,255,0.28);
   padding: 12px 12px 6px; font-weight: 600;
+  white-space: nowrap; overflow: hidden;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+  transition: color 0.15s;
 }
+.nav-section-label:hover { color: rgba(255,255,255,0.45); }
+
+.nav-section-label .section-chevron {
+  width: 14px; height: 14px; opacity: 0.4;
+  transition: transform 0.2s, opacity 0.15s; flex-shrink: 0;
+}
+.nav-section-label:hover .section-chevron { opacity: 0.7; }
+.nav-section.collapsed .section-chevron { transform: rotate(-90deg); }
+.nav-section.collapsed .nav-section-items { display: none; }
 
 .nav-btn {
   display: flex; align-items: center; gap: 12px;
@@ -233,12 +304,18 @@ body {
   font-size: 13.5px; font-family: inherit;
   cursor: pointer; transition: all 0.15s ease;
   text-align: left; position: relative;
-  text-decoration: none;
+  text-decoration: none; white-space: nowrap;
+  outline: none;
 }
 
 .nav-btn:hover {
   background: var(--sidebar-hover); color: #d0d6dc;
   text-decoration: none;
+}
+
+.nav-btn:focus-visible {
+  outline: 2px solid var(--sidebar-accent);
+  outline-offset: -2px;
 }
 
 .nav-btn.active {
@@ -257,11 +334,66 @@ body {
 
 .nav-icon { width: 20px; height: 20px; opacity: 0.7; flex-shrink: 0; }
 .nav-btn.active .nav-icon { opacity: 1; }
+.nav-label { overflow: hidden; text-overflow: ellipsis; transition: opacity 0.2s; }
+
+/* Sidebar alert badge */
+.nav-alert-badge {
+  font-size: 10px; font-weight: 700; min-width: 18px; height: 18px;
+  border-radius: 999px; text-align: center; line-height: 18px;
+  padding: 0 5px; background: var(--failure); color: #fff;
+  margin-left: auto; flex-shrink: 0;
+  animation: badgePop 0.3s cubic-bezier(.4,0,.2,1);
+}
+@keyframes badgePop { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* Tooltip for collapsed sidebar */
+.nav-btn[data-tooltip] { position: relative; }
+.nav-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; left: calc(100% + 12px); top: 50%;
+  transform: translateY(-50%); white-space: nowrap;
+  background: #1a1f26; color: #fff; padding: 6px 12px;
+  border-radius: 8px; font-size: 12px; font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  pointer-events: none; opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  transform: translateY(-50%) translateX(-4px);
+  z-index: 200;
+}
+/* Tooltips only show when sidebar is collapsed */
+.sidebar.collapsed .nav-btn[data-tooltip]:hover::after {
+  opacity: 1; transform: translateY(-50%) translateX(0);
+}
+
+/* ── Collapsed sidebar state ── */
+.sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+.sidebar.collapsed .sidebar-brand-text { opacity: 0; width: 0; }
+.sidebar.collapsed .sidebar-brand { padding: 24px 0 20px; justify-content: center; }
+.sidebar.collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+.sidebar.collapsed .nav-section-label span:first-child { opacity: 0; width: 0; overflow: hidden; }
+.sidebar.collapsed .section-chevron { display: none; }
+.sidebar.collapsed .nav-section-label { justify-content: center; padding: 12px 0 6px; }
+.sidebar.collapsed .nav-btn { justify-content: center; padding: 10px 0; }
+.sidebar.collapsed .nav-label { opacity: 0; width: 0; position: absolute; }
+.sidebar.collapsed .nav-alert-badge {
+  position: absolute; top: 4px; right: 8px;
+  min-width: 14px; height: 14px; font-size: 9px; line-height: 14px;
+}
+.sidebar.collapsed .sidebar-nav { padding: 12px 6px; }
+.sidebar.collapsed + .sidebar-overlay + .main,
+body:has(.sidebar.collapsed) .main { margin-left: var(--sidebar-collapsed-width); }
+.sidebar.collapsed .sidebar-footer { padding: 14px 8px; font-size: 0; }
+.sidebar.collapsed .sidebar-footer::after { content: "v3"; font-size: 10px; }
+.sidebar.collapsed .sidebar-user { padding: 14px 8px; display: flex; flex-direction: column; align-items: center; }
+.sidebar.collapsed .user-info { display: none; }
+.sidebar.collapsed .signout-text { display: none; }
+.sidebar.collapsed .signout-link { justify-content: center; padding: 6px 0; }
 
 .sidebar-footer {
   padding: 14px 20px;
   border-top: 1px solid rgba(255,255,255,0.06);
   font-size: 11px; color: rgba(255,255,255,0.2);
+  white-space: nowrap; overflow: hidden;
 }
 
 /* ── Mobile hamburger ── */
@@ -271,17 +403,23 @@ body {
   width: 40px; height: 40px; border: none; border-radius: 10px;
   background: var(--sidebar-bg); color: #fff;
   cursor: pointer; align-items: center; justify-content: center;
+  transition: transform 0.2s;
 }
+.hamburger:active { transform: scale(0.92); }
 
 .sidebar-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.4); z-index: 90;
+  background: rgba(0,0,0,0.5); z-index: 90;
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity 0.25s;
 }
+.sidebar-overlay.open { display: block; opacity: 1; }
 
 /* ── Main content ── */
 .main {
   margin-left: var(--sidebar-width);
   flex: 1; min-height: 100vh;
+  transition: margin-left 0.25s cubic-bezier(.4,0,.2,1);
 }
 
 .topbar {
@@ -294,13 +432,95 @@ body {
   position: sticky; top: 0; z-index: 50;
 }
 
+.topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
 .topbar-title {
   font-size: 16px; font-weight: 600; color: var(--text);
 }
 
+/* Breadcrumbs */
+.breadcrumbs {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted);
+}
+.breadcrumbs a {
+  color: var(--muted); text-decoration: none; transition: color 0.15s;
+}
+.breadcrumbs a:hover { color: var(--text); text-decoration: none; }
+.breadcrumbs .bc-sep { opacity: 0.4; font-size: 10px; }
+.breadcrumbs .bc-current { color: var(--text); font-weight: 600; }
+
 .topbar-meta {
   display: flex; align-items: center; gap: 16px;
   font-size: 12px; color: var(--muted);
+}
+
+/* ── Command palette trigger ── */
+.cmd-palette-trigger {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--paper);
+  color: var(--muted); font-size: 12px;
+  cursor: pointer; transition: all 0.15s;
+}
+.cmd-palette-trigger:hover { border-color: var(--info); color: var(--text); }
+.cmd-palette-trigger kbd {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  background: rgba(44,54,63,0.08); border: 1px solid var(--line);
+  font-family: inherit; color: var(--muted);
+}
+
+/* ── Command palette overlay ── */
+.cmd-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  z-index: 9998; align-items: flex-start; justify-content: center;
+  padding-top: min(20vh, 160px);
+}
+.cmd-overlay.open { display: flex; animation: cmdFadeIn 0.15s ease; }
+@keyframes cmdFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.cmd-dialog {
+  width: 100%; max-width: 520px;
+  background: var(--paper); border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+  overflow: hidden; animation: cmdSlideIn 0.2s cubic-bezier(.4,0,.2,1);
+}
+@keyframes cmdSlideIn { from { transform: translateY(-12px) scale(0.98); opacity:0; } to { transform: none; opacity:1; } }
+
+.cmd-input-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px; border-bottom: 1px solid var(--line);
+}
+.cmd-input-wrap svg { width: 20px; height: 20px; color: var(--muted); flex-shrink: 0; }
+.cmd-input {
+  flex: 1; border: none; background: transparent;
+  font-size: 15px; color: var(--text); outline: none;
+  font-family: inherit;
+}
+.cmd-input::placeholder { color: var(--muted); }
+
+.cmd-results {
+  max-height: 320px; overflow-y: auto; padding: 8px;
+}
+.cmd-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 10px; cursor: pointer;
+  color: var(--text); text-decoration: none; transition: background 0.1s;
+}
+.cmd-item:hover, .cmd-item.selected { background: var(--info-bg); text-decoration: none; }
+.cmd-item .nav-icon { width: 18px; height: 18px; color: var(--muted); }
+.cmd-item-label { font-size: 14px; font-weight: 500; }
+.cmd-item-section { font-size: 11px; color: var(--muted); margin-left: auto; }
+.cmd-empty { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; }
+.cmd-footer {
+  padding: 10px 20px; border-top: 1px solid var(--line);
+  display: flex; gap: 16px; font-size: 11px; color: var(--muted);
+}
+.cmd-footer kbd {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  background: rgba(44,54,63,0.08); border: 1px solid var(--line);
+  font-family: inherit;
 }
 
 .content { padding: 24px 28px; }
@@ -611,17 +831,75 @@ code {
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); }
+  .sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-width) !important; /* Never collapse on mobile, just slide */
+  }
   .sidebar.open { transform: translateX(0); }
-  .sidebar-overlay.open { display: block; }
+  .sidebar.collapsed { width: var(--sidebar-width) !important; }
+  .sidebar.collapsed .nav-label { opacity: 1; width: auto; position: static; }
+  .sidebar.collapsed .sidebar-brand-text { opacity: 1; width: auto; }
+  .sidebar.collapsed .nav-btn { justify-content: flex-start; padding: 10px 14px; }
+  .sidebar.collapsed .nav-section-label { justify-content: flex-start; padding: 12px 12px 6px; }
+  .sidebar.collapsed .nav-section-label span:first-child { opacity: 1; width: auto; }
+  .sidebar-toggle { display: none; }
+  .sidebar-overlay.open { display: block; opacity: 1; }
   .hamburger { display: flex; }
-  .main { margin-left: 0; }
+  .main { margin-left: 0 !important; }
   .content { padding: 16px; }
   .topbar { padding: 12px 16px 12px 56px; }
   .fr, .fr3 { grid-template-columns: 1fr; }
   .sa { grid-template-columns: 1fr; }
   #mg { grid-template-columns: 1fr !important; }
+  .breadcrumbs { display: none; }
+  .cmd-palette-trigger span { display: none; }
+  .cmd-dialog { margin: 0 12px; }
 }
+
+@media (max-width: 480px) {
+  .topbar { padding: 10px 12px 10px 52px; }
+  .content { padding: 12px; }
+  .cmd-palette-trigger { padding: 5px 8px; }
+}
+
+/* ── Recent activity drawer ── */
+.ra-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35);
+  backdrop-filter:blur(2px); z-index:9990; opacity:0; transition:opacity .25s;
+}
+.ra-overlay.open { display:block; opacity:1; }
+.ra-drawer {
+  position:fixed; top:0; right:-420px; width:400px; max-width:92vw;
+  height:100vh; background:var(--paper); z-index:9991;
+  box-shadow:-8px 0 32px rgba(0,0,0,.12);
+  display:flex; flex-direction:column;
+  transition:right .3s cubic-bezier(.4,0,.2,1);
+}
+.ra-drawer.open { right:0; }
+.ra-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px; border-bottom:1px solid var(--line);
+  color:var(--text);
+}
+.ra-list {
+  flex:1; overflow-y:auto; padding:0;
+  scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+}
+.ra-item {
+  display:flex; gap:12px; padding:12px 20px;
+  border-bottom:1px solid var(--line); transition:background .1s;
+  cursor:default;
+}
+.ra-item:hover { background:rgba(0,0,0,.015); }
+.ra-dot {
+  width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0;
+}
+.ra-body { flex:1; min-width:0; }
+.ra-action { font-size:13px; font-weight:600; color:var(--text); }
+.ra-summary { font-size:12px; color:var(--muted); margin-top:1px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ra-meta { font-size:11px; color:var(--muted); margin-top:3px; opacity:.7; }
+.ra-empty { padding:40px; text-align:center; color:var(--muted); }
 </style>"""
 
 
@@ -646,11 +924,233 @@ function autosaveClear(key){try{localStorage.removeItem('bb_autosave_'+key)}catc
 /* Unsaved changes guard */
 function guardUnsaved(formSel){let dirty=false;const form=document.querySelector(formSel);if(!form)return;form.querySelectorAll('input,textarea,select').forEach(el=>{el.addEventListener('input',()=>{dirty=true})});window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});return{markClean:()=>{dirty=false},markDirty:()=>{dirty=true}}}
 
-/* Alert badge polling */
+/* ── Sidebar collapse ── */
+function toggleSidebarCollapse(){
+  const sb=document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  const collapsed=sb.classList.contains('collapsed');
+  try{localStorage.setItem('bb_sidebar_collapsed',collapsed?'1':'0')}catch(e){}
+  document.getElementById('sidebar-collapse-btn').setAttribute('aria-label',
+    collapsed?'Expand sidebar':'Collapse sidebar');
+}
 (function(){
-  function pollAlerts(){fetch('/api/alerts/count').then(r=>r.json()).then(d=>{const b=document.getElementById('alert-badge');if(b){if(d.unread_count>0){b.textContent=d.unread_count;b.style.display=''}else{b.style.display='none'}}}).catch(()=>{});setTimeout(pollAlerts,30000)}
+  try{
+    if(localStorage.getItem('bb_sidebar_collapsed')==='1'&&window.innerWidth>900){
+      document.getElementById('sidebar').classList.add('collapsed');
+    }
+  }catch(e){}
+})();
+
+/* ── Mobile menu ── */
+function toggleMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  const btn=document.getElementById('hamburger-btn');
+  const open=!sb.classList.contains('open');
+  sb.classList.toggle('open',open);
+  ov.classList.toggle('open',open);
+  btn.setAttribute('aria-expanded',open?'true':'false');
+  btn.setAttribute('aria-label',open?'Close navigation menu':'Open navigation menu');
+  if(open){
+    /* Trap focus in sidebar on mobile */
+    const first=sb.querySelector('.nav-btn');
+    if(first)first.focus();
+  }
+}
+function closeMobileMenu(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+  document.getElementById('hamburger-btn').setAttribute('aria-expanded','false');
+  document.getElementById('hamburger-btn').setAttribute('aria-label','Open navigation menu');
+}
+
+/* Swipe-to-close on mobile */
+(function(){
+  let sx=0,sy=0;
+  const sb=document.getElementById('sidebar');
+  if(!sb)return;
+  sb.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+  sb.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=Math.abs(e.changedTouches[0].clientY-sy);
+    if(dx<-60&&dy<80)closeMobileMenu();
+  },{passive:true});
+})();
+
+/* Close mobile menu on Escape */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const sb=document.getElementById('sidebar');
+    if(sb&&sb.classList.contains('open'))closeMobileMenu();
+  }
+});
+
+/* ── Collapsible nav sections ── */
+function toggleNavSection(el){
+  const section=el.closest('.nav-section');
+  section.classList.toggle('collapsed');
+  const expanded=!section.classList.contains('collapsed');
+  el.setAttribute('aria-expanded',expanded?'true':'false');
+  /* Persist */
+  const id=section.dataset.section;
+  try{
+    const state=JSON.parse(localStorage.getItem('bb_nav_sections')||'{}');
+    state[id]=expanded;
+    localStorage.setItem('bb_nav_sections',JSON.stringify(state));
+  }catch(e){}
+}
+/* Restore collapsed sections */
+(function(){
+  try{
+    const state=JSON.parse(localStorage.getItem('bb_nav_sections')||'{}');
+    Object.keys(state).forEach(id=>{
+      if(!state[id]){
+        const sec=document.querySelector('.nav-section[data-section="'+id+'"]');
+        if(sec){
+          sec.classList.add('collapsed');
+          const lbl=sec.querySelector('.nav-section-label');
+          if(lbl)lbl.setAttribute('aria-expanded','false');
+        }
+      }
+    });
+  }catch(e){}
+})();
+
+/* ── Scroll active nav item into view ── */
+(function(){
+  const active=document.querySelector('.sidebar-nav .nav-btn.active');
+  if(active)active.scrollIntoView({block:'center',behavior:'instant'});
+})();
+
+/* ── Command palette ── */
+const _cmdPages=[
+  {label:'Dashboard',section:'Monitor',href:'/',icon:'monitor'},
+  {label:'Scan',section:'Inventory',href:'/scan',icon:'scan'},
+  {label:'Scan to PDF',section:'Inventory',href:'/scan-to-pdf',icon:'scan-to-pdf'},
+  {label:'Items',section:'Inventory',href:'/inventory',icon:'items'},
+  {label:'Calendar',section:'Inventory',href:'/calendar',icon:'calendar'},
+  {label:'New Item',section:'Inventory',href:'/inventory/new',icon:'new-item'},
+  {label:'Import CSV',section:'Inventory',href:'/inventory/bulk',icon:'import'},
+  {label:'Analytics',section:'Monitor',href:'/analytics',icon:'analytics'},
+  {label:'Activity Log',section:'Monitor',href:'/activity',icon:'activity'},
+  {label:'Alerts',section:'Monitor',href:'/alerts',icon:'alerts'},
+  {label:'Admin Panel',section:'System',href:'/admin',icon:'admin'},
+];
+let _cmdSel=0;
+
+function openCmdPalette(){
+  const ov=document.getElementById('cmd-overlay');
+  const inp=document.getElementById('cmd-input');
+  ov.classList.add('open');
+  inp.value='';
+  _cmdSel=0;
+  renderCmdResults('');
+  setTimeout(()=>inp.focus(),50);
+}
+function closeCmdPalette(){
+  document.getElementById('cmd-overlay').classList.remove('open');
+}
+function renderCmdResults(q){
+  const box=document.getElementById('cmd-results');
+  const lq=q.toLowerCase().trim();
+  const filtered=lq?_cmdPages.filter(p=>
+    p.label.toLowerCase().includes(lq)||p.section.toLowerCase().includes(lq)
+  ):_cmdPages;
+  if(!filtered.length){
+    box.innerHTML='<div class="cmd-empty">No pages found</div>';
+    return;
+  }
+  if(_cmdSel>=filtered.length)_cmdSel=filtered.length-1;
+  if(_cmdSel<0)_cmdSel=0;
+  box.innerHTML=filtered.map((p,i)=>
+    '<a class="cmd-item'+(i===_cmdSel?' selected':'')+'" href="'+esc(p.href)+'" role="option"'
+    +(i===_cmdSel?' aria-selected="true"':'')+'>'
+    +'<span class="cmd-item-label">'+esc(p.label)+'</span>'
+    +'<span class="cmd-item-section">'+esc(p.section)+'</span></a>'
+  ).join('');
+}
+document.getElementById('cmd-input').addEventListener('input',function(){
+  _cmdSel=0;renderCmdResults(this.value);
+});
+document.getElementById('cmd-input').addEventListener('keydown',function(e){
+  const items=document.querySelectorAll('.cmd-item');
+  if(e.key==='ArrowDown'){e.preventDefault();_cmdSel=Math.min(_cmdSel+1,items.length-1);renderCmdResults(this.value)}
+  else if(e.key==='ArrowUp'){e.preventDefault();_cmdSel=Math.max(_cmdSel-1,0);renderCmdResults(this.value)}
+  else if(e.key==='Enter'){e.preventDefault();const sel=document.querySelector('.cmd-item.selected');if(sel)window.location.href=sel.getAttribute('href')}
+  else if(e.key==='Escape'){closeCmdPalette()}
+});
+
+/* Ctrl+K to open command palette */
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){
+    e.preventDefault();
+    const ov=document.getElementById('cmd-overlay');
+    if(ov.classList.contains('open'))closeCmdPalette();else openCmdPalette();
+  }
+});
+
+/* ── Alert badge polling (sidebar + topbar) ── */
+(function(){
+  function pollAlerts(){
+    fetch('/api/alerts/count').then(r=>r.json()).then(d=>{
+      const b=document.getElementById('alert-badge');
+      const sb=document.getElementById('sidebar-alert-badge');
+      const count=d.unread_count||0;
+      if(b){if(count>0){b.textContent=count;b.style.display=''}else{b.style.display='none'}}
+      if(sb){if(count>0){sb.textContent=count;sb.style.display=''}else{sb.style.display='none'}}
+    }).catch(()=>{});
+    setTimeout(pollAlerts,30000);
+  }
   setTimeout(pollAlerts,2000);
 })();
+
+/* ── Keyboard nav: Enter on nav buttons ── */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();btn.click()}
+  });
+});
+
+/* ── Recent activity drawer ── */
+const _raCatColors={inventory:'#3b82f6',auth:'#a78bfa',admin:'#f59e0b',scan:'#10b981','import':'#06b6d4','export':'#8b5cf6',alert:'#ef4444',system:'#64748b'};
+function toggleRecentActivity(){
+  const d=document.getElementById('ra-drawer');
+  const o=document.getElementById('ra-overlay');
+  const open=!d.classList.contains('open');
+  d.classList.toggle('open',open);
+  o.classList.toggle('open',open);
+  if(open)loadRecentActivity();
+}
+function closeRecentActivity(){
+  document.getElementById('ra-drawer').classList.remove('open');
+  document.getElementById('ra-overlay').classList.remove('open');
+}
+function loadRecentActivity(){
+  const list=document.getElementById('ra-list');
+  fetch('/api/activity/recent?limit=25').then(r=>r.json()).then(d=>{
+    if(!d.entries||!d.entries.length){
+      list.innerHTML='<div class="ra-empty"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="var(--muted)" stroke-width="1" style="margin-bottom:8px;opacity:.4"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/><path d="M10 6v4l3 3"/></svg><div>No activity yet</div><div style="font-size:12px;margin-top:4px">Actions will appear here as they happen.</div></div>';
+      return;
+    }
+    list.innerHTML=d.entries.map(e=>{
+      const color=_raCatColors[e.category]||_raCatColors.system;
+      const time=new Date(e.created_at);
+      const ago=timeAgo(time);
+      return `<div class="ra-item"><div class="ra-dot" style="background:${color}"></div><div class="ra-body"><div class="ra-action">${esc(e.action)}</div><div class="ra-summary">${esc(e.summary)}</div><div class="ra-meta">${esc(e.user_name)} &middot; ${ago}</div></div></div>`;
+    }).join('');
+  }).catch(()=>{list.innerHTML='<div class="ra-empty">Failed to load activity</div>'});
+}
+function timeAgo(d){
+  const s=Math.floor((Date.now()-d.getTime())/1000);
+  if(s<60)return 'just now';
+  if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';
+  if(s<604800)return Math.floor(s/86400)+'d ago';
+  return d.toLocaleDateString();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('ra-drawer').classList.contains('open'))closeRecentActivity();
+});
 </script>"""
 
 
@@ -664,18 +1164,141 @@ _NAV_SECTIONS: list[tuple[str, list[tuple[str, str, str, str]]]] = [
         ("items", "Items", "/inventory", "items"),
         ("calendar", "Calendar", "/calendar", "calendar"),
         ("new-item", "New Item", "/inventory/new", "new-item"),
-        ("import", "Import CSV", "/inventory/import", "import"),
-        ("export", "Export CSV", "/api/inventory/export/csv", "export"),
+        ("import", "Import CSV", "/inventory/bulk", "bulk-io"),
     ]),
     ("Monitor", [
         ("monitor", "Dashboard", "/", "monitor"),
         ("analytics", "Analytics", "/analytics", "analytics"),
+        ("activity", "Activity Log", "/activity", "activity"),
         ("alerts", "Alerts", "/alerts", "alerts"),
     ]),
+    ("AI", [
+        ("ai-chat", "AI Chat", "/ai/chat", "ai-chat"),
+        ("ai-privacy", "Privacy & Data", "/ai/privacy", "ai-privacy"),
+        ("ai-settings", "AI Settings", "/ai/settings", "ai-settings"),
+        ("ai-setup", "AI Setup", "/ai/setup", "ai-setup"),
+    ]),
     ("System", [
+        ("team", "Team", "/team", "team"),
         ("admin", "Admin Panel", "/admin", "admin"),
     ]),
 ]
+
+
+def _render_chat_fab() -> str:
+    """Render a floating chat button + slide-out panel for quick AI chat."""
+    return """
+<style>
+  .chat-fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%;
+              background: var(--accent); color: #fff; border: none; cursor: pointer; z-index: 9000;
+              box-shadow: 0 4px 16px rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center;
+              transition: transform .2s, box-shadow .2s; }
+  .chat-fab:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  .chat-fab svg { width: 26px; height: 26px; }
+  .chat-panel { position: fixed; top: 0; right: -420px; width: 400px; height: 100vh; background: var(--bg);
+                border-left: 1px solid var(--border); z-index: 9001; display: flex; flex-direction: column;
+                transition: right .3s ease; box-shadow: -4px 0 24px rgba(0,0,0,.15); }
+  .chat-panel.open { right: 0; }
+  .chat-panel-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex;
+                       justify-content: space-between; align-items: center; background: var(--surface); }
+  .chat-panel-header h3 { margin: 0; font-size: 1rem; }
+  .chat-panel-header button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1.3rem; }
+  .chat-panel-messages { flex: 1; overflow-y: auto; padding: 16px; }
+  .chat-panel-messages .p-msg { margin-bottom: 12px; display: flex; }
+  .chat-panel-messages .p-msg.user { justify-content: flex-end; }
+  .chat-panel-messages .p-msg .p-bubble { max-width: 80%; padding: 10px 14px; border-radius: 14px;
+                                          font-size: .88rem; line-height: 1.45; }
+  .chat-panel-messages .p-msg.user .p-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .chat-panel-messages .p-msg.assistant .p-bubble { background: var(--surface); border: 1px solid var(--border);
+                                                    border-bottom-left-radius: 4px; }
+  .chat-panel-input { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  .chat-panel-input input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+                            font-size: .88rem; background: var(--surface); color: var(--text); }
+  .chat-panel-input button { padding: 10px 16px; border: none; border-radius: 10px; background: var(--accent);
+                             color: #fff; font-weight: 600; cursor: pointer; font-size: .85rem; }
+  .p-typing { display: none; margin-bottom: 12px; }
+  .p-typing.show { display: flex; }
+  .p-typing .p-bubble { background: var(--surface); border: 1px solid var(--border); padding: 10px 16px;
+                        border-radius: 14px; border-bottom-left-radius: 4px; }
+  .p-dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+                 margin: 0 2px; animation: pdot .8s infinite; }
+  .p-dots span:nth-child(2) { animation-delay: .15s; }
+  .p-dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes pdot { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-3px)} }
+  @media (max-width: 480px) { .chat-panel { width: 100vw; right: -100vw; } }
+</style>
+<button class="chat-fab" id="chatFab" onclick="toggleChatPanel()" title="AI Chat">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-panel-header">
+    <h3>BarcodeBuddy AI</h3>
+    <div>
+      <button onclick="window.location.href='/ai/chat'" title="Full page">&#8599;</button>
+      <button onclick="toggleChatPanel()" title="Close">&times;</button>
+    </div>
+  </div>
+  <div class="chat-panel-messages" id="panelMessages">
+    <div class="p-typing" id="panelTyping">
+      <div class="p-bubble"><div class="p-dots"><span></span><span></span><span></span></div></div>
+    </div>
+  </div>
+  <div class="chat-panel-input">
+    <input type="text" id="panelInput" placeholder="Ask anything..."
+           onkeydown="if(event.key==='Enter'){event.preventDefault();panelSend();}" maxlength="2000" />
+    <button onclick="panelSend()">Send</button>
+  </div>
+</div>
+<script>
+(function(){
+  let panelConvoId = '';
+  let panelSending = false;
+  window.toggleChatPanel = function() {
+    document.getElementById('chatPanel').classList.toggle('open');
+    if (document.getElementById('chatPanel').classList.contains('open'))
+      document.getElementById('panelInput').focus();
+  };
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('chatPanel').classList.remove('open');
+  });
+  function panelAddMsg(role, text) {
+    const c = document.getElementById('panelMessages');
+    const t = document.getElementById('panelTyping');
+    const d = document.createElement('div');
+    d.className = 'p-msg ' + role;
+    let s = (typeof esc === 'function') ? esc(text) : text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    s = s.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    s = s.replace(/\\n/g, '<br>');
+    d.innerHTML = '<div class="p-bubble">' + s + '</div>';
+    c.insertBefore(d, t);
+    c.scrollTop = c.scrollHeight;
+  }
+  window.panelSend = async function() {
+    if (panelSending) return;
+    const inp = document.getElementById('panelInput');
+    const text = inp.value.trim();
+    if (!text) return;
+    inp.value = '';
+    panelAddMsg('user', text);
+    panelSending = true;
+    document.getElementById('panelTyping').classList.add('show');
+    const r = await apiCall('POST', '/ai/api/chat', {conversation_id: panelConvoId, message: text});
+    document.getElementById('panelTyping').classList.remove('show');
+    panelSending = false;
+    if (r.ok) {
+      panelConvoId = r.data.conversation_id;
+      panelAddMsg('assistant', r.data.message.content);
+    } else {
+      panelAddMsg('assistant', 'Error: ' + (r.data?.error || 'Something went wrong'));
+    }
+    inp.focus();
+  };
+})();
+</script>
+"""
 
 
 def render_shell(
@@ -687,6 +1310,7 @@ def render_shell(
     display_name: str = "User",
     role: str = "user",
     head_extra: str = "",
+    ai_enabled: bool = False,
 ) -> str:
     """Return a full HTML page wrapped in the shared navigation shell.
 
@@ -699,73 +1323,184 @@ def render_shell(
     display_name: Current user's display name.
     role:        Current user's role ("admin" or "user").
     head_extra:  Optional extra content for <head> (e.g. additional styles).
+    ai_enabled:  Whether AI features are enabled (shows floating chat FAB).
     """
     is_admin = role in ("admin", "owner")
 
     # Build sidebar nav sections
     nav_html_parts: list[str] = []
+    chevron_svg = (
+        '<svg class="section-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        '<polyline points="4 6 8 10 12 6"/></svg>'
+    )
+    _admin_only_nav = {"admin", "ai-settings", "ai-setup"}  # nav items restricted to admin/owner
     for section_label, items in _NAV_SECTIONS:
-        # Hide admin section for non-admin users
-        if section_label == "System" and not is_admin:
+        filtered = [
+            (ik, lb, hr, aid) for ik, lb, hr, aid in items
+            if aid not in _admin_only_nav or is_admin
+        ]
+        if not filtered:
             continue
+        section_id = section_label.lower().replace(" ", "-")
         section_items = "\n".join(
             _nav_item(icon_key, label, href, active_id == active_nav)
-            for icon_key, label, href, active_id in items
+            for icon_key, label, href, active_id in filtered
         )
         nav_html_parts.append(
-            f'<div class="nav-section">'
-            f'<div class="nav-section-label">{_E(section_label)}</div>'
-            f'{section_items}</div>'
+            f'<div class="nav-section" data-section="{_E(section_id)}">'
+            f'<div class="nav-section-label" role="button" tabindex="0"'
+            f' aria-expanded="true" onclick="toggleNavSection(this)"'
+            f' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){{event.preventDefault();toggleNavSection(this)}}">'
+            f'<span>{_E(section_label)}</span>{chevron_svg}</div>'
+            f'<div class="nav-section-items" role="menu">{section_items}</div></div>'
         )
     nav_html = "\n".join(nav_html_parts)
 
+    # Build breadcrumbs
+    breadcrumb_section = ""
+    breadcrumb_page = ""
+    for section_label, items in _NAV_SECTIONS:
+        for _, label, _, active_id in items:
+            if active_id == active_nav:
+                breadcrumb_section = section_label
+                breadcrumb_page = label
+                break
+        if breadcrumb_page:
+            break
+
     user_html = _user_section(display_name, role, is_admin)
+
+    breadcrumb_html = ""
+    if breadcrumb_section and breadcrumb_page:
+        breadcrumb_html = (
+            f'<nav class="breadcrumbs" aria-label="Breadcrumb">'
+            f'<a href="/">Home</a>'
+            f'<span class="bc-sep" aria-hidden="true">/</span>'
+            f'<span>{_E(breadcrumb_section)}</span>'
+            f'<span class="bc-sep" aria-hidden="true">/</span>'
+            f'<span class="bc-current" aria-current="page">{_E(breadcrumb_page)}</span>'
+            f'</nav>'
+        )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{_E(title)} - Barcode Buddy</title>
+  <title>{_E(title)} - BarcodeBuddy</title>
   {_LAYOUT_CSS}
   {head_extra}
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
   <!-- Mobile hamburger -->
-  <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open')" aria-label="Menu">
+  <button class="hamburger" id="hamburger-btn" aria-label="Open navigation menu" aria-expanded="false"
+    onclick="toggleMobileMenu()">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg>
   </button>
-  <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('open')"></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileMenu()"></div>
 
-  <nav class="sidebar">
+  <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sidebar-brand">
-      <h1>Barcode Buddy</h1>
-      <div class="brand-sub">Inventory Management</div>
+      <div class="sidebar-brand-text">
+        <h1>BarcodeBuddy</h1>
+        <div class="brand-sub">Inventory Management</div>
+      </div>
+      <button class="sidebar-toggle" id="sidebar-collapse-btn" aria-label="Collapse sidebar"
+        onclick="toggleSidebarCollapse()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="10 3 5 8 10 13"/>
+        </svg>
+      </button>
     </div>
-    <div class="sidebar-nav">
+    <div class="sidebar-nav" id="sidebar-nav">
       {nav_html}
     </div>
     {user_html}
-    <div class="sidebar-footer">Barcode Buddy v3.0.0</div>
+    <div class="sidebar-footer">BarcodeBuddy v3.0.0</div>
   </nav>
 
   <div class="main">
     <header class="topbar">
-      <div class="topbar-title">{_E(title)}</div>
+      <div class="topbar-left">
+        <div>
+          <div class="topbar-title">{_E(title)}</div>
+          {breadcrumb_html}
+        </div>
+      </div>
       <div class="topbar-meta" style="display:flex;align-items:center;gap:12px;">
-        <a href="/alerts" id="alert-bell" style="position:relative;color:var(--muted);text-decoration:none;display:flex;align-items:center;transition:color .2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+        <button class="cmd-palette-trigger" id="cmd-trigger" onclick="openCmdPalette()"
+          aria-label="Open command palette (Ctrl+K)">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="9" r="6"/><line x1="13.5" y1="13.5" x2="18" y2="18"/>
+          </svg>
+          <span>Navigate...</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+        <button id="recent-activity-btn" aria-label="Recent activity" title="Recent Activity"
+          onclick="toggleRecentActivity()"
+          style="position:relative;color:var(--muted);background:none;border:none;cursor:pointer;display:flex;align-items:center;transition:color .2s;padding:0"
+          onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/><path d="M10 6v4l3 3"/>
+          </svg>
+        </button>
+        <a href="/alerts" id="alert-bell" aria-label="View alerts" style="position:relative;color:var(--muted);text-decoration:none;display:flex;align-items:center;transition:color .2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 2a6 6 0 00-6 6c0 3-1.5 5-2 6h16c-.5-1-2-3-2-6a6 6 0 00-6-6z"/><path d="M8 16a2 2 0 004 0"/>
           </svg>
-          <span id="alert-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--failure);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;text-align:center;line-height:16px;padding:0 4px"></span>
+          <span id="alert-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--failure);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;text-align:center;line-height:16px;padding:0 4px" aria-live="polite"></span>
         </a>
       </div>
     </header>
-    <div class="content">
+    <div class="content" id="main-content">
       {body_html}
     </div>
   </div>
+
+  <!-- Recent activity drawer -->
+  <div class="ra-overlay" id="ra-overlay" onclick="closeRecentActivity()"></div>
+  <div class="ra-drawer" id="ra-drawer">
+    <div class="ra-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/><path d="M10 6v4l3 3"/></svg>
+        <span style="font-weight:700;font-size:15px;">Recent Activity</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="/activity" style="font-size:12px;color:var(--info);text-decoration:none;font-weight:600" onclick="closeRecentActivity()">View All</a>
+        <button onclick="closeRecentActivity()" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="ra-list" id="ra-list"><div style="padding:40px;text-align:center;color:var(--muted)">Loading...</div></div>
+  </div>
+
+  <!-- Command palette -->
+  <div class="cmd-overlay" id="cmd-overlay" onclick="if(event.target===this)closeCmdPalette()">
+    <div class="cmd-dialog" role="dialog" aria-label="Command palette">
+      <div class="cmd-input-wrap">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="9" r="6"/><line x1="13.5" y1="13.5" x2="18" y2="18"/>
+        </svg>
+        <input class="cmd-input" id="cmd-input" type="text" placeholder="Search pages..."
+          autocomplete="off" spellcheck="false" aria-label="Search pages">
+      </div>
+      <div class="cmd-results" id="cmd-results" role="listbox"></div>
+      <div class="cmd-footer">
+        <span><kbd>&uarr;&darr;</kbd> navigate</span>
+        <span><kbd>Enter</kbd> open</span>
+        <span><kbd>Esc</kbd> close</span>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container"></div>
+  {_render_chat_fab() if ai_enabled else ""}
   {_LAYOUT_JS}
   {body_js}
 </body>

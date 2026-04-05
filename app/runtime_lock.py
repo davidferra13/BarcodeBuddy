@@ -34,7 +34,7 @@ class ServiceLock:
         except OSError as exc:
             handle.close()
             raise ServiceLockError(
-                f"Another Barcode Buddy instance already holds the workflow lock: {self.lock_file}"
+                f"Another BarcodeBuddy instance already holds the workflow lock: {self.lock_file}"
             ) from exc
 
         try:

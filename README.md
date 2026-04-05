@@ -1,18 +1,19 @@
-# Barcode Buddy v2.0.0
+# BarcodeBuddy v3.0.0
 
-Barcode Buddy is a deterministic hot-folder document ingestion service for Danpack, a custom packaging and industrial supply company. It watches `data/input`, extracts a routing barcode from scanned PDFs or images, writes successful outputs as PDFs in `data/output/YYYY/MM`, and moves failures to `data/rejected` with JSONL audit logs and rejection sidecars.
+BarcodeBuddy is a deterministic hot-folder document ingestion service for Danpack, a custom packaging and industrial supply company. It watches `data/input`, extracts a routing barcode from scanned PDFs or images, writes successful outputs as PDFs in `data/output/YYYY/MM`, and moves failures to `data/rejected` with JSONL audit logs and rejection sidecars.
 
 ## Why This Exists
 
 In packaging and industrial supply operations, common workflows still rely on scanned vendor packing slips, proof-of-delivery documents, invoices, and receiving paperwork. The recurring operational problem is not scanning itself. It is getting the right document attached to the right business record quickly and repeatably, without a clerk renaming files by hand.
 
-Barcode Buddy is deliberately scoped to the first automation step:
+BarcodeBuddy is deliberately scoped to the first automation step:
 
 - intake from a scanner drop folder or shared folder
 - detect one routable business barcode
 - convert the document into a durable PDF
 - produce a deterministic success or failure result
 
+The master product blueprint — full capability map, status, and roadmap — is in [docs/PRODUCT_BLUEPRINT.md](c:/Users/david/Documents/BarcodeBuddy/docs/PRODUCT_BLUEPRINT.md).
 Research notes and source links are in [docs/industry-workflow-research.md](c:/Users/david/Documents/BarcodeBuddy/docs/industry-workflow-research.md).
 Recommended operating patterns for packaging and industrial supply deployments are in [docs/packaging-industrial-operating-model.md](c:/Users/david/Documents/BarcodeBuddy/docs/packaging-industrial-operating-model.md).
 The quickest builder entry point is [docs/current-system-truth.md](c:/Users/david/Documents/BarcodeBuddy/docs/current-system-truth.md).
@@ -49,6 +50,12 @@ If you are picking up this repo for implementation work:
 ## Install
 
 ```bash
+python -m pip install .
+```
+
+Or using the legacy requirements file:
+
+```bash
 python -m pip install -r requirements.txt
 ```
 
@@ -64,9 +71,9 @@ If `python` is mapped to the Microsoft Store alias on Windows, use:
 py main.py
 ```
 
-## Stats Page
+## Web Application
 
-Barcode Buddy includes a dedicated read-only local stats page served by FastAPI, built from the active log `data/logs/processing_log.jsonl` plus any daily archives under `data/logs/processing_log.YYYY-MM-DD.jsonl`.
+BarcodeBuddy includes a full multi-user web application served by FastAPI with authentication, inventory management, alerts, analytics, and a processing dashboard.
 
 Run it in a separate terminal:
 
@@ -77,7 +84,7 @@ python stats.py
 If `python` is mapped to the Microsoft Store alias on Windows, use:
 
 ```bash
-py stats.py
+py -3.12 stats.py
 ```
 
 Then open:
@@ -88,13 +95,19 @@ http://127.0.0.1:8080
 
 Available options:
 
-- `--host`: bind address, defaults to `127.0.0.1`
+- `--host`: bind address, defaults to `0.0.0.0`
 - `--port`: bind port, defaults to `8080`
 - `--refresh-seconds`: browser auto-refresh interval, defaults to `15`
 - `--history-days`: number of daily buckets shown, defaults to `14`
 - `--recent-limit`: number of recent documents shown, defaults to `25`
 
-The page shows:
+### Authentication and Roles
+
+First-time users are prompted to create an account at `/auth/signup`. The first signup must use the owner email (set via `BB_OWNER_EMAIL` env var, defaults to `mferragamo@danpack.com`). Roles: owner, admin, manager, user — each with increasing access levels.
+
+### Dashboard
+
+The processing dashboard at `/` shows:
 
 - total documents seen in the log
 - completed, succeeded, failed, and incomplete document counts
@@ -106,9 +119,47 @@ The page shows:
 - raw pipeline stage counts
 - recent document outcomes and durations
 
+### Stock Alerts
+
+Configure low-stock and overstock alerts at `/alerts`. Supports webhook dispatch for external notifications. Alerts are checked automatically every 5 minutes.
+
+### Scan to PDF
+
+Upload images or PDFs at `/scan-to-pdf` to decode barcodes, enrich with inventory data, and generate a professional PDF report. Supports manual entry, camera scanning, and file upload.
+
+### Admin Panel
+
+Owners and admins can manage users, change roles, transfer ownership, toggle open signup, and view audit logs at `/admin`.
+
+### Activity Log
+
+View a unified audit trail at `/activity` covering inventory changes, authentication events, admin actions, scans, imports, and system events. Filter by date range and category, with summary statistics and week-by-category breakdown.
+
+### Team Management
+
+Create and manage teams at `/team`. Assign members with team-specific roles (lead, member, viewer), create and track tasks with priorities and due dates, and coordinate across users.
+
+### AI Features
+
+Optional AI integration supporting local (Ollama) and cloud (Anthropic, OpenAI) providers:
+
+- `/ai/setup` — guided setup wizard for configuring AI providers
+- `/ai/chat` — chatbot with inventory query tools, processing stats, and activity search
+- `/ai/settings` — model selection, API key management, provider configuration
+- `/ai/privacy` — privacy and data handling policy
+
+### Analytics and Calendar
+
+- `/analytics` — transaction history, valuation trends, velocity metrics, stock health
+- `/calendar` — month and day views of inventory activity
+
+### Prometheus Metrics
+
+A `/metrics` endpoint exposes Prometheus-compatible gauges for document counts, latency percentiles, service health, and queue state.
+
 ## Inventory Management
 
-Barcode Buddy includes a full inventory management system accessible at `/inventory` on the stats server.
+BarcodeBuddy includes a full inventory management system accessible at `/inventory` on the stats server.
 
 ### Features
 
@@ -173,24 +224,27 @@ Workflow starter configs are in `configs/`. These are placeholders for deploymen
 
 ```text
 .
-|-- app
-|-- configs
-|-- config.json
-|-- config.schema.json
-|-- data
-|   |-- input
-|   |-- processing
-|   |-- output
-|   |   `-- YYYY
-|   |       `-- MM
-|   |-- rejected
-|   `-- logs
-|-- docs
-|   `-- industry-workflow-research.md
-|-- main.py
-|-- stats.py
-|-- tests
-`-- requirements.txt
+|-- app/                  # Application package (auth, inventory, alerts, stats, etc.)
+|-- configs/              # Workflow-specific example configs
+|-- config.json           # Default runtime config
+|-- config.schema.json    # Machine-readable config contract
+|-- data/
+|   |-- input/            # Hot-folder: drop documents here
+|   |-- processing/       # In-flight files and .journal/
+|   |-- output/YYYY/MM/   # Successful PDFs
+|   |-- rejected/         # Failed originals + .meta.json sidecars
+|   `-- logs/             # JSONL processing logs + daily archives
+|-- docs/                 # Specs, handoffs, research
+|-- main.py               # Ingestion service entry point
+|-- stats.py              # Web application entry point
+|-- tests/                # pytest test suite
+|-- Dockerfile            # Docker deployment
+|-- Procfile              # Heroku/Railway process definition
+|-- railway.toml          # Railway deployment config
+|-- start-app.ps1         # Windows PowerShell launcher with Cloudflare Tunnel
+|-- install-autostart.ps1 # Windows scheduled task installer for daemon mode
+|-- pyproject.toml        # Project metadata and dependencies
+`-- requirements.txt      # Pip-compatible dependency list
 ```
 
 ## Core Interface
@@ -211,13 +265,13 @@ These assumptions are based on how packaging and industrial supply teams actuall
 - duplicate documents can happen in real operations because of rescans, corrected paperwork, and multiple documents tied to the same order, so duplicate handling is configurable
 - most companies do not use one universal document rule set; receiving, proof-of-delivery, and quality paperwork often need different routing keys and different duplicate policies
 
-If your upstream process produces multi-document scan batches or mixed documents with several unrelated barcodes, Barcode Buddy should be paired with an upstream splitting or review step.
+If your upstream process produces multi-document scan batches or mixed documents with several unrelated barcodes, BarcodeBuddy should be paired with an upstream splitting or review step.
 
 ## Recommended Deployment For Packaging And Industrial Supply
 
 The research supports a simple operating model:
 
-- run one Barcode Buddy instance per workflow, not one giant mixed queue
+- run one BarcodeBuddy instance per workflow, not one giant mixed queue
 - give each workflow its own input folder and config file
 - use `barcode_value_patterns` to enforce the routing key expected by that workflow
 - use `duplicate_handling="reject"` where duplicates usually indicate a clerical mistake
@@ -254,6 +308,9 @@ More deployment and capture guidance is in [docs/packaging-industrial-operating-
 - `poll_interval_ms`: folder polling interval
 - `barcode_scan_dpi`: PDF render DPI for barcode detection
 - `barcode_upscale_factor`: optional image upscaling before decode
+- `server_host`: web server bind address, defaults to `0.0.0.0`
+- `server_port`: web server port, defaults to `8080`
+- `secret_key`: persistent JWT secret; if empty, a random key is generated on each startup (sessions won't survive restarts)
 
 Current loader guarantees:
 
@@ -287,7 +344,10 @@ Current default configuration:
   "max_pages_scan": 50,
   "poll_interval_ms": 500,
   "barcode_scan_dpi": 300,
-  "barcode_upscale_factor": 1.0
+  "barcode_upscale_factor": 1.0,
+  "server_host": "0.0.0.0",
+  "server_port": 8080,
+  "secret_key": ""
 }
 ```
 

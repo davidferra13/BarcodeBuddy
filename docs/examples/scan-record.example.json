@@ -83,7 +83,7 @@
       "triggered_by": {
         "actor_type": "system",
         "actor_id": "barcode_buddy",
-        "display_name": "Barcode Buddy"
+        "display_name": "BarcodeBuddy"
       }
     }
   ],
@@ -100,7 +100,7 @@
       "created_by": {
         "actor_type": "system",
         "actor_id": "barcode_buddy",
-        "display_name": "Barcode Buddy"
+        "display_name": "BarcodeBuddy"
       },
       "retention_class": "scan_evidence",
       "immutable": true
@@ -117,7 +117,7 @@
       "created_by": {
         "actor_type": "system",
         "actor_id": "barcode_buddy",
-        "display_name": "Barcode Buddy"
+        "display_name": "BarcodeBuddy"
       },
       "retention_class": "routed_output",
       "immutable": true
@@ -281,7 +281,7 @@
       "actor": {
         "actor_type": "system",
         "actor_id": "barcode_buddy",
-        "display_name": "Barcode Buddy"
+        "display_name": "BarcodeBuddy"
       },
       "summary": "Scan detected in shipping POD hot folder.",
       "before_value": null,
@@ -300,7 +300,7 @@
       "actor": {
         "actor_type": "system",
         "actor_id": "barcode_buddy",
-        "display_name": "Barcode Buddy"
+        "display_name": "BarcodeBuddy"
       },
       "summary": "One eligible barcode value selected for routing.",
       "before_value": null,

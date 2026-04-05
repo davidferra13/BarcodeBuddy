@@ -12,7 +12,7 @@ The current research shows that companies typically solve this with multiple imp
 
 ## Recommended Deployment Pattern
 
-Run separate Barcode Buddy instances with separate config files.
+Run separate BarcodeBuddy instances with separate config files.
 
 Suggested workflow split:
 
@@ -104,7 +104,7 @@ If the scanner software exposes a choice like NAPS2 does:
 
 - use feeder or duplex when appropriate
 - keep auto-save enabled to the workflow-specific `input` folder
-- disable `one file per page` for the current Barcode Buddy runtime
+- disable `one file per page` for the current BarcodeBuddy runtime
 - use Patch-T or other separator-page splitting only if you intentionally add an upstream split layer
 
 If the device or scan software defaults to `TIFF`, do not assume the runtime will accept it. The current runtime supports only `PDF`, `JPG`, `JPEG`, and `PNG`.
@@ -148,9 +148,9 @@ Recommended settings:
 - use a dedicated folder so these documents are not mixed with receiving or POD paperwork
 - reject files that do not match the expected business barcode pattern
 
-## What Not To Put In Barcode Buddy
+## What Not To Put In BarcodeBuddy
 
-Do not use Barcode Buddy as the primary ingest path for:
+Do not use BarcodeBuddy as the primary ingest path for:
 
 - emailed supplier invoices with no routing barcode
 - multi-document scan batches that need document splitting

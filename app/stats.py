@@ -1029,7 +1029,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Barcode Buddy — Client Portal</title>
+  <title>BarcodeBuddy — Client Portal</title>
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ font-family: "Segoe UI Variable","Segoe UI",system-ui,sans-serif; background: #f8f9fa; color: #1a1f26; min-height: 100vh; }}
@@ -1050,7 +1050,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
 </head>
 <body>
   <div class="header">
-    <h1>Barcode Buddy</h1>
+    <h1>BarcodeBuddy</h1>
     <p>Client Portal &mdash; Updated {_escape(snapshot["generated_at"][:19])}</p>
   </div>
   <div class="container">
@@ -1111,7 +1111,7 @@ def render_client_html(snapshot: dict[str, Any]) -> str:
     </div>
 
     <div class="panel" style="text-align:center;color:#aaa;font-size:12px;padding:16px;">
-      Barcode Buddy Client Portal &mdash; Auto-refreshes every {refresh}s
+      BarcodeBuddy Client Portal &mdash; Auto-refreshes every {refresh}s
     </div>
   </div>
 
@@ -1145,6 +1145,7 @@ def create_stats_app(
     from starlette.middleware.base import BaseHTTPMiddleware
     from starlette.responses import RedirectResponse as StarletteRedirect
 
+    from app.activity import router as activity_router
     from app.admin_routes import router as admin_router
     from app.alerts import router as alerts_router, check_stock_alerts
     from app.auth import (
@@ -1161,6 +1162,8 @@ def create_stats_app(
     from app.inventory_pages import router as inventory_pages_router
     from app.inventory_routes import router as inventory_router
     from app.scan_to_pdf import router as scan_to_pdf_router
+    from app.team_routes import router as team_router
+    from app.ai_routes import router as ai_router, set_app_settings as set_ai_app_settings
 
     # Initialize database
     db_path = settings.log_path / "barcode_buddy.db"
@@ -1170,7 +1173,7 @@ def create_stats_app(
     configure_secret_key(settings.secret_key)
     configure_owner_email(os.environ.get("BB_OWNER_EMAIL"))
 
-    app = FastAPI(title="Barcode Buddy Stats", docs_url="/docs", redoc_url=None)
+    app = FastAPI(title="BarcodeBuddy Stats", docs_url="/docs", redoc_url=None)
 
     # --- Global Exception Handler ---
     import structlog as _structlog
@@ -1278,6 +1281,10 @@ def create_stats_app(
     app.include_router(inventory_pages_router)
     app.include_router(scan_to_pdf_router)
     app.include_router(alerts_router)
+    app.include_router(activity_router)
+    app.include_router(team_router)
+    app.include_router(ai_router)
+    set_ai_app_settings(settings)
 
     # ── APScheduler: periodic stock alert checks ──
     from apscheduler.schedulers.background import BackgroundScheduler as _BGScheduler
@@ -1425,15 +1432,15 @@ def create_stats_app(
         Gauge("barcode_buddy_documents_succeeded_total", "Succeeded documents", registry=registry).set(docs["succeeded"])
         Gauge("barcode_buddy_documents_failed_total", "Failed documents", registry=registry).set(docs["failed"])
         Gauge("barcode_buddy_documents_incomplete_total", "Incomplete documents", registry=registry).set(docs["incomplete"])
-        Gauge("barcode_buddy_success_rate_percent", "Success rate percentage", registry=registry).set(docs["success_rate"])
-        Gauge("barcode_buddy_avg_completion_ms", "Average completion time ms", registry=registry).set(docs["average_completion_ms"])
+        Gauge("barcode_buddy_success_rate_percent", "Success rate percentage", registry=registry).set(docs["success_rate"] or 0)
+        Gauge("barcode_buddy_avg_completion_ms", "Average completion time ms", registry=registry).set(docs["average_completion_ms"] or 0)
 
-        Gauge("barcode_buddy_latency_p50_ms", "P50 latency ms", registry=registry).set(latency["p50"])
-        Gauge("barcode_buddy_latency_p95_ms", "P95 latency ms", registry=registry).set(latency["p95"])
-        Gauge("barcode_buddy_latency_p99_ms", "P99 latency ms", registry=registry).set(latency["p99"])
+        Gauge("barcode_buddy_latency_p50_ms", "P50 latency ms", registry=registry).set(latency["p50"] or 0)
+        Gauge("barcode_buddy_latency_p95_ms", "P95 latency ms", registry=registry).set(latency["p95"] or 0)
+        Gauge("barcode_buddy_latency_p99_ms", "P99 latency ms", registry=registry).set(latency["p99"] or 0)
 
         Gauge("barcode_buddy_service_healthy", "1 if healthy, 0 otherwise", registry=registry).set(1 if svc["status"] == "healthy" else 0)
-        Gauge("barcode_buddy_heartbeat_age_seconds", "Seconds since last heartbeat", registry=registry).set(svc["heartbeat_age_seconds"])
+        Gauge("barcode_buddy_heartbeat_age_seconds", "Seconds since last heartbeat", registry=registry).set(svc["heartbeat_age_seconds"] or 0)
         Gauge("barcode_buddy_startups_24h", "Startups in last 24h", registry=registry).set(svc["startups_last_24h"])
 
         Gauge("barcode_buddy_input_backlog_count", "Files in input queue", registry=registry).set(queues["input_backlog_count"])
@@ -2149,12 +2156,12 @@ def _render_daily_report_html(report: dict[str, Any]) -> str:
         daily_bars += f'<div style="display:flex;align-items:center;gap:8px;margin:4px 0;"><span style="width:72px;font-size:12px;color:#888;">{_escape(day["date"])}</span><div style="flex:1;height:16px;background:#f0f0f0;border-radius:8px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:linear-gradient(90deg,#34c47c,#1a7a54);border-radius:8px;"></div></div><span style="width:36px;text-align:right;font-size:12px;font-weight:600;">{day["total"]}</span></div>'
 
     return f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>Barcode Buddy Daily Report — {_escape(report["report_date"])}</title></head>
+<html><head><meta charset="utf-8"><title>BarcodeBuddy Daily Report — {_escape(report["report_date"])}</title></head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;">
 <div style="max-width:640px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
   <div style="background:linear-gradient(135deg,#1e2530,#2c3e50);padding:28px 32px;color:#fff;">
-    <h1 style="margin:0 0 4px;font-size:22px;">Barcode Buddy Daily Report</h1>
+    <h1 style="margin:0 0 4px;font-size:22px;">BarcodeBuddy Daily Report</h1>
     <p style="margin:0;font-size:13px;opacity:0.7;">{_escape(report["report_date"])} &mdash; Generated {_escape(report["generated_at"][:19])}</p>
   </div>
 
@@ -2210,7 +2217,7 @@ def _render_daily_report_html(report: dict[str, Any]) -> str:
   </div>
 
   <div style="padding:16px 32px;background:#f8f8f8;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center;">
-    Barcode Buddy &mdash; Automated Daily Report
+    BarcodeBuddy &mdash; Automated Daily Report
   </div>
 </div>
 </body></html>"""

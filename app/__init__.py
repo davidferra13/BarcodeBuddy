@@ -1,4 +1,4 @@
-"""Barcode Buddy application package."""
+"""BarcodeBuddy application package."""
 
 __version__ = "3.0.0"
 

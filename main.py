@@ -19,7 +19,7 @@ console = Console(stderr=True)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the Barcode Buddy ingestion service.")
+    parser = argparse.ArgumentParser(description="Run the BarcodeBuddy ingestion service.")
     parser.add_argument(
         "--config",
         default=os.environ.get("BB_CONFIG", "config.json"),
@@ -50,7 +50,7 @@ def main() -> None:
             service = BarcodeBuddyService(settings)
 
             def _handle_stop_signal(signum: int, frame: object) -> None:
-                console.print(f"[yellow]Barcode Buddy received signal {signum}, shutting down...[/yellow]")
+                console.print(f"[yellow]BarcodeBuddy received signal {signum}, shutting down...[/yellow]")
                 service.stop()
 
             signal.signal(signal.SIGINT, _handle_stop_signal)
@@ -58,12 +58,12 @@ def main() -> None:
 
             service.log_service_event(SERVICE_EVENT_STARTUP)
             service.recover_processing_files()
-            console.print(f"[bold green]Barcode Buddy v{__version__}[/bold green] watching: [cyan]{settings.input_path}[/cyan]")
+            console.print(f"[bold green]BarcodeBuddy v{__version__}[/bold green] watching: [cyan]{settings.input_path}[/cyan]")
             service.run_forever()
     except ServiceLockError as exc:
         raise SystemExit(str(exc)) from exc
 
-    console.print("[dim]Barcode Buddy stopped.[/dim]")
+    console.print("[dim]BarcodeBuddy stopped.[/dim]")
 
 
 if __name__ == "__main__":

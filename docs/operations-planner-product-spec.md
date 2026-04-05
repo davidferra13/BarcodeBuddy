@@ -4,7 +4,7 @@ Last updated: 2026-04-03.
 
 ## 1. Purpose
 
-This document defines the future multi-record planning, reporting, and workload-control layer for Barcode Buddy.
+This document defines the future multi-record planning, reporting, and workload-control layer for BarcodeBuddy.
 
 It complements the future single-record workbench in `docs/scan-record-workbench.md`.
 
@@ -47,7 +47,7 @@ Operations owners need a truthful control plane that can:
 
 ## 4. Non-Goals
 
-This planner does not change the core Barcode Buddy promise.
+This planner does not change the core BarcodeBuddy promise.
 
 Out of scope unless explicitly approved later:
 

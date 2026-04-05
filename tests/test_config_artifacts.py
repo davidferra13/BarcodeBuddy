@@ -116,7 +116,7 @@ class BarcodeBuddyConfigArtifactTests(unittest.TestCase):
         self.assertIn("docs/operations-planner-builder-handoff.md", readme)
         self.assertIn("do not assume this workspace has Git metadata", readme)
 
-        self.assertIn("py -B -m unittest discover -s tests -v", current_truth)
+        self.assertIn("py -3.12 -B -m pytest tests/ -x -q", current_truth)
         self.assertIn("py -m compileall app tests main.py stats.py", current_truth)
         self.assertIn("Last updated:", current_truth)
         self.assertIn("docs/scan-record-workbench.md", current_truth)

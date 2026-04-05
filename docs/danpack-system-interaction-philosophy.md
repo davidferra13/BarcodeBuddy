@@ -2,11 +2,11 @@
 
 Last updated: 2026-04-03.
 
-This document defines the interaction and operational philosophy that should govern any future human-facing surface built around Barcode Buddy or its adjacent workflows.
+This document defines the interaction and operational philosophy that should govern any future human-facing surface built around BarcodeBuddy or its adjacent workflows.
 
 Current repo reality:
 
-- Barcode Buddy is a deterministic hot-folder service with no operator workflow UI today.
+- BarcodeBuddy is a deterministic hot-folder service with no operator workflow UI today.
 - The repo does include a local read-only stats page exposed by `stats.py`.
 - This document does not change that scope.
 - This document exists so the next builder does not invent a cluttered dashboard, an overbuilt admin console, or a mixed workflow surface that conflicts with how Danpack and similar companies actually work.
@@ -50,8 +50,8 @@ Cross-checked operational implications:
 
 - custom packaging work behaves like a gated project flow
 - industrial supply work behaves like a repeat replenishment flow
-- Barcode Buddy itself fits neither as a dashboard nor as a generic document inbox
-- Barcode Buddy is an intake and exception-management utility inside a larger operational system
+- BarcodeBuddy itself fits neither as a dashboard nor as a generic document inbox
+- BarcodeBuddy is an intake and exception-management utility inside a larger operational system
 
 ## 3. Core Philosophy
 
@@ -75,12 +75,12 @@ The builder `MUST` preserve hard mode separation between:
 
 - `custom packaging / project work`
 - `industrial supply / repeat replenishment work`
-- `Barcode Buddy intake / routing / exception handling`
+- `BarcodeBuddy intake / routing / exception handling`
 
 Rules:
 
 - These modes `MUST NOT` share one default home screen.
-- Barcode Buddy surfaces `MUST` be framed around intake, lookup, and exceptions, not around full packaging project management.
+- BarcodeBuddy surfaces `MUST` be framed around intake, lookup, and exceptions, not around full packaging project management.
 - Repeat ordering surfaces `MUST` prioritize barcode, PO, shipment, receipt, SKU, quantity, and status.
 - Custom project surfaces `MUST` prioritize current stage, approval state, proof version, and release readiness.
 
@@ -110,7 +110,7 @@ Future extensions such as prepress, planning, or warehouse review `MAY` exist, b
 
 - Every task surface `MUST` have one primary action.
 - No surface `MUST` present more than three secondary actions at the same decision point.
-- The primary actions for Barcode Buddy-adjacent surfaces should usually be one of:
+- The primary actions for BarcodeBuddy-adjacent surfaces should usually be one of:
   - review rejection
   - retry or reprocess
   - open routed document
@@ -177,7 +177,7 @@ Minimum actionable rejection groups:
 
 ## 15. Default State Definition
 
-The clean default state for Barcode Buddy-adjacent tools is:
+The clean default state for BarcodeBuddy-adjacent tools is:
 
 - current workflow selected
 - healthy or unhealthy service state visible
@@ -233,7 +233,7 @@ Because Danpack operates in compliance-sensitive packaging domains:
 - showing advanced regex, scan, or diagnostic settings to non-admin operators by default
 - silent failure where the only evidence is a missing output file
 - AI or automation that changes routing behavior without explicit review and traceability
-- expanding Barcode Buddy into OCR or document guessing without an explicit product decision
+- expanding BarcodeBuddy into OCR or document guessing without an explicit product decision
 
 ## 20. Builder Implications
 

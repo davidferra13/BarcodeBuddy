@@ -200,7 +200,7 @@ async def run(app):
         assert r.status_code == 404
         print("  Unknown code 404: correct")
 
-        for path in ["/inventory", "/inventory/new", "/inventory/import", "/scan"]:
+        for path in ["/inventory", "/inventory/new", "/inventory/bulk", "/scan"]:
             r = await c.get(path, headers={"accept": "text/html"}, cookies=cookies)
             assert r.status_code == 200, f"{path} returned {r.status_code}"
         print("  All HTML pages load: OK")

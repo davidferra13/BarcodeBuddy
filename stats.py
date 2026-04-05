@@ -15,7 +15,7 @@ console = Console(stderr=True)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Serve the Barcode Buddy stats page.")
+    parser = argparse.ArgumentParser(description="Serve the BarcodeBuddy stats page.")
     parser.add_argument(
         "--config",
         default=os.environ.get("BB_CONFIG", "config.json"),
@@ -64,7 +64,7 @@ def main() -> None:
     host = args.host or settings.server_host
     port = args.port or settings.server_port
 
-    console.print(f"[bold green]Barcode Buddy v{__version__}[/bold green] stats page: [link=http://{host}:{port}]http://{host}:{port}[/link]")
+    console.print(f"[bold green]BarcodeBuddy v{__version__}[/bold green] stats page: [link=http://{host}:{port}]http://{host}:{port}[/link]")
     console.print(f"Reading log file: [cyan]{settings.log_file}[/cyan]")
     console.print(f"API docs: [link=http://{host}:{port}/docs]http://{host}:{port}/docs[/link]")
     serve_stats_page(
@@ -81,4 +81,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        console.print("[dim]Barcode Buddy stats page stopped.[/dim]")
+        console.print("[dim]BarcodeBuddy stats page stopped.[/dim]")

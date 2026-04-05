@@ -373,7 +373,7 @@ class BarcodeBuddyStatsTests(unittest.TestCase):
 
         html = render_stats_html(snapshot)
 
-        self.assertIn("Barcode Buddy", html)
+        self.assertIn("BarcodeBuddy", html)
         self.assertIn("&lt;packing&gt;.pdf", html)
         self.assertIn("PO-100", html)
         self.assertIn("Active Log File", html)

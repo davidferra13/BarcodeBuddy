@@ -4,7 +4,7 @@ Last updated: 2026-04-03.
 
 ## 1. Purpose
 
-This document is the builder-facing handoff for the future Barcode Buddy planner, reporting system, obligation queue, and activity ledger.
+This document is the builder-facing handoff for the future BarcodeBuddy planner, reporting system, obligation queue, and activity ledger.
 
 Use it when implementing:
 

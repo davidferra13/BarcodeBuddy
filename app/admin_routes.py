@@ -11,12 +11,14 @@ from app.auth import (
     ASSIGNABLE_ROLES,
     ROLE_LEVELS,
     get_role_level,
+    hash_password,
   is_owner_email,
     log_audit,
   OWNER_EMAIL,
     require_admin,
     require_owner,
 )
+from app.activity import log_activity
 from app.database import AuditLog, SystemSettings, User, UserSession, get_db
 from app.layout import render_shell
 
@@ -33,6 +35,10 @@ class UpdateActiveRequest(BaseModel):
 
 class TransferOwnershipRequest(BaseModel):
     target_user_id: str
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class UpdateSignupRequest(BaseModel):
@@ -83,6 +89,9 @@ def update_user_role(
     user.role = body.role
     db.commit()
     log_audit(db, admin, "role_change", target_id=user.id, detail={"from": old_role, "to": body.role, "email": user.email})
+    log_activity(db, user=admin, action="Role Changed", category="admin",
+                 summary=f"{user.display_name} ({user.email}): {old_role} → {body.role}",
+                 detail={"target": user.email, "from": old_role, "to": body.role})
     return JSONResponse(content={"user": user.to_dict()})
 
 
@@ -117,6 +126,10 @@ def update_user_active(
         db.commit()
     action = "deactivate_user" if not body.is_active else "activate_user"
     log_audit(db, admin, action, target_id=user.id, detail={"email": user.email})
+    label = "User Deactivated" if not body.is_active else "User Activated"
+    log_activity(db, user=admin, action=label, category="admin",
+                 summary=f"{user.display_name} ({user.email})",
+                 detail={"email": user.email})
     return JSONResponse(content={"user": user.to_dict()})
 
 
@@ -141,10 +154,48 @@ def delete_user(
         return JSONResponse(status_code=403, content={"error": "Only the owner can delete admin accounts"})
 
     email = user.email
+    display = user.display_name
     db.delete(user)
     db.commit()
     log_audit(db, admin, "delete_user", target_id=user_id, detail={"email": email})
+    log_activity(db, user=admin, action="User Deleted", category="admin",
+                 summary=f"{display} ({email})",
+                 detail={"email": email})
     return JSONResponse(content={"message": "User deleted"})
+
+
+# --- Admin Password Reset (admin+) ---
+
+@router.put("/api/users/{user_id}/password")
+def admin_reset_password(
+    user_id: str,
+    body: ResetPasswordRequest,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """Allow admins to reset a user's password directly."""
+    if user_id == admin.id:
+        return JSONResponse(status_code=400, content={"error": "Use your account settings to change your own password"})
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+
+    # Only owner can reset admin/owner passwords
+    if user.role in ("owner", "admin") and admin.role != "owner":
+        return JSONResponse(status_code=403, content={"error": "Only the owner can reset admin passwords"})
+
+    user.password_hash = hash_password(body.new_password)
+    # Revoke all existing sessions so user must log in with new password
+    db.query(UserSession).filter(
+        UserSession.user_id == user_id,
+        UserSession.is_revoked == False,
+    ).update({"is_revoked": True})
+    db.commit()
+    log_audit(db, admin, "admin_reset_password", target_id=user.id, detail={"email": user.email})
+    log_activity(db, user=admin, action="Admin Password Reset", category="admin",
+                 summary=f"Reset password for {user.display_name} ({user.email})",
+                 detail={"email": user.email})
+    return JSONResponse(content={"message": f"Password reset for {user.email}"})
 
 
 # --- Ownership Transfer (owner-only) ---
@@ -172,6 +223,9 @@ def transfer_ownership(
     log_audit(db, owner, "transfer_ownership", target_id=target.id, detail={
         "from": old_owner_id, "to": target.id, "target_email": target.email,
     })
+    log_activity(db, user=owner, action="Ownership Transferred", category="admin",
+                 summary=f"Transferred ownership to {target.display_name} ({target.email})",
+                 detail={"to_email": target.email})
     return JSONResponse(content={"message": f"Ownership transferred to {target.display_name}", "user": target.to_dict()})
 
 
@@ -197,6 +251,10 @@ def update_signup_setting(
         settings.open_signup = body.open_signup
         db.commit()
     log_audit(db, admin, "update_signup", detail={"open_signup": body.open_signup})
+    state = "enabled" if body.open_signup else "disabled"
+    log_activity(db, user=admin, action="Signup Setting Changed", category="admin",
+                 summary=f"Open signup {state}",
+                 detail={"open_signup": body.open_signup})
     return JSONResponse(content={"open_signup": body.open_signup})
 
 
@@ -329,6 +387,7 @@ function renderActions(u) {{
   }}
   btns += '</select> ';
   btns += `<button class="action-btn" onclick="toggleActive('${{u.id}}', ${{u.is_active}})">${{u.is_active ? 'Deactivate' : 'Activate'}}</button> `;
+  btns += `<button class="action-btn" onclick="resetPassword('${{u.id}}','${{esc(u.email)}}')">Reset&nbsp;PW</button> `;
   btns += `<button class="action-btn danger" onclick="deleteUser('${{u.id}}','${{esc(u.email)}}')">Delete</button>`;
   if (IS_OWNER) {{
     btns += ` <button class="action-btn" onclick="transferOwnership('${{u.id}}','${{esc(u.display_name)}}')" style="color:#d97706">Transfer&nbsp;Ownership</button>`;
@@ -394,6 +453,19 @@ async function transferOwnership(id, name) {{
   }});
   if (r.ok) {{ toast('Ownership transferred. Reloading...', 'success'); setTimeout(() => location.reload(), 1500); }}
   else {{ const d = await r.json(); toast(d.error || 'Failed', 'error'); }}
+}}
+
+async function resetPassword(id, email) {{
+  const pw = prompt(`Enter new password for ${{email}} (min 8 characters):`);
+  if (!pw) return;
+  if (pw.length < 8) {{ toast('Password must be at least 8 characters', 'error'); return; }}
+  const r = await fetch(`/admin/api/users/${{id}}/password`, {{
+    method: 'PUT', headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{new_password: pw}})
+  }});
+  if (r.ok) {{ toast('Password reset for ' + email, 'success'); }}
+  else {{ const d = await r.json(); toast(d.error || 'Failed', 'error'); }}
+  loadAuditLog();
 }}
 
 async function toggleSignup(checked) {{
