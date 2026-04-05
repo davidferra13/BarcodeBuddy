@@ -32,7 +32,7 @@ def app(db_path: Path):
     from app.inventory_routes import router as inventory_router
 
     init_db(db_path)
-    configure_secret_key("test-secret-key-for-testing")
+    configure_secret_key("test-secret-key-for-testing-32plus")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(admin_router)

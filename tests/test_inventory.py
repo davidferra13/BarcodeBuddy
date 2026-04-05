@@ -34,7 +34,7 @@ def app(db_path: Path):
     from app.inventory_routes import router as inventory_router
 
     init_db(db_path)
-    configure_secret_key("test-secret-key-for-inventory-testing")
+    configure_secret_key("test-secret-key-inventory-testing-32")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(inventory_router)

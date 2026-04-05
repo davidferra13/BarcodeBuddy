@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import html as html_mod
+import ipaddress
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, Query
@@ -145,6 +147,11 @@ def update_alert_config(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
+    url = body.webhook_url.strip()
+    if url:
+        err = validate_webhook_url(url)
+        if err:
+            return JSONResponse(status_code=400, content={"error": err})
     cfg = db.query(AlertConfig).filter(
         AlertConfig.user_id == user.id, AlertConfig.alert_type == body.alert_type,
     ).first()
@@ -152,7 +159,7 @@ def update_alert_config(
         cfg = AlertConfig(user_id=user.id, alert_type=body.alert_type)
         db.add(cfg)
     cfg.enabled = body.enabled
-    cfg.webhook_url = body.webhook_url.strip()
+    cfg.webhook_url = url
     db.commit()
     return JSONResponse(content={"ok": True})
 
@@ -237,11 +244,44 @@ def check_stock_alerts(db: Session) -> list[dict[str, Any]]:
     return created
 
 
+# ── Webhook URL validation (SSRF prevention) ─────────────────────
+
+_BLOCKED_HOSTS = {"localhost", "0.0.0.0", "[::1]", "metadata.google.internal"}
+
+def validate_webhook_url(url: str) -> str | None:
+    """Validate a webhook URL. Returns error message or None if valid."""
+    if not url:
+        return None  # Empty is allowed (means no webhook)
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return "Invalid URL format"
+    if parsed.scheme not in ("https", "http"):
+        return "URL must use http or https"
+    hostname = parsed.hostname or ""
+    if not hostname:
+        return "URL must include a hostname"
+    if hostname in _BLOCKED_HOSTS:
+        return f"Webhook URL cannot target {hostname}"
+    # Block private/internal IP ranges
+    try:
+        addr = ipaddress.ip_address(hostname)
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+            return "Webhook URL cannot target private or internal IP addresses"
+    except ValueError:
+        pass  # Not an IP literal — hostname is fine
+    return None
+
+
 # ── Webhook dispatch ───────────────────────────────────────────────
 
 def _fire_webhook(cfg: AlertConfig | None, alert: Alert) -> None:
     """Fire webhook if configured. Non-blocking best-effort."""
     if not cfg or not cfg.webhook_url:
+        return
+    err = validate_webhook_url(cfg.webhook_url)
+    if err:
+        _log.warning("Skipping webhook dispatch: %s (%s)", err, cfg.webhook_url)
         return
     try:
         payload = {

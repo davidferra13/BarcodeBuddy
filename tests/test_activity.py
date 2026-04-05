@@ -31,7 +31,7 @@ def app(db_path: Path):
     from app.activity import router as activity_router
 
     init_db(db_path)
-    configure_secret_key("test-secret-key-for-activity-testing")
+    configure_secret_key("test-secret-key-for-activity-test!")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(inventory_router)

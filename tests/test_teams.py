@@ -31,7 +31,7 @@ def app(db_path: Path):
     from app.team_routes import router as team_router
 
     init_db(db_path)
-    configure_secret_key("test-secret-key-for-team-testing")
+    configure_secret_key("test-secret-key-for-team-testing-32")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(admin_router)

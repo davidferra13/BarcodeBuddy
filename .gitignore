@@ -1,14 +1,31 @@
+# Dependencies
+.venv/
 __pycache__/
 *.pyc
 *.pyo
-.env
 
+# Environment and secrets
+.env
+.env.*
+
+# Runtime data directories
 data/input/
 data/processing/
 data/output/
 data/rejected/
 data/logs/
 
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Processing state
 *.tmp
 .service.lock
 .journal/
+.multi-agent-lock
+
+# Test and build artifacts
+.pytest_cache/
+htmlcov/

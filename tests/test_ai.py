@@ -31,7 +31,7 @@ def app(db_path: Path, tmp_path: Path):
     from app.config import Settings
 
     init_db(db_path)
-    configure_secret_key("test-secret-key-for-ai-testing")
+    configure_secret_key("test-secret-key-for-ai-testing-32b")
 
     # Create a minimal Settings for AI routes
     cfg = {

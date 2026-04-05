@@ -32,7 +32,7 @@ def app(db_path: Path):
     from app.scan_to_pdf import router as scan_to_pdf_router
 
     init_db(db_path)
-    configure_secret_key("test-secret-key-for-scan-pdf-testing")
+    configure_secret_key("test-secret-key-for-scan-pdf-test!!")
     app = FastAPI()
     app.include_router(auth_router)
     app.include_router(inventory_router)
