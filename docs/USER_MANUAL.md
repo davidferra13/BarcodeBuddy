@@ -669,6 +669,26 @@ Also available from the Items page via the Export button.
 
 Use this page to report bugs, request features, or ask questions. Your feedback goes directly to the developer.
 
+### 3.19 Profile & Account Settings
+
+**URL:** `/auth/profile`
+
+**Access:** Click "Profile" in the sidebar footer (below your name), or use Ctrl+K and search "Profile".
+
+**Display Name:**
+
+1. Edit the display name field
+2. Click "Save Name"
+3. Your name updates across the system (sidebar, activity log, team views)
+
+**Change Password:**
+
+1. Enter your current password
+2. Enter a new password (minimum 8 characters)
+3. Click "Change Password"
+
+Your email address and role are shown but cannot be changed from this page. Role changes require an admin. Email is set at signup.
+
 1. Click **Help & Feedback** in the sidebar under System
 2. Choose a type: Bug Report, Feature Request, or Question
 3. Describe the issue or idea (up to 2,000 characters)

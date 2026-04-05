@@ -285,6 +285,9 @@ def update_member_role(
     log_audit(db, user, "update_member_role", target_id=member_id, detail={
         "from": old_role, "to": body.team_role,
     })
+    log_activity(db, user=user, action="Member Role Changed", category="admin",
+                 summary=f"Changed role from {old_role} to {body.team_role}",
+                 detail={"from": old_role, "to": body.team_role}, item_id=member_id)
     return JSONResponse(content={"member": member.to_dict()})
 
 
@@ -414,6 +417,12 @@ def update_task(
         task.priority = body.priority
         changes["priority"] = body.priority
     if body.assigned_to is not None and can_manage:
+        if body.assigned_to:
+            is_member = db.query(TeamMember).filter(
+                TeamMember.team_id == team_id, TeamMember.user_id == body.assigned_to
+            ).first()
+            if not is_member and not _is_owner_or_admin(user):
+                return JSONResponse(status_code=400, content={"error": "Assignee must be a team member"})
         task.assigned_to = body.assigned_to or None
         changes["assigned_to"] = body.assigned_to
     if body.due_date is not None and can_manage:

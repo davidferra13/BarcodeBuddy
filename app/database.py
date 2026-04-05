@@ -536,3 +536,21 @@ def revoke_expired_sessions(now: datetime | None = None) -> int:
         return int(affected or 0)
     finally:
         db.close()
+
+
+def purge_old_sessions(days: int = 30) -> int:
+    """Delete revoked sessions older than *days*. Returns deleted count."""
+    if _SessionLocal is None:
+        raise RuntimeError("Database not initialized. Call init_db() first.")
+
+    db = _SessionLocal()
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        deleted = db.query(UserSession).filter(
+            UserSession.is_revoked == True,
+            UserSession.expires_at <= cutoff,
+        ).delete(synchronize_session=False)
+        db.commit()
+        return int(deleted or 0)
+    finally:
+        db.close()

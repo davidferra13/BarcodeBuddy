@@ -157,6 +157,16 @@ def _user_section(display_name: str, role: str, is_admin: bool) -> str:
           </span>
         </div>
       </div>
+      <a href="/auth/profile"
+        class="signout-link"
+        style="display:flex;align-items:center;gap:6px;padding:6px 0;color:#a0aab4;text-decoration:none;font-size:13px;
+        transition:color 0.2s;white-space:nowrap;overflow:hidden;"
+        onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#a0aab4'">
+        <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 20 20"
+          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M16 18a6 6 0 00-12 0"/>
+        </svg><span class="signout-text">Profile</span>
+      </a>
       <a href="#" onclick="fetch('/auth/api/logout',{{method:'POST'}}).then(()=>window.location.href='/auth/login');return false;"
         class="signout-link"
         style="display:flex;align-items:center;gap:6px;padding:6px 0;color:#a0aab4;text-decoration:none;font-size:13px;
@@ -1284,6 +1294,7 @@ const _cmdPages=[
   {label:'Team',section:'System',href:'/team',icon:'team'},
   {label:'Help & Feedback',section:'System',href:'/feedback',icon:'feedback'},
   {label:'Client Portal',section:'Monitor',href:'/client',icon:'monitor'},
+  {label:'Profile',section:'Account',href:'/auth/profile',icon:'admin'},
 ];
 let _cmdSel=0;
 

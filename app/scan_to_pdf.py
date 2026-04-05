@@ -24,6 +24,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.activity import log_activity
 from app.auth import require_user
 from app.database import InventoryItem, User, get_db
 from app.layout import render_shell
@@ -169,9 +170,21 @@ class GeneratePdfRequest(BaseModel):
 def generate_pdf(
     body: GeneratePdfRequest,
     user: User = Depends(require_user),
+    db: Session = Depends(get_db),
 ) -> Response:
     """Generate a professional PDF report from scan session data."""
     import fitz
+
+    _log = logging.getLogger(__name__)
+    try:
+        return _generate_pdf_inner(body, user, db, fitz)
+    except Exception:
+        _log.exception("PDF generation failed")
+        return JSONResponse(status_code=400, content={"error": "Failed to generate PDF report"})
+
+
+def _generate_pdf_inner(body, user, db, fitz):
+    from app.activity import log_activity
 
     doc = fitz.open()
     page_width, page_height = fitz.paper_size("A4")
@@ -301,6 +314,9 @@ def generate_pdf(
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     filename = f"{safe_title}_{timestamp}.pdf"
 
+    log_activity(db, user=user, action="Scan-to-PDF Generated", category="export",
+                 summary=f"Generated PDF report with {len(body.entries)} entries",
+                 detail={"title": body.title, "entry_count": len(body.entries)})
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

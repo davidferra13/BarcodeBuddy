@@ -1155,7 +1155,7 @@ def create_stats_app(
       configure_secret_key,
     )
     from app.auth_routes import router as auth_router
-    from app.database import User, UserSession, backup_database, get_db, init_db, revoke_expired_sessions
+    from app.database import User, UserSession, backup_database, get_db, init_db, purge_old_sessions, revoke_expired_sessions
     from app.inventory_pages import router as inventory_pages_router
     from app.inventory_routes import router as inventory_router
     from app.scan_to_pdf import router as scan_to_pdf_router
@@ -1322,6 +1322,14 @@ def create_stats_app(
       "interval",
       hours=1,
       id="revoke_expired_sessions",
+      replace_existing=True,
+    )
+    _alert_scheduler.add_job(
+      purge_old_sessions,
+      "cron",
+      hour=1,
+      minute=30,
+      id="purge_old_sessions",
       replace_existing=True,
     )
     app.state.alert_scheduler = _alert_scheduler
