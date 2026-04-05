@@ -1277,6 +1277,13 @@ const _cmdPages=[
   {label:'Activity Log',section:'Monitor',href:'/activity',icon:'activity'},
   {label:'Alerts',section:'Monitor',href:'/alerts',icon:'alerts'},
   {label:'Admin Panel',section:'System',href:'/admin',icon:'admin'},
+  {label:'AI Chat',section:'AI',href:'/ai/chat',icon:'ai-chat'},
+  {label:'Privacy & Data',section:'AI',href:'/ai/privacy',icon:'ai-privacy'},
+  {label:'AI Settings',section:'AI',href:'/ai/settings',icon:'ai-settings'},
+  {label:'AI Setup',section:'AI',href:'/ai/setup',icon:'ai-setup'},
+  {label:'Team',section:'System',href:'/team',icon:'team'},
+  {label:'Help & Feedback',section:'System',href:'/feedback',icon:'feedback'},
+  {label:'Client Portal',section:'Monitor',href:'/client',icon:'monitor'},
 ];
 let _cmdSel=0;
 

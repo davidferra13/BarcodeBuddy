@@ -427,6 +427,9 @@ def update_task(
 
     db.commit()
     log_audit(db, user, "update_task", target_id=task.id, detail=changes)
+    log_activity(db, user=user, action="Task Updated", category="admin",
+                 summary=f"Updated task '{task.title}': {', '.join(changes.keys())}",
+                 detail=changes, item_id=task.id)
     return JSONResponse(content={"task": task.to_dict()})
 
 
@@ -444,9 +447,12 @@ def delete_task(
     if not task:
         return JSONResponse(status_code=404, content={"error": "Task not found"})
 
+    title = task.title
     db.delete(task)
     db.commit()
-    log_audit(db, user, "delete_task", target_id=task_id, detail={"title": task.title})
+    log_audit(db, user, "delete_task", target_id=task_id, detail={"title": title})
+    log_activity(db, user=user, action="Task Deleted", category="admin",
+                 summary=f"Deleted task '{title}'", item_id=task_id)
     return JSONResponse(content={"message": "Task deleted"})
 
 

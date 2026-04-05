@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.activity import log_activity
 from app.auth import require_user
 from app.database import Alert, AlertConfig, InventoryItem, User, get_db
 from app.layout import render_shell
@@ -93,10 +94,14 @@ def dismiss_alerts(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     if body.alert_ids:
-        db.query(Alert).filter(
+        count = db.query(Alert).filter(
             Alert.id.in_(body.alert_ids), Alert.user_id == user.id,
         ).update({"is_dismissed": True}, synchronize_session=False)
         db.commit()
+        if count:
+            log_activity(db, user=user, action="Alerts Dismissed", category="alert",
+                         summary=f"Dismissed {count} alert(s)",
+                         detail={"count": count})
     return JSONResponse(content={"ok": True})
 
 
@@ -105,10 +110,14 @@ def dismiss_all_alerts(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    db.query(Alert).filter(
+    count = db.query(Alert).filter(
         Alert.user_id == user.id, Alert.is_dismissed == False,
     ).update({"is_dismissed": True}, synchronize_session=False)
     db.commit()
+    if count:
+        log_activity(db, user=user, action="All Alerts Dismissed", category="alert",
+                     summary=f"Dismissed all ({count}) active alerts",
+                     detail={"count": count})
     return JSONResponse(content={"ok": True})
 
 
@@ -161,6 +170,10 @@ def update_alert_config(
     cfg.enabled = body.enabled
     cfg.webhook_url = url
     db.commit()
+    log_activity(db, user=user, action="Alert Config Updated", category="alert",
+                 summary=f"{body.alert_type}: {'enabled' if body.enabled else 'disabled'}"
+                         + (f", webhook={'set' if url else 'cleared'}" if url or cfg.webhook_url else ""),
+                 detail={"alert_type": body.alert_type, "enabled": body.enabled, "webhook": bool(url)})
     return JSONResponse(content={"ok": True})
 
 
