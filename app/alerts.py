@@ -383,7 +383,7 @@ function switchAlertTab(id,btn){document.querySelectorAll('.alert-sec').forEach(
 try{const saved=sessionStorage.getItem('bb_alert_tab');if(saved&&document.getElementById('sec-'+saved)){const btn=document.querySelector('.tab-pill[onclick*="\\''+saved+'\\'"]');if(btn)switchAlertTab(saved,btn)}}catch(e){}
 
 async function loadAlerts(){
-  const r=await fetch('/api/alerts');const d=await r.json();
+  let d;try{const r=await fetch('/api/alerts');d=await r.json()}catch(e){toast('Failed to load alerts','error');return}
   const badge=document.getElementById('badge-count');
   if(d.unread_count>0){badge.textContent=d.unread_count;badge.style.display='inline'}else{badge.style.display='none'}
   const list=document.getElementById('alert-list');
@@ -414,17 +414,17 @@ function timeAgo(iso){
   if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';
 }
 
-async function markRead(id){await apiCall('POST','/api/alerts/read',{alert_ids:[id]});loadAlerts()}
-async function dismiss(id){await apiCall('POST','/api/alerts/dismiss',{alert_ids:[id]});loadAlerts()}
+async function markRead(id){const r=await apiCall('POST','/api/alerts/read',{alert_ids:[id]});if(r.ok)loadAlerts();else toast('Failed to mark as read','error')}
+async function dismiss(id){const r=await apiCall('POST','/api/alerts/dismiss',{alert_ids:[id]});if(r.ok)loadAlerts();else toast('Failed to dismiss alert','error')}
 async function markAllRead(){
   const r=await fetch('/api/alerts?unread_only=true');const d=await r.json();
-  if(d.alerts.length){await apiCall('POST','/api/alerts/read',{alert_ids:d.alerts.map(a=>a.id)});loadAlerts();toast('All marked as read','success')}
+  if(d.alerts.length){const res=await apiCall('POST','/api/alerts/read',{alert_ids:d.alerts.map(a=>a.id)});if(res.ok){loadAlerts();toast('All marked as read','success')}else toast('Failed to mark all as read','error')}
 }
-async function dismissAll(){await apiCall('POST','/api/alerts/dismiss-all',{});loadAlerts();toast('All alerts dismissed','success')}
+async function dismissAll(){const r=await apiCall('POST','/api/alerts/dismiss-all',{});if(r.ok){loadAlerts();toast('All alerts dismissed','success')}else toast('Failed to dismiss alerts','error')}
 
 // Config
 async function loadConfig(){
-  const r=await fetch('/api/alerts/config');const d=await r.json();
+  let d;try{const r=await fetch('/api/alerts/config');d=await r.json()}catch(e){toast('Failed to load alert settings','error');return}
   const rows=document.getElementById('config-rows');
   rows.innerHTML=d.configs.map(c=>`<div class="cfg-row">
     <div><div style="font-weight:600">${esc(TYPE_LABELS[c.alert_type]||c.alert_type)}</div><div style="font-size:11px;color:var(--muted)">Get notified when items ${c.alert_type==='out_of_stock'?'reach zero stock':'fall below minimum quantity'}</div></div>
@@ -434,8 +434,8 @@ async function loadConfig(){
 }
 
 async function saveConfig(type,enabled,url){
-  await apiCall('PUT','/api/alerts/config',{alert_type:type,enabled:enabled,webhook_url:url});
-  toast('Settings saved','success');
+  const r=await apiCall('PUT','/api/alerts/config',{alert_type:type,enabled:enabled,webhook_url:url});
+  if(r.ok)toast('Settings saved','success');else toast('Failed to save settings','error');
 }
 
 loadAlerts();loadConfig();

@@ -1164,7 +1164,7 @@ function updateThemeIcon(theme){
   updateThemeIcon(t);
 })();
 
-async function apiCall(m,u,b){const o={method:m,headers:{'Content-Type':'application/json'}};if(b)o.body=JSON.stringify(b);const r=await fetch(u,o);return{ok:r.ok,status:r.status,data:await r.json()}}
+async function apiCall(m,u,b){const o={method:m,headers:{'Content-Type':'application/json'}};if(b)o.body=JSON.stringify(b);const r=await fetch(u,o);if(r.status===401){toast('Session expired — redirecting to login','warning',2000);setTimeout(()=>location.href='/auth/login',1500);return{ok:false,status:401,data:{error:'Session expired'}}}return{ok:r.ok,status:r.status,data:await r.json()}}
 function showErr(m){const e=document.getElementById('err');if(e){e.textContent=m;e.style.display='block'}toast(m,'error')}
 function showSuc(m){const e=document.getElementById('suc');if(e){e.textContent=m;e.style.display='block'}toast(m,'success')}
 function hideMsg(){document.querySelectorAll('.err,.suc').forEach(e=>e.style.display='none')}

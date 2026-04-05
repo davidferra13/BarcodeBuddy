@@ -429,6 +429,7 @@ function renderAudit(entries) {{
 function esc(s) {{ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }}
 
 async function changeRole(id, newRole) {{
+  const sel = event && event.target; if (sel) sel.disabled = true;
   const r = await fetch(`/admin/api/users/${{id}}/role`, {{
     method: 'PUT', headers: {{'Content-Type': 'application/json'}},
     body: JSON.stringify({{role: newRole}})
@@ -439,6 +440,7 @@ async function changeRole(id, newRole) {{
 }}
 
 async function toggleActive(id, current) {{
+  const btn = event && event.target; if (btn) btn.disabled = true;
   const r = await fetch(`/admin/api/users/${{id}}/active`, {{
     method: 'PUT', headers: {{'Content-Type': 'application/json'}},
     body: JSON.stringify({{is_active: !current}})
