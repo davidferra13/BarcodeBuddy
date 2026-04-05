@@ -7,8 +7,8 @@
 
 | Check | Result | Commit | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | 6a9d2d0 | 2026-04-05 |
-| Tests (`pytest`) | **GREEN** (325 passed, 65 subtests, 0 warnings) | 6a9d2d0 | 2026-04-05 |
+| Compilation (`compileall`) | **GREEN** | 5e792e7 | 2026-04-05 |
+| Tests (`pytest`) | **GREEN** (325 passed, 65 subtests, 0 warnings) | 5e792e7 | 2026-04-05 |
 
 ## Current Blockers
 
@@ -18,6 +18,7 @@ None known.
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 5e792e7 | unified tabs + skeletons + empty states |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 6a9d2d0 | design system enforcement |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 35aa253 | visual upgrade suite |
 | 2026-04-05 | compileall + pytest | GREEN (325 passed, 65 subtests, 0 warnings) | 6cddc6b | handoff audit + feedback + update |

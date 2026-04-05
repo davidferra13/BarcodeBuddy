@@ -115,3 +115,13 @@ Each entry follows this format:
 - Commits: 6a9d2d0
 - Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: Email report function (_render_daily_report_html) intentionally kept with hardcoded colors since CSS variables are unavailable in standalone HTML. Foundation utilities (.skeleton, .empty-state, .tab-bar, .fg .is-invalid, .cat-badge) are available for all pages to adopt incrementally.
+
+## 2026-04-05 — Unified Tabs + Skeleton Loaders + Empty States
+
+- Agent: general
+- Task: Completed adoption of layout.py foundation utilities across all pages. Migrated 4 page-specific tab implementations (dash-tabs in stats, alert-tabs in alerts, ana-tabs in inventory, duplicate tab-bar in team_routes) to shared .tab-pills/.tab-pill from layout.py. Added .tab-pills pill variant CSS to layout.py with dark mode support. Replaced all "Loading..." text with skeleton shimmer loaders. Upgraded bare empty states to .empty-state component with contextual SVG icons.
+- Status: completed
+- Files touched: app/layout.py, app/stats.py, app/alerts.py, app/inventory_pages.py, app/team_routes.py, app/activity.py, app/admin_routes.py
+- Commits: 5e792e7
+- Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: All tab CSS is now centralized in layout.py. Two variants available: .tab-bar/.tab-btn (underline) and .tab-pills/.tab-pill (pill/segment). Pages only need HTML classes, no local CSS definitions.
