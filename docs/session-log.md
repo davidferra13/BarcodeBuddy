@@ -95,3 +95,13 @@ Each entry follows this format:
 - Files touched: docs/session-log.md, docs/build-state.md, docs/current-system-truth.md, docs/danpack-builder-handoff.md
 - Commits: (this session)
 - Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
+
+## 2026-04-05 — Visual Upgrade Suite
+
+- Agent: general
+- Task: Implemented 7 visual upgrades to layout.py — site-wide dark mode with toggle + localStorage persistence, staggered card entrance animations, glassmorphism (backdrop-filter blur) on panels/KPI/stat cards, gradient accent borders on KPI cards, animated number counters, sidebar active glow, table row hover micro-interactions.
+- Status: completed
+- Files touched: app/layout.py
+- Commits: 35aa253
+- Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: All changes are CSS/JS only within layout.py. Zero new dependencies. Dark mode covers all page surfaces including topbar, sidebar, forms, tables, command palette, activity drawer, and chat panel. Theme persists via localStorage with flash-prevention script in head.
