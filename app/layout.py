@@ -203,6 +203,69 @@ _LAYOUT_CSS = """<style>
   --sidebar-collapsed-width: 64px;
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] {
+  --bg: #0f1419;
+  --sidebar-bg: #0a0e13;
+  --sidebar-text: #8b95a1;
+  --sidebar-active: #f0f4f8;
+  --sidebar-hover: rgba(255,255,255,0.06);
+  --sidebar-accent: #e8a04c;
+  --paper: rgba(22, 28, 36, 0.92);
+  --panel: rgba(30, 37, 48, 0.82);
+  --line: rgba(148, 163, 184, 0.10);
+  --text: #e2e8f0;
+  --muted: #8b95a1;
+  --accent: #e8a04c;
+  --success: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.10);
+  --success-border: rgba(52, 211, 153, 0.20);
+  --failure: #f87171;
+  --failure-bg: rgba(248, 113, 113, 0.10);
+  --failure-border: rgba(248, 113, 113, 0.20);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.10);
+  --info: #60a5fa;
+  --info-bg: rgba(96, 165, 250, 0.10);
+  --info-border: rgba(96, 165, 250, 0.20);
+  --track: #1e293b;
+}
+[data-theme="dark"] .topbar {
+  background: rgba(15, 20, 25, 0.85);
+}
+[data-theme="dark"] .sidebar {
+  border-right: 1px solid rgba(148, 163, 184, 0.06);
+}
+[data-theme="dark"] .btn-primary { background: #3b82f6; }
+[data-theme="dark"] .btn-primary:hover { background: #2563eb; }
+[data-theme="dark"] .btn-secondary { background: rgba(148,163,184,0.12); color: var(--text); }
+[data-theme="dark"] .btn-secondary:hover { background: rgba(148,163,184,0.2); }
+[data-theme="dark"] .fg input, [data-theme="dark"] .fg select, [data-theme="dark"] .fg textarea {
+  background: rgba(15, 20, 25, 0.6); border-color: rgba(148,163,184,0.15);
+}
+[data-theme="dark"] .search-bar input {
+  background: rgba(15, 20, 25, 0.6); border-color: rgba(148,163,184,0.15);
+}
+[data-theme="dark"] tbody tr:hover { background: rgba(255,255,255,0.02); }
+[data-theme="dark"] .cmd-dialog { background: #1e293b; }
+[data-theme="dark"] .cmd-item:hover, [data-theme="dark"] .cmd-item.selected { background: rgba(96,165,250,0.12); }
+[data-theme="dark"] .ra-drawer { background: #111827; }
+[data-theme="dark"] .ra-item:hover { background: rgba(255,255,255,0.02); }
+[data-theme="dark"] .dropzone { background: rgba(15,20,25,0.6); border-color: rgba(148,163,184,0.2); }
+[data-theme="dark"] .stat-card { background: var(--panel); }
+[data-theme="dark"] code { color: #93c5fd; }
+[data-theme="dark"] .nav-btn[data-tooltip]::after { background: #334155; }
+
+/* ── Theme toggle button ── */
+.theme-toggle {
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; transition: color 0.2s, transform 0.3s;
+  width: 20px; height: 20px;
+}
+.theme-toggle:hover { color: var(--text); transform: rotate(30deg); }
+.theme-toggle svg { width: 18px; height: 18px; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── Skip to content (accessibility) ── */
@@ -327,6 +390,7 @@ body {
 .nav-btn.active {
   background: rgba(232, 160, 76, 0.14);
   color: var(--sidebar-active);
+  box-shadow: -2px 0 12px rgba(232, 160, 76, 0.15);
 }
 
 .nav-btn.active::before {
@@ -336,6 +400,7 @@ body {
   width: 3px; height: 20px;
   background: var(--sidebar-accent);
   border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px rgba(232, 160, 76, 0.4);
 }
 
 .nav-icon { width: 20px; height: 20px; opacity: 0.7; flex-shrink: 0; }
@@ -536,6 +601,7 @@ body:has(.sidebar.collapsed) .main { margin-left: var(--sidebar-collapsed-width)
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   padding: 20px; margin-bottom: 20px;
 }
 
@@ -557,6 +623,7 @@ body:has(.sidebar.collapsed) .main { margin-left: var(--sidebar-collapsed-width)
   padding: 20px; border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--panel);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
@@ -575,10 +642,17 @@ body:has(.sidebar.collapsed) .main { margin-left: var(--sidebar-collapsed-width)
 
 .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
-.kpi.accent-green { border-left: 3px solid var(--success); }
-.kpi.accent-red { border-left: 3px solid var(--failure); }
-.kpi.accent-amber { border-left: 3px solid var(--warning); }
-.kpi.accent-blue { border-left: 3px solid var(--info); }
+/* Gradient accent borders via pseudo-element */
+.kpi.accent-green, .kpi.accent-red, .kpi.accent-amber, .kpi.accent-blue {
+  border-left: none; position: relative; overflow: hidden;
+}
+.kpi.accent-green::before, .kpi.accent-red::before, .kpi.accent-amber::before, .kpi.accent-blue::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px;
+}
+.kpi.accent-green::before { background: linear-gradient(180deg, #10b981, #1a7a54, #065f46); }
+.kpi.accent-red::before { background: linear-gradient(180deg, #f87171, #c0392b, #7f1d1d); }
+.kpi.accent-amber::before { background: linear-gradient(180deg, #fbbf24, #b8860b, #78350f); }
+.kpi.accent-blue::before { background: linear-gradient(180deg, #60a5fa, #2472a4, #1e3a5f); }
 
 .color-success { color: var(--success); }
 .color-failure { color: var(--failure); }
@@ -630,7 +704,8 @@ thead th {
   font-weight: 600; border-bottom: 2px solid var(--line); padding-bottom: 8px;
 }
 tbody td { border-bottom: 1px solid var(--line); }
-tbody tr:hover { background: rgba(0,0,0,0.015); }
+tbody tr { transition: background 0.15s, transform 0.15s; }
+tbody tr:hover { background: rgba(0,0,0,0.025); transform: translateX(3px); }
 tbody tr:last-child td { border-bottom: none; }
 
 /* ── Badges ── */
@@ -665,6 +740,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--panel); border-radius: 12px;
   padding: 14px; text-align: center;
   border: 1px solid var(--line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 .sb .v { font-size: 24px; font-weight: 700; color: var(--text); }
 .sb .l { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
@@ -755,11 +831,30 @@ tbody tr:last-child td { border-bottom: none; }
 .page-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
 
 /* ── Content entrance animation ── */
-.content { animation: contentIn 0.2s ease; }
+.content { animation: contentIn 0.25s ease; }
 @keyframes contentIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Staggered card entrance ── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.panel, .kpi, .sb, .stat-card {
+  animation: cardIn 0.35s cubic-bezier(.4,0,.2,1) both;
+}
+.kpi-grid .kpi:nth-child(1), .sr .sb:nth-child(1), .stats-grid .stat-card:nth-child(1) { animation-delay: 0s; }
+.kpi-grid .kpi:nth-child(2), .sr .sb:nth-child(2), .stats-grid .stat-card:nth-child(2) { animation-delay: 0.05s; }
+.kpi-grid .kpi:nth-child(3), .sr .sb:nth-child(3), .stats-grid .stat-card:nth-child(3) { animation-delay: 0.1s; }
+.kpi-grid .kpi:nth-child(4), .sr .sb:nth-child(4), .stats-grid .stat-card:nth-child(4) { animation-delay: 0.15s; }
+.kpi-grid .kpi:nth-child(5), .sr .sb:nth-child(5), .stats-grid .stat-card:nth-child(5) { animation-delay: 0.2s; }
+.kpi-grid .kpi:nth-child(6), .sr .sb:nth-child(6), .stats-grid .stat-card:nth-child(6) { animation-delay: 0.25s; }
+.panel:nth-of-type(1) { animation-delay: 0.05s; }
+.panel:nth-of-type(2) { animation-delay: 0.1s; }
+.panel:nth-of-type(3) { animation-delay: 0.15s; }
+.panel:nth-of-type(4) { animation-delay: 0.2s; }
 
 /* ── Quantity colors ── */
 .ql { color: var(--warning); }
@@ -912,6 +1007,28 @@ code {
 # ── Shared JS utilities ──────────────────────────────────────────────
 
 _LAYOUT_JS = """<script>
+/* ── Theme toggle ── */
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  const next=isDark?'light':'dark';
+  html.setAttribute('data-theme',next);
+  try{localStorage.setItem('bb_theme',next)}catch(e){}
+  updateThemeIcon(next);
+}
+function updateThemeIcon(theme){
+  const sun=document.getElementById('theme-icon-sun');
+  const moon=document.getElementById('theme-icon-moon');
+  if(sun&&moon){
+    sun.style.display=theme==='dark'?'block':'none';
+    moon.style.display=theme==='dark'?'none':'block';
+  }
+}
+(function(){
+  const t=document.documentElement.getAttribute('data-theme')||'light';
+  updateThemeIcon(t);
+})();
+
 async function apiCall(m,u,b){const o={method:m,headers:{'Content-Type':'application/json'}};if(b)o.body=JSON.stringify(b);const r=await fetch(u,o);return{ok:r.ok,status:r.status,data:await r.json()}}
 function showErr(m){const e=document.getElementById('err');if(e){e.textContent=m;e.style.display='block'}toast(m,'error')}
 function showSuc(m){const e=document.getElementById('suc');if(e){e.textContent=m;e.style.display='block'}toast(m,'success')}
@@ -1094,6 +1211,39 @@ document.addEventListener('keydown',e=>{
     if(ov.classList.contains('open'))closeCmdPalette();else openCmdPalette();
   }
 });
+
+/* ── Animated number counters ── */
+(function(){
+  function animateValue(el,start,end,duration){
+    if(start===end)return;
+    const range=end-start;
+    const startTime=performance.now();
+    const isFloat=String(end).includes('.');
+    const decimals=isFloat?(String(end).split('.')[1]||'').length:0;
+    const suffix=el.dataset.suffix||'';
+    const prefix=el.dataset.prefix||'';
+    function step(now){
+      const elapsed=now-startTime;
+      const progress=Math.min(elapsed/duration,1);
+      const eased=1-Math.pow(1-progress,3);
+      const current=start+range*eased;
+      el.textContent=prefix+(isFloat?current.toFixed(decimals):Math.round(current).toLocaleString())+suffix;
+      if(progress<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  document.querySelectorAll('.kpi-value').forEach(el=>{
+    const text=el.textContent.trim();
+    const match=text.match(/^([^0-9-]*)(-?[\\d,]+\\.?\\d*)(.*)$/);
+    if(!match)return;
+    const prefix=match[1];const numStr=match[2].replace(/,/g,'');const suffix=match[3];
+    const num=parseFloat(numStr);
+    if(isNaN(num)||num===0)return;
+    el.dataset.prefix=prefix;el.dataset.suffix=suffix;
+    el.textContent=prefix+'0'+suffix;
+    animateValue(el,0,num,800);
+  });
+})();
 
 /* ── Alert badge polling (sidebar + topbar) ── */
 (function(){
@@ -1395,6 +1545,7 @@ def render_shell(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try{{const t=localStorage.getItem('bb_theme');if(t)document.documentElement.setAttribute('data-theme',t)}}catch(e){{}}</script>
   <title>{_E(title)} - BarcodeBuddy</title>
   {_LAYOUT_CSS}
   {head_extra}
@@ -1447,6 +1598,20 @@ def render_shell(
           </svg>
           <span>Navigate...</span>
           <kbd>Ctrl K</kbd>
+        </button>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode"
+          onclick="toggleTheme()">
+          <svg id="theme-icon-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <circle cx="10" cy="10" r="4"/><path d="M10 2v2"/><path d="M10 16v2"/>
+            <path d="M3.5 3.5l1.4 1.4"/><path d="M15.1 15.1l1.4 1.4"/>
+            <path d="M2 10h2"/><path d="M16 10h2"/>
+            <path d="M3.5 16.5l1.4-1.4"/><path d="M15.1 4.9l1.4-1.4"/>
+          </svg>
+          <svg id="theme-icon-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 12.5A7 7 0 117.5 3a5.5 5.5 0 009.5 9.5z"/>
+          </svg>
         </button>
         <button id="recent-activity-btn" aria-label="Recent activity" title="Recent Activity"
           onclick="toggleRecentActivity()"
