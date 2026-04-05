@@ -105,3 +105,13 @@ Each entry follows this format:
 - Commits: 35aa253
 - Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: All changes are CSS/JS only within layout.py. Zero new dependencies. Dark mode covers all page surfaces including topbar, sidebar, forms, tables, command palette, activity drawer, and chat panel. Theme persists via localStorage with flash-prevention script in head.
+
+## 2026-04-05 — Design System Enforcement + Foundation Utilities
+
+- Agent: general
+- Task: Full UI/UX audit across all page-rendering files, then systematic enforcement. Added 5 foundation CSS utilities to layout.py (skeleton loading, empty state, unified tabs, form validation, semantic category badges). Replaced all native alert() with toast(). Converted 40 hardcoded hex colors to CSS variables across stats.py, activity.py, inventory_pages.py, team_routes.py, feedback.py. Migrated activity category badges to layout.py's .cat-badge system with dark mode support. Made chart/drawer colors resolve from CSS variables at runtime. Upgraded auth pages with CSS variables, matched fonts, card animation, glassmorphism, focus glow.
+- Status: completed
+- Files touched: app/layout.py, app/stats.py, app/activity.py, app/inventory_pages.py, app/team_routes.py, app/feedback.py, app/auth_routes.py
+- Commits: 6a9d2d0
+- Build state on departure: green (325 passed, 65 subtests, 0 warnings, compileall clean)
+- Notes: Email report function (_render_daily_report_html) intentionally kept with hardcoded colors since CSS variables are unavailable in standalone HTML. Foundation utilities (.skeleton, .empty-state, .tab-bar, .fg .is-invalid, .cat-badge) are available for all pages to adopt incrementally.
