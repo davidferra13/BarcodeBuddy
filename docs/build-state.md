@@ -52,3 +52,9 @@ Add a row to the History table (newest first, keep last 10 entries).
 ## Pre-Flight Caveat
 
 This file describes the last known state. Uncommitted changes since the last update are not reflected here. Always run the checks yourself if you need current truth.
+
+## 2026-09-24 (Claude): restored from GitHub after the 2026-09-17 wipe
+- Local tree and git were gone; `main` re-checked out at b1302f2 (2026-04-05). The 2026-09-11/12 work (scanner repair, `start-app.ps1 -Tunnel` opt-in fix, 542-test suite, locked deps) was never pushed and is not on any mounted drive.
+- New `.venv` from CPython 3.12.9 with `requirements.txt` (`requirements.lock` needs Python 3.13+).
+- `python -m compileall app`: exit 0. `pytest`: 356 passed, 65 subtests, 1 deprecation warning, 110s.
+- WARNING: this launcher revision auto-starts a public tunnel when cloudflared is present and stops every cloudflared process on the machine. Do not run `start-app.ps1` on a machine that hosts other tunnels until the opt-in fix is re-applied.
