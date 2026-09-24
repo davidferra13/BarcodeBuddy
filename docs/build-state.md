@@ -58,3 +58,11 @@ This file describes the last known state. Uncommitted changes since the last upd
 - New `.venv` from CPython 3.12.9 with `requirements.txt` (`requirements.lock` needs Python 3.13+).
 - `python -m compileall app`: exit 0. `pytest`: 356 passed, 65 subtests, 1 deprecation warning, 110s.
 - WARNING: this launcher revision auto-starts a public tunnel when cloudflared is present and stops every cloudflared process on the machine. Do not run `start-app.ps1` on a machine that hosts other tunnels until the opt-in fix is re-applied.
+
+## 2026-09-24 (Claude): launcher safety fix re-applied and guarded
+- `start-app.ps1`: public tunnel is now opt-in (`-Tunnel` switch or `BARCODEBUDDY_TUNNEL=1`); default run is local only and says so in the banner. Cleanup stops only cloudflared processes started with this install's config files or pointed at this app's port, never every cloudflared on the machine. Python resolves to `.venv\Scripts\python.exe` first, then the `py` launcher, then `python`; the hard-coded developer-machine interpreter path is gone. Import preflight fails fast with the pip command instead of crash-looping.
+- `install-autostart.ps1`: takes a matching `-Tunnel` switch and passes it through; the default task is described as local only.
+- `tests/test_windows_scripts.py` (new, 6 tests): opt-in guard, no blanket cloudflared kill, ownership decided by config paths, venv-first Python, install passthrough, and both scripts tokenized by PowerShell's own parser.
+- Proof run 2026-09-24 05:50 ET on the developer PC: launcher started local-only, app on 8080 answered 401 to an anonymous request and 503 on /health (no ingestion process), cloudflared count 0 before, during and after, no tunnel-url.txt written, port released after stop.
+- Full suite: see line below.
+- pytest: 362 passed, 1 warning, 65 subtests passed in 119.56s (0:01:59)
