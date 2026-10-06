@@ -1,42 +1,47 @@
 # Registers BarcodeBuddy as a Windows scheduled task that runs at logon.
 # Run this script once as Administrator.
 #
-# By default the task starts the app LOCAL ONLY. Pass -Tunnel to register a task that
-# also publishes a Cloudflare Tunnel (public URL) every time it starts:
-#   .\install-autostart.ps1 -Tunnel
+# Defaults are customer-safe: loopback-only web access and no public tunnel.
+# Pass -Lan to bind the web app to the LAN, and -Tunnel only when public
+# Cloudflare access is explicitly intended.
 
 [CmdletBinding()]
 param(
+    [string]$Config = "config.json",
+    [switch]$Lan,
     [switch]$Tunnel
 )
 
 $TaskName   = "BarcodeBuddy"
 $ScriptPath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "start-app.ps1"
 
-$ScriptArgs = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`""
+$ScriptArgs = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`" -Config `"$Config`""
+if ($Lan) {
+    $ScriptArgs += " -Lan"
+}
 if ($Tunnel) {
     $ScriptArgs += " -Tunnel"
-    $Description = "BarcodeBuddy app + Cloudflare tunnel (24/7 public access)"
-} else {
-    $Description = "BarcodeBuddy app (local only, http://localhost:8080)"
 }
 
-# Remove existing task if present
+if ($Tunnel) {
+    $Description = "BarcodeBuddy app + Cloudflare tunnel"
+} elseif ($Lan) {
+    $Description = "BarcodeBuddy app (LAN access enabled)"
+} else {
+    $Description = "BarcodeBuddy app (local only, loopback http://127.0.0.1:8080)"
+}
+
 Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
 
-$Action  = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument $ScriptArgs
-
+$Action  = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $ScriptArgs
 $Trigger = New-ScheduledTaskTrigger -AtLogon -User $env:USERNAME
-
 $Settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -RestartInterval (New-TimeSpan -Minutes 1) `
     -RestartCount 999 `
-    -ExecutionTimeLimit (New-TimeSpan -Days 0)  # no time limit
+    -ExecutionTimeLimit (New-TimeSpan -Days 0)
 
 Register-ScheduledTask `
     -TaskName $TaskName `
@@ -48,6 +53,7 @@ Register-ScheduledTask `
 
 Write-Host ""
 Write-Host "Scheduled task '$TaskName' registered: $Description" -ForegroundColor Green
+Write-Host "Config: $Config" -ForegroundColor Green
 Write-Host "It will auto-start at logon and restart if it crashes." -ForegroundColor Green
 Write-Host ""
 Write-Host "To remove: Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false" -ForegroundColor DarkGray

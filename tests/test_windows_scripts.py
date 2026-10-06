@@ -29,7 +29,7 @@ def test_launcher_scripts_exist():
 
 def test_start_app_tunnel_is_opt_in():
     text = _read(START_APP)
-    assert re.search(r"param\s*\(\s*\[switch\]\s*\$Tunnel", text), "start-app.ps1 must declare a -Tunnel switch"
+    assert re.search(r"\[switch\]\s*\$Tunnel", text), "start-app.ps1 must declare a -Tunnel switch"
     assert "BARCODEBUDDY_TUNNEL" in text, "environment override must be honoured"
     assert "Tunnel: OFF (local only)" in text, "local-only mode must be announced in the banner"
     assert re.search(r"if\s*\(\s*\$TunnelEnabled\s*\)\s*\{[^}]*Start-Tunnel", text, re.S), (
@@ -54,7 +54,7 @@ def test_start_app_prefers_project_venv():
 
 def test_install_autostart_passes_tunnel_through():
     text = _read(INSTALL_AUTOSTART)
-    assert re.search(r"param\s*\(\s*\[switch\]\s*\$Tunnel", text)
+    assert re.search(r"\[switch\]\s*\$Tunnel", text)
     assert re.search(r"if\s*\(\s*\$Tunnel\s*\)\s*\{[^}]*-Tunnel", text, re.S), (
         "the scheduled task must invoke start-app.ps1 -Tunnel only when installed with -Tunnel"
     )
@@ -87,3 +87,24 @@ def test_launcher_scripts_parse_as_powershell():
         except subprocess.TimeoutExpired:
             pytest.skip("PowerShell parser could not start within 15 seconds on this host")
         assert result.returncode == 0, f"{script.name} failed to parse: {result.stdout}{result.stderr}"
+
+
+def test_start_app_defaults_to_loopback_and_requires_lan_opt_in():
+    text = _read(START_APP)
+    assert re.search(r"\[string\]\s*\$Config\s*=\s*['\"]config\.json['\"]", text)
+    assert re.search(r"\[switch\]\s*\$Lan", text)
+    assert re.search(
+        r"\$BindHost\s*=\s*if\s*\(\s*\$Lan\s*\)\s*\{\s*['\"]0\.0\.0\.0['\"]\s*\}\s*else\s*\{\s*['\"]127\.0\.0\.1['\"]",
+        text,
+        re.S,
+    ), "LAN exposure must require -Lan; default must bind loopback"
+    assert '"--config", $ConfigPath' in text
+    assert '"--host", $BindHost' in text
+
+
+def test_install_autostart_passes_config_and_lan_through():
+    text = _read(INSTALL_AUTOSTART)
+    assert re.search(r"\[string\]\s*\$Config\s*=\s*['\"]config\.json['\"]", text)
+    assert re.search(r"\[switch\]\s*\$Lan", text)
+    assert "-Config" in text and "$Config" in text
+    assert re.search(r"if\s*\(\s*\$Lan\s*\)\s*\{[^}]*-Lan", text, re.S)

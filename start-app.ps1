@@ -19,11 +19,16 @@
 
 [CmdletBinding()]
 param(
+    [string]$Config = "config.json",
+    [switch]$Lan,
     [switch]$Tunnel
 )
 
 $AppDir       = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $AppPort      = 8080
+$ConfigPath   = if ([System.IO.Path]::IsPathRooted($Config)) { $Config } else { Join-Path $AppDir $Config }
+$ConfigPath   = [System.IO.Path]::GetFullPath($ConfigPath)
+$BindHost     = if ($Lan) { "0.0.0.0" } else { "127.0.0.1" }
 $LogDir       = Join-Path $AppDir "data\logs"
 $AppLog       = Join-Path $LogDir "app-stdout.log"
 $TunnelLog    = Join-Path $LogDir "tunnel.log"
@@ -73,7 +78,7 @@ function Start-App {
     Write-Host "[$(Get-Date -f 'HH:mm:ss')] Starting BarcodeBuddy app on port $AppPort..." -ForegroundColor Cyan
     $argList = @()
     if ($PyArgs) { $argList += $PyArgs }
-    $argList += @("stats.py", "--host", "0.0.0.0", "--port", "$AppPort")
+    $argList += @("stats.py", "--config", $ConfigPath, "--host", $BindHost, "--port", "$AppPort")
     $proc = Start-Process -FilePath $PyExe `
         -ArgumentList $argList `
         -WorkingDirectory $AppDir `
@@ -174,6 +179,12 @@ function Start-Tunnel {
 Write-Host "=== BarcodeBuddy Startup ===" -ForegroundColor Magenta
 Write-Host "Working directory: $AppDir"
 Write-Host "Python: $PyExe $PyArgs"
+Write-Host "Config: $ConfigPath"
+if ($Lan) {
+    Write-Host "Access: LAN ENABLED -> http://${BindHost}:$AppPort" -ForegroundColor Yellow
+} else {
+    Write-Host "Access: LOOPBACK ONLY -> http://127.0.0.1:$AppPort" -ForegroundColor Green
+}
 if (-not $TunnelEnabled) {
     Write-Host "Tunnel: OFF (local only) -> http://localhost:$AppPort" -ForegroundColor Yellow
     Write-Host "  Pass -Tunnel (or set BARCODEBUDDY_TUNNEL=1) to publish a public URL." -ForegroundColor DarkGray
