@@ -169,6 +169,12 @@ class BarcodeBuddyService:
                 debounce=self.settings.poll_interval_ms,
                 step=max(100, self.settings.poll_interval_ms // 2),
                 recursive=False,
+                # A file that has finished arriving produces no further change
+                # events, so the stability checks only advance on this timeout.
+                # Left at the library default (5 s) a quiet file reached the
+                # 10 s stuck-file limit before its checks completed and was
+                # rejected as FILE_LOCKED. Re-check on the configured interval.
+                rust_timeout=self.settings.poll_interval_ms,
                 yield_on_timeout=True,
             ):
                 self.process_pending_files()

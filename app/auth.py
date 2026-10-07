@@ -26,7 +26,10 @@ ROLE_LEVELS: dict[str, int] = {
 
 VALID_ROLES = frozenset(ROLE_LEVELS.keys())
 ASSIGNABLE_ROLES = ("admin", "manager", "user")  # owner is never assignable via API
-DEFAULT_OWNER_EMAIL = "mferragamo@danpack.com"
+# Neutral placeholder. It gates nothing: the first signup is only held to a
+# specific address when BB_OWNER_EMAIL is set explicitly for an installation.
+# The product core must never carry a real customer's address.
+DEFAULT_OWNER_EMAIL = "owner@barcodebuddy.invalid"
 _OWNER_EMAIL_EXPLICIT = bool((os.environ.get("BB_OWNER_EMAIL") or "").strip())
 OWNER_EMAIL = (os.environ.get("BB_OWNER_EMAIL", DEFAULT_OWNER_EMAIL) or DEFAULT_OWNER_EMAIL).strip().lower()
 

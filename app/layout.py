@@ -964,19 +964,25 @@ code {
   .sidebar-toggle { display: none; }
   .sidebar-overlay.open { display: block; opacity: 1; }
   .hamburger { display: flex; }
-  .main { margin-left: 0 !important; }
-  .content { padding: 16px; }
-  .topbar { padding: 12px 16px 12px 56px; }
+  /* min-width:0 lets the flex child shrink to the phone instead of growing to
+     its widest table; anything still wider scrolls sideways inside .content. */
+  .main { margin-left: 0 !important; min-width: 0; max-width: 100vw; }
+  .content { padding: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .topbar { padding: 12px 16px 12px 64px; }
   .fr, .fr3 { grid-template-columns: 1fr; }
   .sa { grid-template-columns: 1fr; }
   #mg { grid-template-columns: 1fr !important; }
+  /* Grid and flex children default to min-width:auto and stretch to their
+     widest table. Let them shrink, and let a wide table scroll in its panel. */
+  .content > *, .sa > *, #mg > * { min-width: 0; max-width: 100%; }
+  .panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .breadcrumbs { display: none; }
   .cmd-palette-trigger span { display: none; }
   .cmd-dialog { margin: 0 12px; }
 }
 
 @media (max-width: 480px) {
-  .topbar { padding: 10px 12px 10px 52px; }
+  .topbar { padding: 10px 12px 10px 64px; } /* clear the 40px menu button at left:12px */
   .content { padding: 12px; }
   .cmd-palette-trigger { padding: 5px 8px; }
 }

@@ -15,6 +15,16 @@ from pathlib import Path, PurePosixPath
 from app.config import load_settings
 
 MANIFEST = "manifest.json"
+_RUNTIME_ONLY_NAMES = frozenset({".service.lock"})
+_SQLITE_SIDECARS = (".db-wal", ".db-shm", ".db-journal")
+
+
+def _is_sqlite(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return handle.read(16) == b"SQLite format 3\x00"
+    except OSError:
+        return False
 
 
 def _safe_name(value: str) -> str:
@@ -141,6 +151,16 @@ def create_backup(
         for prefix, root in roots:
             for path, relative in _regular_files(root):
                 if prefix == "documents/processing" and relative.startswith(".journal/"):
+                    continue
+                if path.name in _RUNTIME_ONLY_NAMES or path.name.endswith(_SQLITE_SIDECARS):
+                    # Held open and byte-locked by the running services; not data.
+                    continue
+                if path.suffix == ".db" and _is_sqlite(path):
+                    # Never raw-copy a database that may be open: take a
+                    # consistent copy through SQLite's own backup API.
+                    live_copy = Path(stage) / f"live-{len(sources)}.db"
+                    _sqlite_snapshot(path, live_copy)
+                    sources.append((prefix + "/" + relative, live_copy))
                     continue
                 sources.append((prefix + "/" + relative, path))
         if database_path is not None:

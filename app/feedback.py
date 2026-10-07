@@ -37,9 +37,27 @@ class FeedbackSubmission(BaseModel):
     page_url: str = Field(default="", max_length=500)
 
 
+_configured_log_path: Path | None = None
+
+
+def configure_feedback_path(log_path: Path | None) -> None:
+    """Point feedback at the installation's configured log folder."""
+    global _configured_log_path
+    _configured_log_path = Path(log_path) if log_path is not None else None
+
+
 def _feedback_file() -> Path:
-    """Return the path to the feedback JSONL file."""
-    return Path(os.environ.get("BB_LOG_PATH", "data/logs")) / "feedback.jsonl"
+    """Return the path to the feedback JSONL file.
+
+    An explicit BB_LOG_PATH wins, then the running installation's configured
+    log folder. The relative default is only for running a bare router.
+    """
+    override = (os.environ.get("BB_LOG_PATH") or "").strip()
+    if override:
+        return Path(override) / "feedback.jsonl"
+    if _configured_log_path is not None:
+        return _configured_log_path / "feedback.jsonl"
+    return Path("data/logs") / "feedback.jsonl"
 
 
 def _append_feedback(entry: dict) -> None:

@@ -1203,7 +1203,9 @@ def create_stats_app(
     from app.scan_to_pdf import router as scan_to_pdf_router
     from app.team_routes import router as team_router
     from app.ai_routes import router as ai_router, set_app_settings as set_ai_app_settings
-    from app.feedback import router as feedback_router
+    from app.feedback import configure_feedback_path, router as feedback_router
+
+    configure_feedback_path(settings.log_path)
 
     # Initialize database
     db_path = settings.log_path / "barcode_buddy.db"
