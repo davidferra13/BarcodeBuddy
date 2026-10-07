@@ -77,7 +77,7 @@ class ItemUpdate(BaseModel):
     name: str | None = None
     sku: str | None = None
     description: str | None = None
-    quantity: int | None = None
+    quantity: int | None = Field(default=None, ge=0)
     unit: str | None = None
     location: str | None = None
     category: str | None = None
