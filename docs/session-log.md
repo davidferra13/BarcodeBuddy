@@ -146,3 +146,14 @@ Each entry follows this format:
 - Commits: 589cd7c, 3554d9a, plus the docs commit that carries this entry
 - Build state on departure: see docs/build-state.md, 2026-10-07 identity acceptance section
 - Notes: The hot folder never filed a quiet scan on a real install before this (rejected FILE_LOCKED after 10 s). Every earlier acceptance bypassed the watcher. Not pushed. Not merged into any other branch.
+
+
+## 2026-10-07 — BarcodeBuddy 3.0.0 filing release (tag v3.0.0)
+
+- Agent: Claude (Fable 5.1)
+- Task: Owner asked for one finished, demonstrable, sellable application with a defined finish line. Released the filing workflow as a licensed self-installed product: demo kit and script, license and order form, plain-language rejection reasons on the Documents screen, pinned dependencies, product-only release gate.
+- Status: completed (released); Windows-native install, real scanner and real customer documents still owed
+- Files touched: scripts/make_demo_kit.py, tests/test_demo_kit.py, tests/test_documents_view.py, app/release_gate.py, scripts/release_gate.py, tests/test_release_gate.py, app/stats.py, provision-customer.ps1, update-app.ps1, constraints.txt, THIRD-PARTY-NOTICES.md, sales/LICENSE-AGREEMENT.md, sales/ORDER-FORM.md, sales/DEMO.md, sales/OFFER.md, sales/STATEMENT-OF-WORK.md, docs/customer/ACCEPTANCE.md, release/README.md, release/RELEASE-NOTES.md
+- Commits: 9f01b66, 21ad5b4 (tag v3.0.0; main fast-forwarded from ee9ba78)
+- Build state on departure: green on a clean machine (release gate ready, 479 passed, 1 skipped); see docs/build-state.md
+- Notes: docs/session-digests/2026-10-07-filing-release-3.0.0.md. Verification ran on a clean Linux machine because the developer PC was out of memory.
