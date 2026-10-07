@@ -78,14 +78,20 @@ def run_launcher_gate(repo: Path, report_dir: Path) -> dict:
     )
     try:
         cases = ET.parse(report).getroot().findall(".//testcase")
-        probes = [case for case in cases if case.get("name") == "test_native_launcher_preserves_spaces_and_customer_port"]
-        executed = len(probes) == 1 and all(probes[0].find(tag) is None for tag in ("skipped", "failure", "error"))
+        def probe_passed(name: str) -> bool:
+            probes = [case for case in cases if case.get("name") == name]
+            return len(probes) == 1 and all(
+                probes[0].find(tag) is None for tag in ("skipped", "failure", "error")
+            )
+        executed = probe_passed("test_native_launcher_preserves_spaces_and_customer_port")
+        parsed = probe_passed("test_launcher_scripts_parse_as_powershell")
     except (OSError, ET.ParseError):
-        executed = False
+        executed = parsed = False
     result["native_probe_passed"] = executed
-    result["passed"] = result.get("passed") is True and executed
-    if not executed:
-        result["error"] = "Native launcher probe did not pass; missing or skipped evidence is not readiness."
+    result["native_parser_passed"] = parsed
+    result["passed"] = result.get("passed") is True and executed and parsed
+    if not executed or not parsed:
+        result["error"] = "Native launcher and parser probes must pass; missing or skipped evidence is not readiness."
     return result
 
 
@@ -135,6 +141,52 @@ def run_synthetic_acceptance(config_path: Path, report_dir: Path) -> dict:
         else:
             cases.append({"id": "second-id", "file": invalid.name,
                           "expected": {"status": "success", "barcode": "SHIP-810002"}})
+        # Exercise actual decoding across same-page conflicts and document pages.
+        first = base / "first-routing-id.png"
+        second = base / "second-routing-id.png"
+        repeated = base / "repeated-routing-id.png"
+        conflict = base / "conflicting-image.png"
+        mixed_pdf = base / "mixed-document.pdf"
+        repeated_pdf = base / "repeated-id.pdf"
+        save_barcode("PO-810003", first, format="Code128", scale=5)
+        save_barcode("PO-810004", second, format="Code128", scale=5)
+        save_barcode("PO-810005", repeated, format="Code128", scale=5)
+        with Image.open(first) as image_a, Image.open(second) as image_b:
+            page_a, page_b = image_a.convert("RGB"), image_b.convert("RGB")
+            try:
+                canvas = Image.new("RGB", (max(page_a.width, page_b.width) + 100,
+                                          page_a.height + page_b.height + 150), "white")
+                try:
+                    canvas.paste(page_a, (50, 50))
+                    canvas.paste(page_b, (50, page_a.height + 100))
+                    canvas.save(conflict)
+                finally:
+                    canvas.close()
+                page_a.save(mixed_pdf, "PDF", save_all=True, append_images=[page_b])
+            finally:
+                page_a.close()
+                page_b.close()
+        with Image.open(repeated) as image:
+            page = image.convert("RGB")
+            try:
+                page.save(repeated_pdf, "PDF", save_all=True, append_images=[page])
+            finally:
+                page.close()
+        if settings.max_pages_scan < 2:
+            mixed_expected = repeated_expected = {"status": "failure", "reason": "PROCESSING_TIMEOUT"}
+        else:
+            mixed_expected = (
+                {"status": "failure", "reason": "AMBIGUOUS_BARCODE"}
+                if settings.scan_all_pages
+                else {"status": "success", "barcode": "PO-810003"}
+            )
+            repeated_expected = {"status": "success", "barcode": "PO-810005"}
+        cases.extend([
+            {"id": "conflicting-image", "file": conflict.name,
+             "expected": {"status": "failure", "reason": "AMBIGUOUS_BARCODE"}},
+            {"id": "mixed-pdf", "file": mixed_pdf.name, "expected": mixed_expected},
+            {"id": "repeated-id-pdf", "file": repeated_pdf.name, "expected": repeated_expected},
+        ])
         manifest = base / "manifest.json"
         manifest.write_text(json.dumps({"customer": "Internal synthetic fixtures", "workflow": settings.workflow_key, "cases": cases}))
         report = run_acceptance(config_path, manifest, report_dir)
@@ -170,6 +222,61 @@ def _attempt(callback) -> dict:
         return callback()
     except Exception as error:
         return {"passed": False, "error": type(error).__name__}
+
+
+def run_acquisition_gate(repo: Path, report_dir: Path, *, timeout_s: float = 600) -> dict:
+    """Require the committed BarcodeBuddy factory contract, not only site health."""
+    repo = repo.resolve()
+    required = [
+        "package.json", "products/barcodebuddy/product.release.json",
+        "products/barcodebuddy/offer.public.json", "products/barcodebuddy/instance-config.schema.json",
+        "factory/adapters/barcodebuddy.mjs", "factory/core/validation.mjs",
+        "factory/schemas/product-release.schema.json", "tests/factory/barcodebuddy-adapter.test.mjs",
+    ]
+    missing = [name for name in required if not (repo/name).is_file() or (repo/name).is_symlink()]
+    if missing:
+        return {"passed": False, "missing": missing,
+                "error": "BarcodeBuddy-specific Built To Own integration contract is missing."}
+    try:
+        package = json.loads((repo/"package.json").read_text(encoding="utf-8"))
+        manifest = json.loads((repo/"products/barcodebuddy/product.release.json").read_text(encoding="utf-8"))
+        correct_identity = isinstance(package, dict) and package.get("name") == "builttoown" and isinstance(manifest, dict) and manifest.get("product_key") == "barcodebuddy"
+    except (OSError, ValueError):
+        correct_identity = False
+    if not correct_identity:
+        return {"passed": False, "error": "BarcodeBuddy acquisition identity is invalid."}
+    before = capture_git_identity(repo)
+    if not before.get("revision") or before.get("dirty") is not False:
+        return {"passed": False, "source_before": before,
+                "error": "Built To Own source must be a clean committed revision; peer work is preserved."}
+    node = shutil.which("node")
+    npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
+    if not node or not npm:
+        return {"passed": False, "error": "Node/npm unavailable", "source_before": before}
+    validate = (
+        "const fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url');"
+        "import(pathToFileURL(path.resolve('factory/core/validation.mjs')).href).then(({createValidators})=>{"
+        "const v=createValidators({schemaDir:path.resolve('factory/schemas')});"
+        "v.assertProductManifest(JSON.parse(fs.readFileSync('products/barcodebuddy/product.release.json','utf8')));"
+        "}).catch(e=>{console.error(e.message);process.exitCode=1});"
+    )
+    checks = {}
+    commands = [
+        ("manifest", [node, "-e", validate]),
+        ("adapter_tests", [node, "--test", "tests/factory/barcodebuddy-adapter.test.mjs"]),
+        ("site_verify", [npm, "run", "verify"]),
+    ]
+    for name, command in commands:
+        checks[name] = run_command(command, repo, report_dir/f"acquisition-{name}.log", timeout_s=timeout_s)
+        if checks[name].get("passed") is not True:
+            break
+    identity = verify_git_identity(before, capture_git_identity(repo))
+    return {
+        "passed": len(checks) == len(commands) and all(check.get("passed") is True for check in checks.values()) and identity["passed"],
+        "verification_contract": "builttoown-factory-barcodebuddy-v1",
+        "checks": checks, "source_before": before, "source_after": identity["source_after"],
+        "git": identity,
+    }
 
 
 def run_release_gate(repo: Path, report_dir: Path, *, acquisition_repo: Path | None = None,
@@ -212,11 +319,7 @@ def run_release_gate(repo: Path, report_dir: Path, *, acquisition_repo: Path | N
     missing = [name for name in required if not (repo/name).is_file()]
     gates["customer_package"] = {"passed": not missing, "missing": missing}
     if acquisition_repo is not None:
-        npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
-        if npm:
-            gates["acquisition"] = run_command([npm, "run", "verify"], acquisition_repo, report_dir/"acquisition.log", timeout_s=timeout_s)
-        else:
-            gates["acquisition"] = {"passed": False, "error": "npm unavailable"}
+        gates["acquisition"] = _attempt(lambda: run_acquisition_gate(acquisition_repo, report_dir, timeout_s=timeout_s))
     else:
         gates["acquisition"] = {"passed": False, "error": "Built To Own verification target not supplied"}
     gates["git"] = verify_git_identity(source_before, capture_git_identity(repo))
