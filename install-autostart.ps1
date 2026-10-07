@@ -9,7 +9,9 @@
 param(
     [string]$Config = "config.json",
     [switch]$Lan,
-    [switch]$Tunnel
+    [switch]$Tunnel,
+    [string]$PublicHostname = "",
+    [switch]$NoIngestion
 )
 
 $TaskName   = "BarcodeBuddy"
@@ -21,6 +23,12 @@ if ($Lan) {
 }
 if ($Tunnel) {
     $ScriptArgs += " -Tunnel"
+}
+if ($PublicHostname) {
+    $ScriptArgs += " -PublicHostname `"$PublicHostname`""
+}
+if ($NoIngestion) {
+    $ScriptArgs += " -NoIngestion"
 }
 
 if ($Tunnel) {

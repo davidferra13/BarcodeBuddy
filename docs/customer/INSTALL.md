@@ -22,3 +22,19 @@ Start the worker and web application in separate terminals:
 Open http://127.0.0.1:8080 locally, create the installation owner account, and close open signup from owner settings before adding users. Keep LAN/public exposure off unless specifically approved and configured for the customer.
 
 Run sample acceptance before enabling scanner intake. See ACCEPTANCE.md. A successful synthetic reference test is not acceptance of the buyer's paperwork.
+
+## Unattended operation
+
+The two terminals above stop when the window closes or the PC restarts. For day-to-day use, start both with the launcher, which also restarts either one if it stops:
+
+```powershell
+.\start-app.ps1 -Config ".\config.customer.json"
+```
+
+To start it automatically at logon, run once in PowerShell opened as Administrator:
+
+```powershell
+.\install-autostart.ps1 -Config ".\config.customer.json"
+```
+
+Both commands keep the web application on this PC only. `-Lan` opens it to the local network. `-Tunnel` publishes it through Cloudflare and is never on by default; a permanent address additionally needs `-PublicHostname` with the customer's own DNS name. No hostname is built into the product.
