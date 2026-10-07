@@ -1,23 +1,30 @@
 # Build State
 
-> Last updated: 2026-04-05
-> Updated by: full state verification at HEAD
+> Last updated: 2026-10-07
+> Updated by: native integration verification; see the source-bound session digest
 
 ## Current State
 
-| Check | Result | Commit | Date |
+| Check | Result | Candidate | Date |
 |---|---|---|---|
-| Compilation (`compileall`) | **GREEN** | fb00b0a | 2026-04-05 |
-| Tests (`pytest`) | **GREEN** (356 passed, 65 subtests, 0 warnings) | fb00b0a | 2026-04-05 |
+| Compilation | **GREEN** (app, tests, main.py, stats.py) | native-integration-20261007-1120 | 2026-10-07 |
+| Full native suite | **GREEN** (474 passed, 2 skipped, 1 warning, 70 subtests passed in 439.94s (0:07:19)) | b720fd8 + f5a32c8 + f6f260f + owned fixes | 2026-10-07 |
+| Actual web + watcher runtime | **GREEN** (health, auth, routing/rejection, rendered branding, SQLite/document restore, owned cleanup) | isolated synthetic runtime | 2026-10-07 |
+| Installed Windows launcher | **OPEN** (two required native probes skipped on this host) | customer release blocked | 2026-10-07 |
 
 ## Current Blockers
 
-None known.
+- Native Windows PowerShell parser and launcher execution are unverified. Linux PowerShell and direct native Python proofs do not replace them.
+- Repository publication is outside the enabled native broker's repository scope. Nothing was pushed or deployed.
+- Actual installed scanner, autostart/reboot, target recovery, owner/customer acceptance and applicable role/device/concurrency checks remain open.
+
+Evidence prefix: C:/Users/david/AppData/Local/Temp/bb-native-integration-20261007-1120; detailed rulings and limits: docs/session-digests/2026-10-07-native-integration.md. Capability implementation does not certify a customer installation.
 
 ## History
 
 | Date | Check | Result | Commit | Agent |
 |---|---|---|---|---|
+| 2026-10-07 | full native suite + compilation + isolated live runtime | GREEN; launcher/install release gates OPEN | native-integration-20261007-1120 | Codex |
 | 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | fb00b0a | error handling: fetch resilience, modal Escape, logout robustness |
 | 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | 68a2987 | full-system audit: session expiry, edit guard, txn export, pagination, task safety |
 | 2026-04-05 | compileall + pytest | GREEN (356 passed, 65 subtests, 0 warnings) | 16174dd | inventory UX: sorting, quick-filters, URL pre-fill, dashboard health |

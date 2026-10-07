@@ -155,3 +155,46 @@ def test_backup_rejects_symlinks_in_metadata(tmp_path):
         pytest.skip("Creating symlinks is unavailable on this Windows account")
     with pytest.raises(ValueError, match="symlink"):
         api().create_backup(config, tmp_path / "backup.zip")
+
+
+def test_backup_with_active_workflow_lock_excludes_runtime_ownership(tmp_path):
+    from app.runtime_lock import ServiceLock
+    config, settings = fixture(tmp_path)
+    lock_path = settings.log_path / ".service.lock"
+    with ServiceLock(lock_path, metadata={"workflow": settings.workflow_key, "pid": 12345}):
+        archive = tmp_path / "active-workflow.zip"
+        result = api().create_backup(config, archive, include_documents=True)
+        assert result["verified"] is True
+        restored = tmp_path / "restored"
+        api().verified_extract(archive, restored)
+        assert not (restored / "logs/.service.lock").exists()
+        assert (restored / "logs/events.jsonl").read_text() == '{"event":"success"}\n'
+        assert (restored / "documents/output/PO-1.pdf").read_bytes() == b"private-document"
+
+
+def test_live_database_in_log_folder_is_restored_only_from_snapshot(tmp_path):
+    from contextlib import closing
+    config, settings = fixture(tmp_path)
+    database = settings.log_path / "barcode_buddy.db"
+    unrelated = settings.log_path / "other.db"
+    unrelated.write_bytes(b"retain unrelated recorded file")
+    with closing(sqlite3.connect(database)) as live:
+        live.execute("PRAGMA journal_mode=WAL")
+        live.execute("CREATE TABLE proof (value TEXT)")
+        live.execute("INSERT INTO proof VALUES ('committed-reference-row')")
+        live.commit()
+        archive = tmp_path / "live-log-database.zip"
+        result = api().create_backup(config, archive, database_path=database)
+        members = {m["path"] for m in result["manifest"]["members"]}
+        assert "database/barcode_buddy.db" in members
+        assert not any(m in members for m in (
+            "logs/barcode_buddy.db", "logs/barcode_buddy.db-wal",
+            "logs/barcode_buddy.db-shm", "logs/barcode_buddy.db-journal",
+        ))
+        restored = tmp_path / "restored"
+        api().verified_extract(archive, restored)
+        with closing(sqlite3.connect(restored / "database/barcode_buddy.db")) as copied:
+            assert copied.execute("SELECT value FROM proof").fetchall() == [("committed-reference-row",)]
+            assert copied.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+        assert (restored / "logs/other.db").read_bytes() == unrelated.read_bytes()
+        assert live.execute("SELECT value FROM proof").fetchall() == [("committed-reference-row",)]

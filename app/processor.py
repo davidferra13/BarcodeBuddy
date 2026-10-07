@@ -169,6 +169,7 @@ class BarcodeBuddyService:
                 debounce=self.settings.poll_interval_ms,
                 step=max(100, self.settings.poll_interval_ms // 2),
                 recursive=False,
+                rust_timeout=self.settings.poll_interval_ms,
                 yield_on_timeout=True,
             ):
                 self.process_pending_files()

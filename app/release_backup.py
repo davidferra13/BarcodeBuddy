@@ -138,8 +138,18 @@ def create_backup(
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="barcodebuddy-backup-") as stage:
         sources = [("config/config.customer.json", config)]
+        # Process ownership is ephemeral; capture the explicit DB only via SQLite backup.
+        database_files = set()
+        if database_path is not None:
+            live_database = database_path.resolve()
+            database_files = {live_database, *(Path(str(live_database) + suffix)
+                                              for suffix in ("-wal", "-shm", "-journal"))}
         for prefix, root in roots:
             for path, relative in _regular_files(root):
+                if prefix == "logs" and relative == ".service.lock":
+                    continue
+                if path.resolve() in database_files:
+                    continue
                 if prefix == "documents/processing" and relative.startswith(".journal/"):
                     continue
                 sources.append((prefix + "/" + relative, path))

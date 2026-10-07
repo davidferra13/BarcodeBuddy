@@ -23,7 +23,7 @@ def isolated_database_globals():
 def test_real_reference_probes_and_evidence(tmp_path):
     root = tmp_path / "reference"
     report = run_reference_acceptance(root)
-    assert report["passed"] is True
+    assert report["passed"] is True, json.dumps(report, sort_keys=True)
     assert report["synthetic"] is True
     assert report["customer_approval"] is False
     assert report["deployment_verified"] is False
@@ -85,7 +85,7 @@ def test_cli_writes_machine_readable_receipt_and_refuses_overwrite(tmp_path):
                             capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stderr
     report = json.loads(receipt.read_text(encoding="utf-8"))
-    assert report["passed"] is True
+    assert report["passed"] is True, json.dumps(report, sort_keys=True)
     assert all(p["passed"] for p in report["probes"])
     original = receipt.read_bytes()
     again = subprocess.run([sys.executable, str(script), "--output", str(receipt)],

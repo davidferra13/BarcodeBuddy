@@ -135,3 +135,14 @@ Each entry follows this format:
 - Commits: bdbbc96
 - Build state on departure: green (353 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: System audit covered all user types (owner, admin, manager, user), all workflows (inventory CRUD, team management, alerts, scanning, AI chat), security (RBAC, session management, input validation), and data integrity (activity logging completeness, session cleanup). No remaining high-impact gaps found.
+
+
+## 2026-10-07 — Native watcher, launcher and resource integration
+
+- Agent: Codex
+- Task: Integrate committed branding, web/ingestion launcher and stock validation; repair reproduced watcher scheduling and native math/image allocation failures.
+- Status: local implementation verified; customer release blocked.
+- Files touched: app/__init__.py, app/ai_tools.py, app/barcode.py, app/inventory_routes.py, app/processor.py, app/release_backup.py, docs/PRODUCT_BLUEPRINT.md, docs/build-state.md, docs/customer/INSTALL.md, docs/session-digests/2026-10-07-identity-audit.md, docs/session-digests/2026-10-07-launcher-ingestion-and-identity.md, docs/session-digests/2026-10-07-native-integration.md, docs/session-log.md, install-autostart.ps1, start-app.ps1, tests/test_factory_acceptance.py, tests/test_inventory.py, tests/test_native_resource_defaults.py, tests/test_release_backup.py, tests/test_watcher_runtime.py, tests/test_windows_scripts.py
+- Commits: input b720fd8, f5a32c8 and f6f260f; resulting commit recorded in the integration receipt.
+- Build state on departure: 474 passed, 2 skipped, 1 warning, 70 subtests passed in 439.94s (0:07:19); compilation and isolated live runtime passed.
+- Notes: Full scanner and protected processor method ASTs preserved apart from the watcher wait keyword. Auth/database bytes match the branding parent. Native PowerShell skips, installed hardware/reboot/acceptance and repository publication remain open. No peer tree or customer data was changed.

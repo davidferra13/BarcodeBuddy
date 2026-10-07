@@ -1,5 +1,7 @@
 # BarcodeBuddy - Self-healing startup script
-# Starts the stats/web app and watches it, restarting it if it crashes.
+# Starts the web app AND the ingestion service (the process that watches the scan
+# folder and files documents) and restarts either one if it stops.
+# Pass -NoIngestion only when ingestion is run separately.
 # Run this once; it loops forever. Ctrl+C to stop.
 #
 # PUBLIC ACCESS IS OPT-IN. By default the app is LOCAL ONLY (http://localhost:8080).
@@ -7,12 +9,11 @@
 #   .\start-app.ps1 -Tunnel            (or set BARCODEBUDDY_TUNNEL=1 in the environment)
 #
 # TUNNEL MODES (only when -Tunnel is given):
-#   Named tunnel (permanent URL) - uses the customer hostname when its zone is on Cloudflare
+#   Named tunnel (permanent URL) - only with -PublicHostname <name> (or BARCODEBUDDY_PUBLIC_HOSTNAME)
 #   Quick tunnel (temporary URL)  - fallback *.trycloudflare.com URL, changes on restart
 #
-# The script auto-detects which mode to use. To switch to the permanent URL,
-# add the customer domain to Cloudflare and run:
-#   cloudflared tunnel route dns barcodebuddy app.danpack.com
+# No hostname is built in. Each installation supplies its own. To use a permanent URL,
+# add the customer domain to Cloudflare, route it to the tunnel, and pass -PublicHostname.
 #
 # SAFETY: this script never stops cloudflared processes it does not own. Only tunnels
 # started with this install's config files or pointed at this app's port are cleaned up.
@@ -21,7 +22,9 @@
 param(
     [string]$Config = "config.json",
     [switch]$Lan,
-    [switch]$Tunnel
+    [switch]$Tunnel,
+    [string]$PublicHostname = "",
+    [switch]$NoIngestion
 )
 
 function Get-AppPort {
@@ -39,11 +42,16 @@ $AppPort      = Get-AppPort $ConfigPath
 $BindHost     = if ($Lan) { "0.0.0.0" } else { "127.0.0.1" }
 $LogDir       = Join-Path $AppDir "data\logs"
 $AppLog       = Join-Path $LogDir "app-stdout.log"
+$IngestLog    = Join-Path $LogDir "ingestion-stdout.log"
 $TunnelLog    = Join-Path $LogDir "tunnel.log"
 $UrlFile      = Join-Path $LogDir "tunnel-url.txt"
 $QuickCfg     = Join-Path $LogDir "quick-tunnel.yml"
 $TunnelConfig = "$env:USERPROFILE\.cloudflared\barcodebuddy.yml"
-$PermanentUrl = "https://app.danpack.com"
+if (-not $PublicHostname) { $PublicHostname = "$env:BARCODEBUDDY_PUBLIC_HOSTNAME".Trim() }
+if ($PublicHostname -and ($PublicHostname -notmatch '^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')) {
+    throw "PublicHostname must be a plain DNS name such as docs.example.com."
+}
+$PermanentUrl = if ($PublicHostname) { "https://$PublicHostname" } else { "" }
 
 $TunnelEnabled = [bool]$Tunnel -or ($env:BARCODEBUDDY_TUNNEL -eq '1')
 
@@ -78,9 +86,9 @@ if ($LASTEXITCODE -ne 0) {
 
 # Detect whether the named tunnel config + DNS are ready (only matters with -Tunnel)
 $UseNamedTunnel = $false
-if ($TunnelEnabled -and (Test-Path $TunnelConfig)) {
+if ($TunnelEnabled -and $PublicHostname -and (Test-Path $TunnelConfig)) {
     try {
-        $dns = Resolve-DnsName "app.danpack.com" -Type CNAME -ErrorAction Stop 2>$null
+        $dns = Resolve-DnsName $PublicHostname -Type CNAME -ErrorAction Stop 2>$null
         if ($dns -and ($dns.NameHost -match 'cfargotunnel\.com')) {
             $UseNamedTunnel = $true
         }
@@ -101,6 +109,23 @@ function Start-App {
         -RedirectStandardError  "$AppLog.err" `
         -PassThru -NoNewWindow
     Write-Host "[$(Get-Date -f 'HH:mm:ss')] App started (PID $($proc.Id))" -ForegroundColor Green
+    return $proc
+}
+
+function Start-Ingestion {
+    Write-Host "[$(Get-Date -f 'HH:mm:ss')] Starting BarcodeBuddy ingestion service..." -ForegroundColor Cyan
+    $argList = @()
+    if ($PyArgs) { $argList += $PyArgs }
+    $argList += @("main.py", "--config", $ConfigPath)
+    # Start-Process joins its array into a native command line; protect spaces.
+    $NativeArgs = @($argList | ForEach-Object { [string]([char]34) + $_ + [char]34 })
+    $proc = Start-Process -FilePath $PyExe `
+        -ArgumentList $NativeArgs `
+        -WorkingDirectory $AppDir `
+        -RedirectStandardOutput $IngestLog `
+        -RedirectStandardError  "$IngestLog.err" `
+        -PassThru -NoNewWindow
+    Write-Host "[$(Get-Date -f 'HH:mm:ss')] Ingestion started (PID $($proc.Id))" -ForegroundColor Green
     return $proc
 }
 
@@ -220,6 +245,12 @@ if ($TunnelEnabled) {
 }
 
 $appProc    = Start-App
+$ingestProc = $null
+if (-not $NoIngestion) {
+    $ingestProc = Start-Ingestion
+} else {
+    Write-Host "Ingestion: NOT started by this launcher (-NoIngestion). Documents are filed only while main.py runs." -ForegroundColor Yellow
+}
 $tunnelProc = $null
 if ($TunnelEnabled) {
     Start-Sleep -Seconds 3   # let the app bind its port before the tunnel tries to reach it
@@ -233,6 +264,11 @@ while ($true) {
     if ($appProc.HasExited) {
         Write-Host "[$(Get-Date -f 'HH:mm:ss')] App exited (code $($appProc.ExitCode)). Restarting..." -ForegroundColor Red
         $appProc = Start-App
+    }
+
+    if ($ingestProc -and $ingestProc.HasExited) {
+        Write-Host "[$(Get-Date -f 'HH:mm:ss')] Ingestion exited (code $($ingestProc.ExitCode)). Restarting..." -ForegroundColor Red
+        $ingestProc = Start-Ingestion
     }
 
     if ($TunnelEnabled -and $tunnelProc -and $tunnelProc.HasExited) {
