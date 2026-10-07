@@ -40,3 +40,10 @@ def test_rejection_without_barcode_and_success_rows():
 def test_reason_text_is_escaped():
     row = _render_recent_row(_event(status="failure", error_code=None, reason="<script>x</script>", barcode=None))
     assert "<script>" not in row
+
+
+def test_sidebar_names_the_licensed_product_when_no_buyer_name_is_set():
+    from app.layout import render_shell
+    html = render_shell(title="Dashboard", active_nav="dashboard", body_html="<p>x</p>")
+    assert ">Document Filing</div>" in html
+    assert ">Inventory Management</div>" not in html

@@ -6,7 +6,7 @@ DRAFT TEMPLATE. Not legal advice. Have a lawyer review it before the first signa
 
 1. Fill in the Licensor's legal name. Decide which company sells software. Do not assume it is the same company that runs the chef business.
 2. Confirm the license fee and the optional support price on the Order Form.
-3. Resolve the PDF library license. BarcodeBuddy reads PDFs with PyMuPDF, which is published under the GNU AGPL or a paid commercial license from Artifex. Shipping it inside a closed, no-resale license may conflict with the AGPL. Before the first sale, either buy the commercial PyMuPDF license, or have the PDF reading moved to a permissively licensed library, or take legal advice that the current setup is fine. Every other library BarcodeBuddy installs is under a permissive license (MIT, BSD, Apache 2.0 or similar).
+3. Third-party licenses: settled in version 3.1.0. PDF reading moved from PyMuPDF (AGPL or paid license) to PDFium, and report writing to ReportLab, both permissively licensed. Every library BarcodeBuddy installs is now under a permissive license (MIT, BSD, Apache 2.0 or similar); see THIRD-PARTY-NOTICES.md. A test fails the build if a GPL or AGPL library is added.
 4. Have a lawyer in the buyer's state read sections 7 to 10.
 
 ---

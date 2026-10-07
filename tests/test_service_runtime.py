@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import fitz
 from PIL import Image
 
 from app.barcode import BarcodeCandidate
@@ -505,13 +504,8 @@ class BarcodeBuddyRuntimeContractTests(unittest.TestCase):
         image.save(path, format=image_format)
 
     def _make_pdf(self, path: Path, *, pages: int = 1) -> None:
-        document = fitz.open()
-        try:
-            for _ in range(pages):
-                document.new_page(width=200, height=100)
-            document.save(path)
-        finally:
-            document.close()
+        frames = [Image.new("RGB", (200, 100), "white") for _ in range(pages)]
+        frames[0].save(path, "PDF", resolution=72, save_all=True, append_images=frames[1:])
 
     def _candidate(
         self,

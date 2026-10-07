@@ -34,7 +34,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(REPO))
 
 import httpx
-import pymupdf
+import pypdfium2 as pdfium
 from PIL import Image, ImageDraw
 from starlette.testclient import TestClient
 
@@ -43,6 +43,44 @@ from app.barcode_generator import generate_barcode_image
 from app.config import Settings, ensure_runtime_directories, load_settings
 
 PASS, FAIL, BLOCKED = "PASS", "FAIL", "BLOCKED"
+
+
+def pdf_pages(path_or_bytes) -> int:
+    """Page count of a PDF, read with PDFium (BSD/Apache licensed)."""
+    data = path_or_bytes if isinstance(path_or_bytes, bytes) else Path(path_or_bytes).read_bytes()
+    document = pdfium.PdfDocument(data)
+    try:
+        return len(document)
+    finally:
+        document.close()
+
+
+def pdf_text(data: bytes) -> str:
+    document = pdfium.PdfDocument(data)
+    try:
+        parts = []
+        for index in range(len(document)):
+            page = document[index]
+            textpage = page.get_textpage()
+            parts.append(textpage.get_text_bounded())
+            textpage.close()
+            page.close()
+        return "".join(parts)
+    finally:
+        document.close()
+
+
+def pdf_first_page_image(path: Path, dpi: int) -> Image.Image:
+    document = pdfium.PdfDocument(Path(path).read_bytes())
+    try:
+        page = document[0]
+        bitmap = page.render(scale=dpi / 72)
+        image = bitmap.to_pil().convert("RGB")
+        bitmap.close()
+        page.close()
+        return image
+    finally:
+        document.close()
 JSON_HEADERS = {"Content-Type": "application/json"}
 HTML = {"accept": "text/html"}
 
@@ -294,8 +332,8 @@ def filing_checks(run: Run, root: Path) -> dict[str, Any]:
 
         def jpg_becomes_pdf() -> str:
             out = filed(receiving, feed(svc, receiving, jpg), "PO-100002")
-            with pymupdf.open(out) as doc:
-                need(doc.page_count == 1, doc.page_count)
+            pages = pdf_pages(out)
+            need(pages == 1, pages)
             return out.name
         run.check(op, "A JPG scan is converted to a PDF and filed", jpg_becomes_pdf)
         png = save_image(slip_page([("PO-100003", "Code128")]), fixtures / "scan-png.png")
@@ -308,8 +346,8 @@ def filing_checks(run: Run, root: Path) -> dict[str, Any]:
 
         def tiff_keeps_pages() -> str:
             out = filed(receiving, feed(svc, receiving, tiff), "PO-100004")
-            with pymupdf.open(out) as doc:
-                need(doc.page_count == 2, f"pages={doc.page_count}")
+            pages = pdf_pages(out)
+            need(pages == 2, f"pages={pages}")
             return "2 pages kept"
         run.check(op, "A two-page TIFF from the scanner is filed as a two-page PDF", tiff_keeps_pages)
 
@@ -323,8 +361,8 @@ def filing_checks(run: Run, root: Path) -> dict[str, Any]:
 
         def page_two() -> str:
             out = filed(receiving, feed(svc, receiving, back_page), "PO-100020")
-            with pymupdf.open(out) as doc:
-                need(doc.page_count == 2, f"pages={doc.page_count}")
+            pages = pdf_pages(out)
+            need(pages == 2, f"pages={pages}")
             return "found on page 2, both pages kept"
         run.check(op, "A multi-page scan whose barcode is on page 2 still files, with every page kept", page_two)
 
@@ -915,8 +953,7 @@ def web_checks(run: Run, root: Path, state: dict[str, Any]) -> None:
                        {"code": "UNKNOWN-CODE-9"}]
             pdf = ok(dock.post("/api/scan-to-pdf/generate", json={"title": "Truck 7 manifest", "entries": entries}))
             need(pdf.content[:5] == b"%PDF-", "not a PDF")
-            with pymupdf.open(stream=pdf.content, filetype="pdf") as doc:
-                page_text = "".join(page.get_text() for page in doc)
+            page_text = pdf_text(pdf.content)
             need("Truck 7 manifest" in page_text and "MAIL-1013" in page_text and "UNKNOWN-CODE-9" in page_text, page_text[:300])
             return "PDF lists known item with its details and keeps the unknown code"
         run.check(sh, "A list of scanned barcodes becomes a titled PDF manifest, with item details filled in and unknown codes kept", manifest_pdf)
@@ -1157,10 +1194,9 @@ def web_checks(run: Run, root: Path, state: dict[str, Any]) -> None:
         def find_by_number() -> str:
             expected = receiving.output_path / f"{now:%Y}" / f"{now:%m}" / "PO-200001.pdf"
             need(expected.is_file(), f"{expected} not there")
-            with pymupdf.open(expected) as doc:
-                need(doc.page_count == 1, doc.page_count)
-                pix = doc[0].get_pixmap(dpi=200)
-            image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            pages = pdf_pages(expected)
+            need(pages == 1, pages)
+            image = pdf_first_page_image(expected, 200)
             values = {d.text for d in zxingcpp.read_barcodes(image)}
             need("PO-200001" in values, f"barcode on the filed copy reads {values}")
             return f"{expected.relative_to(receiving.output_path)} opens and still shows its barcode"

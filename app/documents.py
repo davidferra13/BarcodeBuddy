@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Iterator
 
-import fitz
+import pypdfium2 as pdfium
 from PIL import Image, ImageOps
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
@@ -92,10 +92,10 @@ def get_page_count(path: Path) -> int:
             raise DocumentError(f"Unable to read TIFF page count for {path.name}") from exc
     if input_type == "pdf":
         try:
-            document = fitz.open(path)
-            if document.page_count < 1:
+            document = _open_pdf(path)
+            if len(document) < 1:
                 raise DocumentError("PDF has no pages.")
-            return document.page_count
+            return len(document)
         except Exception as exc:
             if isinstance(exc, DocumentError):
                 raise
@@ -121,21 +121,28 @@ def iter_scan_images(path: Path, max_pages: int, render_dpi: int) -> Iterator[Im
 
     if input_type == "pdf":
         try:
-            document = fitz.open(path)
-            if document.page_count < 1:
+            document = _open_pdf(path)
+            if len(document) < 1:
                 raise DocumentError("PDF has no pages to scan.")
-            if document.page_count > max_pages:
+            if len(document) > max_pages:
                 raise DocumentError("PDF exceeded maximum page limit.")
 
-            for page_index in range(document.page_count):
-                page = document.load_page(page_index)
-                pixmap = page.get_pixmap(dpi=render_dpi, colorspace=fitz.csGRAY, alpha=False)
-                grayscale = Image.frombytes("L", (pixmap.width, pixmap.height), pixmap.samples)
-                with BytesIO() as buffer:
-                    grayscale.save(buffer, format="PNG")
-                    buffer.seek(0)
-                    with Image.open(buffer) as png_image:
-                        yield png_image.copy()
+            for page_index in range(len(document)):
+                page = document[page_index]
+                try:
+                    bitmap = page.render(scale=render_dpi / 72, grayscale=True)
+                    try:
+                        grayscale = bitmap.to_pil().convert("L")
+                        with BytesIO() as buffer:
+                            grayscale.save(buffer, format="PNG")
+                            buffer.seek(0)
+                            with Image.open(buffer) as png_image:
+                                rendered = png_image.copy()
+                    finally:
+                        bitmap.close()
+                finally:
+                    page.close()
+                yield rendered
             return
         except Exception as exc:
             if isinstance(exc, DocumentError):
@@ -146,6 +153,13 @@ def iter_scan_images(path: Path, max_pages: int, render_dpi: int) -> Iterator[Im
                 document.close()
 
     raise UnsupportedFileTypeError(f"Unsupported input type: {path.suffix}")
+
+
+def _open_pdf(path: Path) -> pdfium.PdfDocument:
+    # PDFium (BSD/Apache licensed) reads the document from memory, so no file
+    # handle stays open on the scan while it is rendered; Windows cannot move
+    # or delete a file that another handle still holds.
+    return pdfium.PdfDocument(path.read_bytes())
 
 
 def save_processing_file_as_pdf(source_path: Path, destination_path: Path) -> None:

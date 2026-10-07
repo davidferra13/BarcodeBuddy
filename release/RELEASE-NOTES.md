@@ -1,4 +1,4 @@
-# BarcodeBuddy 3.0.0, the filing release
+# BarcodeBuddy 3.1.0, the filing release
 
 This is the version licensed to customers under sales/LICENSE-AGREEMENT.md.
 
@@ -11,6 +11,12 @@ Supported: Windows 10 or 11, Python 3.12, PDF, PNG, JPEG and multi-page TIFF sca
 ## Present in the program but not part of the licensed offer
 
 Inventory, scan-to-PDF reports, calendar, analytics, teams, alerts and the optional AI features ship in the same program. They are not covered by the acceptance, warranty or stabilization terms of the filing license, and the optional AI and alert webhook features stay off unless the customer turns them on.
+
+## Changes since 3.0.0
+
+- PDF reading moved from PyMuPDF (AGPL or paid license) to PDFium, and the scan report writer to ReportLab. Every installed library is now permissively licensed (THIRD-PARTY-NOTICES.md).
+- The sidebar names the product (Document Filing) when no buyer organization name is set.
+- Windows stability on many-core machines: math and image libraries use a bounded number of threads by default, after memory allocation crashes on a 24-core Windows PC. Operators can still override both.
 
 ## Installing
 

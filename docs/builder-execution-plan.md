@@ -138,7 +138,7 @@ Tasks:
 - baseline and document folder ACLs
 - make `input` write-only for upstream writers
 - keep `processing`, `output`, `rejected`, and `logs` service-owned
-- generate SBOM and dependency audit for `Pillow`, `PyMuPDF`, and `zxing-cpp`
+- generate SBOM and dependency audit for `Pillow`, `pypdfium2`, and `zxing-cpp`
 - define patch SLA and release gating for parser dependencies
 
 Files and artifacts:

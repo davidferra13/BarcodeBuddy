@@ -333,7 +333,7 @@ Note: Browser-based camera scanning for inventory lookups is already implemented
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Tech stack:** Python 3.10–3.13 · FastAPI · Uvicorn · SQLAlchemy · SQLite (WAL) · Pydantic v2 · structlog · zxing-cpp · OpenCV · PyMuPDF · APScheduler · Prometheus client
+**Tech stack:** Python 3.10–3.13 · FastAPI · Uvicorn · SQLAlchemy · SQLite (WAL) · Pydantic v2 · structlog · zxing-cpp · OpenCV · PDFium (pypdfium2) · ReportLab · APScheduler · Prometheus client
 
 **Deployment:** Windows (Task Scheduler / PowerShell), Linux (systemd), Docker, Railway
 

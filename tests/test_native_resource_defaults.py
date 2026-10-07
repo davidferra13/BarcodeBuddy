@@ -7,6 +7,8 @@ import sys
 
 import pytest
 
+from app import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -27,7 +29,7 @@ def test_cold_start_has_bounded_default_and_honors_operator_override(operator_th
                            capture_output=True, text=True, timeout=30)
     assert child.returncode == 0, child.stderr
     actual = json.loads(child.stdout)
-    assert actual == {"version": "3.0.0", "threads": operator_threads or "1", "checksum": 262144.0}
+    assert actual == {"version": __version__, "threads": operator_threads or "1", "checksum": 262144.0}
 
 
 @pytest.mark.parametrize("operator_threads", [None, "3"])
@@ -48,4 +50,4 @@ def test_cold_start_opencv_default_and_explicit_override(operator_threads):
                            capture_output=True, text=True, timeout=30)
     assert child.returncode == 0, child.stderr
     actual = json.loads(child.stdout)
-    assert actual == {"version": "3.0.0", "threads": int(operator_threads or "2"), "preserved": True}
+    assert actual == {"version": __version__, "threads": int(operator_threads or "2"), "preserved": True}

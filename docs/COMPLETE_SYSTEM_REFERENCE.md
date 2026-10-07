@@ -224,7 +224,8 @@ Created at runtime: `input/`, `processing/`, `processing/.journal/`, `output/`, 
 | Config validation | Pydantic v2 | ≥2.0.0 |
 | Barcode scanning | zxing-cpp | ≥3.0.0, <4.0.0 |
 | Image processing | OpenCV (headless) | ≥4.9.0 |
-| PDF processing | PyMuPDF (fitz) | ≥1.24.0, <2.0.0 |
+| PDF reading | pypdfium2 (PDFium) | ≥5.0.0, <6.0.0 |
+| PDF report writing | reportlab | ≥4.0.0, <6.0.0 |
 | Image manipulation | Pillow | ≥10.0.0, <13.0.0 |
 | File monitoring | watchfiles | ≥1.0.0 |
 | Structured logging | structlog | ≥24.0.0 |
@@ -875,7 +876,7 @@ Endpoint: `GET /metrics` — standard Prometheus scrape format
 
 - Max file size: **50 MB**
 - Images: PIL + zxingcpp decode
-- PDFs: PyMuPDF renders each page as PNG at **300 DPI**, max **50 pages**
+- PDFs: PDFium (pypdfium2) renders each page as PNG at **300 DPI**, max **50 pages**
 - Deduplication: same barcode value found across pages only included once
 
 ### 15.3 Enrichment Matching

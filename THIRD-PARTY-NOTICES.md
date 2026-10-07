@@ -11,6 +11,7 @@ BarcodeBuddy installs these open-source libraries from the Python Package Index.
 | bcrypt | 5.0.0 | Apache Software License |
 | certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) |
 | cffi | 2.1.1 | MIT-0 |
+| charset-normalizer | 3.5.2 | MIT |
 | click | 8.5.0 | BSD-3-Clause |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
 | fastapi | 0.142.2 | MIT |
@@ -30,8 +31,9 @@ BarcodeBuddy installs these open-source libraries from the Python Package Index.
 | pydantic_core | 2.46.5 | MIT |
 | Pygments | 2.21.0 | BSD-2-Clause |
 | PyJWT | 2.15.1 | MIT |
-| pymupdf | 1.28.2 | Dual Licensed - GNU AFFERO GPL 3.0 or Artifex Commercial License |
+| pypdfium2 | 5.14.0 | BSD-3-Clause, Apache-2.0, dependency licenses |
 | python-multipart | 0.0.32 | Apache-2.0 |
+| reportlab | 5.0.1 | BSD License |
 | rich | 15.0.0 | MIT License |
 | SQLAlchemy | 2.1.3 | MIT |
 | starlette | 1.7.0 | BSD-3-Clause |
@@ -44,6 +46,6 @@ BarcodeBuddy installs these open-source libraries from the Python Package Index.
 | watchfiles | 1.3.0 | MIT License |
 | zxing-cpp | 3.1.1 | Apache-2.0 |
 
-## Copyleft notice
+## Copyleft
 
-PyMuPDF is offered under the GNU Affero General Public License 3.0 or under a commercial license from Artifex Software. It is the only component here under a strong copyleft license. The licensor must settle which of those terms applies before BarcodeBuddy is licensed to a customer. certifi is under the Mozilla Public License 2.0, which applies to its own files only.
+None of these libraries is under a strong copyleft license such as the GPL or AGPL. PDF pages are read with PDFium through pypdfium2 (BSD-3-Clause and Apache-2.0) and reports are written with ReportLab (BSD). PDFium's bundled components carry their own notices inside the pypdfium2 package (licenses folder): FreeType is used under its FreeType License option, and ICU's notice quotes the GPL only for build scripts covered by the Autoconf exception, which are not part of the installed library. certifi is under the Mozilla Public License 2.0, which applies to its own files only. tests/test_dependency_licenses.py fails the build if a GPL or AGPL library is added.

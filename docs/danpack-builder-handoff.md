@@ -84,7 +84,7 @@ Start by reading `docs/PRODUCT_BLUEPRINT.md` for the full capability map and roa
 - Input type is verified by magic-byte validation before deep parser handoff, so extension spoofing now rejects as `UNSUPPORTED_FORMAT`
 - Output format: `PDF` only
 - Barcode engine: `zxing-cpp`
-- PDF/image handling: `PyMuPDF` and `Pillow`
+- PDF/image handling: `pypdfium2` (PDFium), `reportlab` and `Pillow`
 - Duplicate handling modes: `timestamp` and `reject`
 - Barcode value filtering: optional regex allowlist via `barcode_value_patterns`
 - Scan scope: first page only or full-document page-order scanning depending on `scan_all_pages`

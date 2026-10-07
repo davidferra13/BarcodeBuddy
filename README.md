@@ -1,4 +1,4 @@
-# BarcodeBuddy v3.0.0
+# BarcodeBuddy v3.1.0
 
 BarcodeBuddy is a deterministic hot-folder document ingestion service for Danpack, a custom packaging and industrial supply company. It watches `data/input`, extracts a routing barcode from scanned PDFs or images, writes successful outputs as PDFs in `data/output/YYYY/MM`, and moves failures to `data/rejected` with JSONL audit logs and rejection sidecars.
 

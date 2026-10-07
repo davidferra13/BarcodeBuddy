@@ -15,7 +15,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PIL import Image
-import pymupdf
+import pypdfium2 as pdfium
 from app import database
 from app.barcode_generator import generate_code128
 from app.config import Settings, ensure_runtime_directories
@@ -77,8 +77,11 @@ def run_reference_acceptance(work_root: Path) -> dict[str, object]:
         routed = service.process_file(good)
         readable = False
         if routed.output_path is not None and routed.output_path.is_file():
-            with pymupdf.open(routed.output_path) as document:
-                readable = document.page_count == 1
+            document = pdfium.PdfDocument(routed.output_path.read_bytes())
+            try:
+                readable = len(document) == 1
+            finally:
+                document.close()
         record("code128-pdf", {"status": "success", "barcode": "PO-910001", "readable_pdf": True},
                {"status": routed.status, "barcode": routed.barcode, "readable_pdf": readable},
                ["output"])

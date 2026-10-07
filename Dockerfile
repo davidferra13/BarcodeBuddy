@@ -4,7 +4,7 @@
 # run separately on the host or in a companion container with volume mounts.
 FROM python:3.12-slim
 
-# System dependencies for OpenCV, PyMuPDF, and zxing-cpp
+# System dependencies for OpenCV, PDFium (pypdfium2), and zxing-cpp
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \

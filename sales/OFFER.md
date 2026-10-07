@@ -18,7 +18,7 @@ The buyer pays once and keeps a perpetual license to run the delivered version a
 
 ## Not included
 
-ERP attachment integration, OCR/handwriting, signature verification, mixed-document splitting, custom mobile capture, multi-site deployment and new customer-specific features. Extra workflows or sites need a separate written agreement and their own license.
+The offer excludes ERP attachment integration, OCR/handwriting, signature verification, mixed-document splitting, custom mobile capture, multi-site deployment and new customer-specific features. Extra workflows or sites need a separate written agreement and their own license.
 
 ## What proves what
 

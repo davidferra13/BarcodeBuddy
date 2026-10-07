@@ -1,6 +1,9 @@
 # --- Core ---
 Pillow>=10.0.0,<13.0.0
-PyMuPDF>=1.24.0,<2.0.0
+# PDF reading (PDFium, BSD-3-Clause/Apache-2.0) and report writing (ReportLab, BSD).
+# Do not add AGPL or GPL libraries: BarcodeBuddy is licensed to customers under closed terms.
+pypdfium2>=5.0.0,<6.0.0
+reportlab>=4.0.0,<6.0.0
 zxing-cpp>=3.0.0,<4.0.0
 
 # --- Image preprocessing ---

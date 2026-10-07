@@ -44,15 +44,23 @@ def _make_tiff(tmp_path: Path, name: str = "test.tiff", pages: int = 1) -> Path:
     return path
 
 
-def _make_pdf(tmp_path: Path, name: str = "test.pdf") -> Path:
-    import fitz
-    path = tmp_path / name
-    doc = fitz.open()
-    page = doc.new_page(width=200, height=200)
-    page.insert_text((50, 100), "Hello")
-    doc.save(str(path))
-    doc.close()
+def _blank_pdf(path: Path, pages: int = 1, size: tuple[int, int] = (200, 200)) -> Path:
+    frames = [Image.new("RGB", size, "white") for _ in range(pages)]
+    frames[0].save(path, "PDF", resolution=72, save_all=True, append_images=frames[1:])
     return path
+
+
+def _pdf_page_count(path: Path) -> int:
+    import pypdfium2 as pdfium
+    document = pdfium.PdfDocument(path.read_bytes())
+    try:
+        return len(document)
+    finally:
+        document.close()
+
+
+def _make_pdf(tmp_path: Path, name: str = "test.pdf") -> Path:
+    return _blank_pdf(tmp_path / name)
 
 
 def _make_fake_file(tmp_path: Path, name: str, content: bytes) -> Path:
@@ -108,14 +116,7 @@ class TestGetPageCount:
         assert get_page_count(_make_tiff(tmp_path, pages=3)) == 3
 
     def test_multi_page_pdf(self, tmp_path):
-        import fitz
-        path = tmp_path / "multi.pdf"
-        doc = fitz.open()
-        for i in range(3):
-            page = doc.new_page()
-            page.insert_text((50, 100), f"Page {i + 1}")
-        doc.save(str(path))
-        doc.close()
+        path = _blank_pdf(tmp_path / "multi.pdf", pages=3)
         assert get_page_count(path) == 3
 
     def test_unsupported_format_raises(self, tmp_path):
@@ -144,24 +145,13 @@ class TestIterScanImages:
         assert all(isinstance(image, Image.Image) for image in images)
 
     def test_pdf_yields_pages(self, tmp_path):
-        import fitz
-        path = tmp_path / "two.pdf"
-        doc = fitz.open()
-        doc.new_page()
-        doc.new_page()
-        doc.save(str(path))
-        doc.close()
+        path = _blank_pdf(tmp_path / "two.pdf", pages=2)
         images = list(iter_scan_images(path, max_pages=10, render_dpi=72))
         assert len(images) == 2
+        assert all(image.mode == "L" and image.size == (200, 200) for image in images)
 
     def test_pdf_max_pages_enforced(self, tmp_path):
-        import fitz
-        path = tmp_path / "big.pdf"
-        doc = fitz.open()
-        for _ in range(5):
-            doc.new_page()
-        doc.save(str(path))
-        doc.close()
+        path = _blank_pdf(tmp_path / "big.pdf", pages=5)
         with pytest.raises(DocumentError, match="maximum page limit"):
             list(iter_scan_images(path, max_pages=3, render_dpi=72))
 
@@ -201,15 +191,12 @@ class TestSaveProcessingFileAsPdf:
         assert not src.exists()
 
     def test_multi_page_tiff_to_pdf_preserves_pages(self, tmp_path):
-        import fitz
-
         src = _make_tiff(tmp_path, "input.tiff", pages=3)
         dst = tmp_path / "output" / "result.pdf"
         save_processing_file_as_pdf(src, dst)
         assert dst.exists()
         assert not src.exists()
-        with fitz.open(dst) as document:
-            assert document.page_count == 3
+        assert _pdf_page_count(dst) == 3
 
     def test_rgba_image_converted(self, tmp_path):
         """RGBA images are flattened to RGB before PDF conversion."""

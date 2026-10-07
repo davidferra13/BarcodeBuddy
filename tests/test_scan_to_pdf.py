@@ -250,19 +250,19 @@ class TestDecodeUploadEndpoint:
 
     def test_decode_pdf_with_barcode(self, client, auth_user):
         """Create a PDF containing a barcode image, upload it, verify decoding."""
-        import fitz
+        from PIL import Image
         from app.barcode_generator import generate_barcode_bytes
 
         # Generate a barcode image
         img_bytes = generate_barcode_bytes("PDF-BC-789", format="Code128", scale=6)
 
         # Create a PDF with the barcode embedded
-        doc = fitz.open()
-        page = doc.new_page(width=595, height=842)
-        img_rect = fitz.Rect(50, 50, 400, 200)
-        page.insert_image(img_rect, stream=img_bytes)
-        pdf_bytes = doc.tobytes()
-        doc.close()
+        buffer = io.BytesIO()
+        with Image.open(io.BytesIO(img_bytes)) as barcode:
+            page = Image.new("RGB", (barcode.width + 200, barcode.height + 200), "white")
+            page.paste(barcode.convert("RGB"), (100, 100))
+        page.save(buffer, "PDF", resolution=150)
+        pdf_bytes = buffer.getvalue()
 
         resp = client.post(
             "/api/scan-to-pdf/decode",

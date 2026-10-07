@@ -83,18 +83,23 @@ def _decode_image(data: bytes) -> list[dict]:
 
 def _decode_pdf(data: bytes) -> list[dict]:
     """Decode barcodes from all pages of a PDF."""
-    import fitz
-    from PIL import Image
+    import pypdfium2 as pdfium
     import zxingcpp
 
     results: list[dict] = []
     seen: set[str] = set()
-    doc = fitz.open(stream=data, filetype="pdf")
+    doc = pdfium.PdfDocument(data)
     try:
         for page_num in range(min(len(doc), 50)):
             page = doc[page_num]
-            pix = page.get_pixmap(dpi=300)
-            img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            try:
+                bitmap = page.render(scale=300 / 72)
+                try:
+                    img = bitmap.to_pil().convert("RGB")
+                finally:
+                    bitmap.close()
+            finally:
+                page.close()
             barcodes = zxingcpp.read_barcodes(img)
             for b in barcodes:
                 if b.text and b.text not in seen:
@@ -173,21 +178,66 @@ def generate_pdf(
     db: Session = Depends(get_db),
 ) -> Response:
     """Generate a professional PDF report from scan session data."""
-    import fitz
-
     _log = logging.getLogger(__name__)
     try:
-        return _generate_pdf_inner(body, user, db, fitz)
+        return _generate_pdf_inner(body, user, db)
     except Exception:
         _log.exception("PDF generation failed")
         return JSONResponse(status_code=400, content={"error": "Failed to generate PDF report"})
 
 
-def _generate_pdf_inner(body, user, db, fitz):
+class _ReportCanvas:
+    """Top-left coordinate drawing on a ReportLab (BSD licensed) canvas.
+
+    Positions are measured from the top of the page, as the report layout was
+    written; text is placed by its baseline.
+    """
+
+    def __init__(self, buffer: io.BytesIO, title: str) -> None:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen.canvas import Canvas
+
+        self.width, self.height = A4
+        self.page_number = 0
+        self._canvas = Canvas(buffer, pagesize=A4, pageCompression=1)
+        self._canvas.setTitle(title)
+        self._canvas.setAuthor("BarcodeBuddy")
+
+    def new_page(self) -> None:
+        if self.page_number:
+            self._canvas.showPage()
+        self.page_number += 1
+
+    def rect(self, x0: float, y0: float, x1: float, y1: float, fill: tuple, radius: float = 0) -> None:
+        self._canvas.setFillColorRGB(*fill)
+        if radius:
+            self._canvas.roundRect(x0, self.height - y1, x1 - x0, y1 - y0, radius, stroke=0, fill=1)
+        else:
+            self._canvas.rect(x0, self.height - y1, x1 - x0, y1 - y0, stroke=0, fill=1)
+
+    def text(self, x: float, y: float, value: str, size: float, color: tuple) -> None:
+        self._canvas.setFillColorRGB(*color)
+        self._canvas.setFont("Helvetica", size)
+        self._canvas.drawString(x, self.height - y, value)
+
+    def line(self, x0: float, y0: float, x1: float, y1: float, color: tuple, width: float) -> None:
+        self._canvas.setStrokeColorRGB(*color)
+        self._canvas.setLineWidth(width)
+        self._canvas.line(x0, self.height - y0, x1, self.height - y1)
+
+    def finish(self) -> None:
+        self._canvas.showPage()
+        self._canvas.save()
+
+
+def _generate_pdf_inner(body, user, db):
     from app.activity import log_activity
 
-    doc = fitz.open()
-    page_width, page_height = fitz.paper_size("A4")
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    title = body.title or "Barcode Scan Report"
+    buffer = io.BytesIO()
+    pdf = _ReportCanvas(buffer, title)
+    page_width, page_height = pdf.width, pdf.height
     margin = 50
     usable_width = page_width - 2 * margin
 
@@ -202,58 +252,35 @@ def _generate_pdf_inner(body, user, db, fitz):
     ]
     headers = ["#", "Barcode Value", "Format", "Item Name", "Location", "Time"]
 
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    title = body.title or "Barcode Scan Report"
-
-    def _new_page() -> fitz.Page:
-        page = doc.new_page(width=page_width, height=page_height)
+    def _new_page() -> None:
+        pdf.new_page()
         # Header bar
-        page.draw_rect(fitz.Rect(0, 0, page_width, 60), color=None, fill=(0.118, 0.145, 0.188))
-        page.insert_text(
-            fitz.Point(margin, 38), title,
-            fontsize=18, fontname="helv", color=(1, 1, 1),
-        )
-        page.insert_text(
-            fitz.Point(page_width - margin - 150, 38), now_str,
-            fontsize=9, fontname="helv", color=(0.8, 0.8, 0.8),
-        )
+        pdf.rect(0, 0, page_width, 60, fill=(0.118, 0.145, 0.188))
+        pdf.text(margin, 38, title, 18, (1, 1, 1))
+        pdf.text(page_width - margin - 150, 38, now_str, 9, (0.8, 0.8, 0.8))
         # Operator line
-        page.insert_text(
-            fitz.Point(margin, 82),
+        pdf.text(
+            margin, 82,
             f"Operator: {user.display_name}  |  Generated: {now_str}  |  Items: {len(body.entries)}",
-            fontsize=9, fontname="helv", color=(0.4, 0.4, 0.4),
+            9, (0.4, 0.4, 0.4),
         )
-        return page
 
-    def _draw_table_header(page: fitz.Page, y: float) -> float:
+    def _draw_table_header(y: float) -> float:
         # Header row background
-        page.draw_rect(
-            fitz.Rect(margin, y, margin + usable_width, y + 22),
-            color=None, fill=(0.93, 0.91, 0.87),
-        )
+        pdf.rect(margin, y, margin + usable_width, y + 22, fill=(0.93, 0.91, 0.87))
         x = margin
         for i, hdr in enumerate(headers):
-            page.insert_text(
-                fitz.Point(x + 4, y + 15),
-                hdr, fontsize=8, fontname="helv", color=(0.3, 0.3, 0.3),
-            )
+            pdf.text(x + 4, y + 15, hdr, 8, (0.3, 0.3, 0.3))
             x += col_widths[i]
         return y + 22
 
-    def _draw_row(page: fitz.Page, y: float, row_num: int, entry: PdfEntry) -> float:
+    def _draw_row(y: float, row_num: int, entry: PdfEntry) -> float:
         row_h = 20
         # Alternate row shading
         if row_num % 2 == 0:
-            page.draw_rect(
-                fitz.Rect(margin, y, margin + usable_width, y + row_h),
-                color=None, fill=(0.97, 0.96, 0.94),
-            )
+            pdf.rect(margin, y, margin + usable_width, y + row_h, fill=(0.97, 0.96, 0.94))
         # Row separator
-        page.draw_line(
-            fitz.Point(margin, y + row_h),
-            fitz.Point(margin + usable_width, y + row_h),
-            color=(0.88, 0.86, 0.82), width=0.3,
-        )
+        pdf.line(margin, y + row_h, margin + usable_width, y + row_h, (0.88, 0.86, 0.82), 0.3)
 
         x = margin
         cells = [
@@ -265,50 +292,44 @@ def _generate_pdf_inner(body, user, db, fitz):
             entry.scanned_at[:19] if entry.scanned_at else "—",
         ]
         for i, cell in enumerate(cells):
-            page.insert_text(
-                fitz.Point(x + 4, y + 14),
-                cell, fontsize=8, fontname="helv", color=(0.15, 0.15, 0.15),
-            )
+            pdf.text(x + 4, y + 14, cell, 8, (0.15, 0.15, 0.15))
             x += col_widths[i]
         return y + row_h
 
     # Build pages
-    page = _new_page()
+    _new_page()
     y = 100
-    y = _draw_table_header(page, y)
+    y = _draw_table_header(y)
 
     for idx, entry in enumerate(body.entries):
         if y + 24 > page_height - 50:
             # Footer on current page
-            _draw_footer(page, page_height, doc.page_count)
-            page = _new_page()
+            _draw_footer(pdf)
+            _new_page()
             y = 100
-            y = _draw_table_header(page, y)
-        y = _draw_row(page, y, idx, entry)
+            y = _draw_table_header(y)
+        y = _draw_row(y, idx, entry)
 
     # Summary section
     y += 16
     if y + 50 > page_height - 50:
-        _draw_footer(page, page_height, doc.page_count)
-        page = _new_page()
+        _draw_footer(pdf)
+        _new_page()
         y = 100
 
-    page.draw_rect(
-        fitz.Rect(margin, y, margin + usable_width, y + 36),
-        color=None, fill=(0.118, 0.145, 0.188), radius=0.05,
-    )
+    pdf.rect(margin, y, margin + usable_width, y + 36, fill=(0.118, 0.145, 0.188), radius=1.8)
     found_count = sum(1 for e in body.entries if e.name)
-    page.insert_text(
-        fitz.Point(margin + 12, y + 22),
+    pdf.text(
+        margin + 12, y + 22,
         f"Total Scanned: {len(body.entries)}    |    Matched to Inventory: {found_count}    |    Unmatched: {len(body.entries) - found_count}",
-        fontsize=10, fontname="helv", color=(1, 1, 1),
+        10, (1, 1, 1),
     )
 
-    _draw_footer(page, page_height, doc.page_count)
+    _draw_footer(pdf)
 
     # Output
-    pdf_bytes = doc.tobytes()
-    doc.close()
+    pdf.finish()
+    pdf_bytes = buffer.getvalue()
 
     safe_title = "".join(c if c.isalnum() or c in "-_ " else "" for c in title).strip() or "scan-report"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -324,19 +345,10 @@ def _generate_pdf_inner(body, user, db, fitz):
     )
 
 
-def _draw_footer(page, page_height: float, page_num: int) -> None:
+def _draw_footer(pdf: _ReportCanvas) -> None:
     """Draw page footer with page number and branding."""
-    import fitz
-    page.draw_line(
-        fitz.Point(50, page_height - 35),
-        fitz.Point(page.rect.width - 50, page_height - 35),
-        color=(0.88, 0.86, 0.82), width=0.5,
-    )
-    page.insert_text(
-        fitz.Point(50, page_height - 20),
-        f"BarcodeBuddy — Scan Report  |  Page {page_num}",
-        fontsize=8, fontname="helv", color=(0.6, 0.6, 0.6),
-    )
+    pdf.line(50, pdf.height - 35, pdf.width - 50, pdf.height - 35, (0.88, 0.86, 0.82), 0.5)
+    pdf.text(50, pdf.height - 20, f"BarcodeBuddy — Scan Report  |  Page {pdf.page_number}", 8, (0.6, 0.6, 0.6))
 
 
 def _truncate(s: str, max_len: int) -> str:

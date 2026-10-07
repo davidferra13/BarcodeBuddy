@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html as html_mod
 
+from app import __version__
 from app.branding import load_branding
 
 _E = html_mod.escape
@@ -1717,7 +1718,7 @@ def render_shell(
     <div class="sidebar-brand">
       <div class="sidebar-brand-text">
         <h1>{_E(branding.product_name)}</h1>
-        <div class="brand-sub">{_E(branding.organization_name or "Inventory Management")}</div>
+        <div class="brand-sub">{_E(branding.organization_name or "Document Filing")}</div>
       </div>
       <button class="sidebar-toggle" id="sidebar-collapse-btn" aria-label="Collapse sidebar"
         onclick="toggleSidebarCollapse()">
@@ -1731,7 +1732,7 @@ def render_shell(
       {nav_html}
     </div>
     {user_html}
-    <div class="sidebar-footer">BarcodeBuddy v3.0.0</div>
+    <div class="sidebar-footer">BarcodeBuddy v{_E(__version__)}</div>
   </nav>
 
   <div class="main">
