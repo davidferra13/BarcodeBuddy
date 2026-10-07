@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import os
 import re
 import smtplib
@@ -36,6 +37,7 @@ from app.auth import (
 from app.activity import log_activity
 from app.database import SystemSettings, User, get_db
 from app.layout import render_shell
+from app.branding import load_branding
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -465,12 +467,13 @@ async function authSubmit(url, formId, fields) {
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page() -> HTMLResponse:
+    branding = html.escape(load_branding().display_name)
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Login - BarcodeBuddy</title>{_AUTH_STYLES}</head>
+<title>Login - {branding}</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">BarcodeBuddy</div>
+  <div class="brand" style="overflow-wrap:anywhere;">{branding}</div>
   <h1>Welcome back</h1>
   <p class="subtitle">Sign in to your account</p>
   <div id="error-msg" class="error-msg"></div>
@@ -498,12 +501,13 @@ def login_page() -> HTMLResponse:
 
 @router.get("/signup", response_class=HTMLResponse)
 def signup_page() -> HTMLResponse:
+    branding = html.escape(load_branding().display_name)
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign Up - BarcodeBuddy</title>{_AUTH_STYLES}</head>
+<title>Sign Up - {branding}</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">BarcodeBuddy</div>
+  <div class="brand" style="overflow-wrap:anywhere;">{branding}</div>
   <h1>Create account</h1>
   <p class="subtitle">Get started with BarcodeBuddy</p>
   <div id="error-msg" class="error-msg"></div>
@@ -532,12 +536,13 @@ def signup_page() -> HTMLResponse:
 
 @router.get("/reset-request", response_class=HTMLResponse)
 def reset_request_page() -> HTMLResponse:
+    branding = html.escape(load_branding().display_name)
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reset Password - BarcodeBuddy</title>{_AUTH_STYLES}</head>
+<title>Reset Password - {branding}</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">BarcodeBuddy</div>
+  <div class="brand" style="overflow-wrap:anywhere;">{branding}</div>
   <h1>Reset password</h1>
   <p class="subtitle">Enter your email to receive a reset link</p>
   <div id="error-msg" class="error-msg"></div>
@@ -559,12 +564,13 @@ def reset_request_page() -> HTMLResponse:
 
 @router.get("/reset", response_class=HTMLResponse)
 def reset_page(token: str = "") -> HTMLResponse:
+    branding = html.escape(load_branding().display_name)
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Set New Password - BarcodeBuddy</title>{_AUTH_STYLES}</head>
+<title>Set New Password - {branding}</title>{_AUTH_STYLES}</head>
 <body>
 <div class="auth-card">
-  <div class="brand">BarcodeBuddy</div>
+  <div class="brand" style="overflow-wrap:anywhere;">{branding}</div>
   <h1>Set new password</h1>
   <p class="subtitle">Enter your new password</p>
   <div id="error-msg" class="error-msg"></div>

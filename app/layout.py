@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import html as html_mod
 
+from app.branding import load_branding
+
 _E = html_mod.escape
 
 
@@ -1627,6 +1629,7 @@ def render_shell(
     ai_enabled:  Whether AI features are enabled (shows floating chat FAB).
     """
     is_admin = role in ("admin", "owner")
+    branding = load_branding()
 
     # Build sidebar nav sections
     nav_html_parts: list[str] = []
@@ -1690,7 +1693,7 @@ def render_shell(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>try{{const t=localStorage.getItem('bb_theme');if(t)document.documentElement.setAttribute('data-theme',t)}}catch(e){{}}</script>
-  <title>{_E(title)} - BarcodeBuddy</title>
+  <title>{_E(title)} - {_E(branding.display_name)}</title>
   {_LAYOUT_CSS}
   {head_extra}
 </head>
@@ -1707,8 +1710,8 @@ def render_shell(
   <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sidebar-brand">
       <div class="sidebar-brand-text">
-        <h1>BarcodeBuddy</h1>
-        <div class="brand-sub">Inventory Management</div>
+        <h1>{_E(branding.product_name)}</h1>
+        <div class="brand-sub">{_E(branding.organization_name or "Inventory Management")}</div>
       </div>
       <button class="sidebar-toggle" id="sidebar-collapse-btn" aria-label="Collapse sidebar"
         onclick="toggleSidebarCollapse()">
