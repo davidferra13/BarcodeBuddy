@@ -692,3 +692,25 @@ class TestEndToEndWorkflows:
             scan_resp = client.get(f"/api/scan/lookup?code={item['barcode_value']}", cookies=auth_user)
             assert scan_resp.status_code == 200
             assert scan_resp.json()["item"]["id"] == item["id"]
+
+@pytest.mark.parametrize("quantity", [-1, -1000000])
+def test_negative_quantity_edit_is_rejected_without_mutating_item_or_history(client, auth_user, quantity):
+    item = _create_item(client, auth_user, quantity=10)
+    endpoint = f"/api/inventory/{item['id']}"
+    before = client.get(endpoint, cookies=auth_user).json()
+    response = client.put(endpoint, json={"quantity": quantity}, cookies=auth_user)
+    assert response.status_code == 422
+    after = client.get(endpoint, cookies=auth_user).json()
+    assert after["item"]["quantity"] == 10
+    assert after["transactions"] == before["transactions"]
+
+
+@pytest.mark.parametrize("quantity", [0, 17])
+def test_nonnegative_quantity_edit_remains_supported(client, auth_user, quantity):
+    item = _create_item(client, auth_user, quantity=10)
+    endpoint = f"/api/inventory/{item['id']}"
+    response = client.put(endpoint, json={"quantity": quantity}, cookies=auth_user)
+    assert response.status_code == 200
+    current = client.get(endpoint, cookies=auth_user).json()
+    assert current["item"]["quantity"] == quantity
+    assert current["transactions"][0]["quantity_after"] == quantity
