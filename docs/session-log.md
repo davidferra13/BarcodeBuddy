@@ -135,3 +135,14 @@ Each entry follows this format:
 - Commits: bdbbc96
 - Build state on departure: green (353 passed, 65 subtests, 0 warnings, compileall clean)
 - Notes: System audit covered all user types (owner, admin, manager, user), all workflows (inventory CRUD, team management, alerts, scanning, AI chat), security (RBAC, session management, input validation), and data integrity (activity logging completeness, session cleanup). No remaining high-impact gaps found.
+
+
+## 2026-10-07 — Identity acceptance (every user type, every job)
+
+- Agent: Claude
+- Task: Owner asked for every identity Barcode Buddy is good for, a checklist of everything each one does, and all of it passing. Built `scripts/identity_acceptance.py` (12 identities, 143 lines, real processor, full web app, two real processes for the installer) on a branch that merges the factory seam with the stacked launcher fix. First run 118 of 142. Fixed five defects it exposed. Final run 134 of 143 on `3554d9a`: 1 failed (shared stock, owner decision), 8 blocked (need hardware, an admin at the machine, a model, or a buyer).
+- Status: completed for what can be proven on this machine
+- Files touched: scripts/identity_acceptance.py (new), tests/test_identity_regressions.py (new), app/processor.py (watcher re-check interval only), app/release_backup.py, app/feedback.py, app/stats.py, app/auth.py (placeholder owner email), app/layout.py (phone-width CSS), docs/IDENTITY-ACCEPTANCE.md (new), docs/session-digests/2026-10-07-identity-acceptance.md (new), docs/build-state.md
+- Commits: 589cd7c, 3554d9a, plus the docs commit that carries this entry
+- Build state on departure: see docs/build-state.md, 2026-10-07 identity acceptance section
+- Notes: The hot folder never filed a quiet scan on a real install before this (rejected FILE_LOCKED after 10 s). Every earlier acceptance bypassed the watcher. Not pushed. Not merged into any other branch.
