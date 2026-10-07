@@ -2,12 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+import os
 import re
 
 import cv2
 import numpy as np
 from PIL import Image, ImageOps
 import zxingcpp
+
+
+# Apply once at module startup, before any image work or concurrent requests.
+# The Windows backend may ignore the equivalent native environment setting.
+# Explicit operator values keep OpenCV's documented integer semantics.
+cv2.setNumThreads(int(os.environ.get("OPENCV_FOR_THREADS_NUM", "2")))
 
 
 FORMAT_ALIASES = {

@@ -38,3 +38,8 @@ To start it automatically at logon, run once in PowerShell opened as Administrat
 ```
 
 Both commands keep the web application on this PC only. `-Lan` opens it to the local network. `-Tunnel` publishes it through Cloudflare and is never on by default; a permanent address additionally needs `-PublicHostname` with the customer's own DNS name. No hostname is built into the product.
+
+
+## Native resource defaults
+
+BarcodeBuddy defaults OpenBLAS to one math thread before NumPy import and OpenCV to two image workers at barcode-module startup. These process-local limits address observed native allocation failures while preserving the processing deadline. An existing OPENBLAS_NUM_THREADS or OPENCV_FOR_THREADS_NUM setting remains authoritative; OpenCV uses its startup API because the Windows backend may ignore the native environment setting alone. Run acceptance on representative documents when choosing another thread count.

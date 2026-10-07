@@ -1,14 +1,20 @@
 # BarcodeBuddy Product Blueprint
 
-Last updated: 2026-04-05.
+Last updated: 2026-10-07.
 
 This is the master document. It defines everything BarcodeBuddy is, everything it does today, and everything it is supposed to become. The roadmap at the end sequences what remains.
 
 ---
 
+## Verified native candidate — October 7, 2026
+
+The current isolated candidate combines configurable organization branding and real reference probes, the web/ingestion launcher repair, nonnegative stock edits, native watcher timing and bounded startup resource defaults. Native verification: 474 passed, 2 skipped, 1 warning, 70 subtests passed in 439.94s (0:07:19); compilation and actual synthetic web/ingestion, rendered branding and live SQLite/document backup extraction passed.
+
+The Windows parser/launcher probes remain unverified, and installed scanner/autostart/reboot, target recovery, customer acceptance and permitted repository publication remain release gates. The public offer remains DRAFT. The source capability labels below describe implementation, not an installed or customer-ready certificate. Current evidence and decisions are in docs/session-digests/2026-10-07-native-integration.md.
+
 ## 1. What This Is
 
-BarcodeBuddy is a barcode-driven document ingestion and inventory management system built for Danpack, a custom packaging and industrial supply company based in Massachusetts.
+BarcodeBuddy routes scanned documents by barcode and supports whole-unit inventory for one organization. Its original reference use case was packaging and industrial supply.
 
 It solves a specific, recurring operational problem: scanned paperwork — packing slips, proof-of-delivery documents, receiving slips, invoices — needs to land on the correct business record automatically, without a clerk renaming files by hand.
 
@@ -53,14 +59,14 @@ Everything below is what BarcodeBuddy is supposed to be when finished. Status is
 | --- | --- |
 | Hot-folder file watching (watchfiles / Rust notify backend) | Done |
 | File stability detection (configurable delay, consecutive unchanged checks) | Done |
-| Magic-byte format validation (PDF, JPG, JPEG, PNG) | Done |
-| TIFF support | Not started |
+| Magic-byte format validation (PDF, JPG, JPEG, PNG, TIFF) | Done |
+| TIFF support, including multipage input | Done (verified candidate) |
 | Exclusive file claim via atomic move to processing directory | Done |
 | Per-file recovery journal under `processing/.journal` | Done |
 | Crash recovery on restart (journal-based, not blind sweep) | Done |
 | Barcode extraction via zxing-cpp with OpenCV preprocessing | Done |
 | Multi-rotation barcode scanning (0, 90, 180, 270 degrees) | Done |
-| Deterministic barcode selection (business-rule match → largest bbox → earlier page → scan order) | Done |
+| Distinct eligible routing IDs rejected as ambiguous; repeated occurrences of one ID accepted | Done (verified candidate) |
 | Configurable barcode value patterns (regex business-rule filtering) | Done |
 | PDF output generation (images converted to PDF; PDFs preserved) | Done |
 | Deterministic file naming from barcode value | Done |
@@ -343,7 +349,7 @@ Small, independent items that unblock nothing but fill real holes.
 
 | Item | Why |
 | --- | --- |
-| TIFF input support | Some scanners default to TIFF; operators shouldn't need to change device profiles |
+| Installed scanner profile compatibility | Verify each installed scanner's declared document formats and configuration |
 | Environment variable config overrides | Needed for containerized deployments where you can't mount a config file |
 | Wire alerting thresholds to external notification (queue depth, failure rate, heartbeat staleness) | Monitoring infrastructure already exists; thresholds are documented but not dispatching |
 
