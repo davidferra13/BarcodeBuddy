@@ -16,6 +16,7 @@ from watchfiles import watch, Change
 from app.barcode import BarcodeMatch, BarcodeScanner
 from app.config import Settings
 from app.contracts import (
+    ERROR_AMBIGUOUS_BARCODE,
     ERROR_BARCODE_NOT_FOUND,
     ERROR_CORRUPT_FILE,
     ERROR_DUPLICATE_FILE,
@@ -377,6 +378,23 @@ class BarcodeBuddyService:
                     context,
                     ERROR_BARCODE_NOT_FOUND,
                     STAGE_PROCESSING,
+                    page_count=page_count,
+                    raw_detection_count=detection.raw_detection_count,
+                    candidate_values=detection.candidate_values,
+                    eligible_candidate_values=detection.eligible_candidate_values,
+                    page_one_eligible_values=detection.page_one_eligible_values,
+                    quality_score=quality_score,
+                    quality_issues=quality_issues,
+                )
+
+            # A deterministic ranking cannot establish which distinct routing ID
+            # owns this document. Preserve it for review before any output is made.
+            if len(detection.eligible_candidate_values) > 1:
+                return self._reject_file(
+                    processing_path,
+                    context,
+                    ERROR_AMBIGUOUS_BARCODE,
+                    STAGE_VALIDATION,
                     page_count=page_count,
                     raw_detection_count=detection.raw_detection_count,
                     candidate_values=detection.candidate_values,

@@ -388,9 +388,11 @@ Example value rules for a receiving workflow where the packing slip barcode shou
 - configured barcode types are preferred before `auto` fallback
 - page scan order is `Page 1 -> Page N`
 - within a page, scan order is top-left to bottom-right
-- the best candidate across the scanned document wins deterministically by business-rule match, then largest bounding box area, then earlier page number, then scan order
-- `barcode_value_patterns` affect routing priority, but they do not create separate ambiguity or pattern-mismatch states
+- when at most one distinct eligible routing value exists, candidate ranking uses business-rule match, then largest bounding box area, then earlier page number, then scan order
+- `barcode_value_patterns` define eligible routing values; without patterns, all detected values are eligible. More than one distinct eligible value on scanned pages is rejected as `AMBIGUOUS_BARCODE`, preserving the original and candidate evidence for review
 - after barcode selection, the chosen barcode is rejected as `INVALID_BARCODE_FORMAT` if it fails business-rule matching or filename safety rules
+- repeated detections of one eligible value remain valid; unrelated values excluded by the routing rule do not cause ambiguity
+- ambiguity detection covers scanned pages only: `scan_all_pages=false` still scans page one only. Mixed-document files are retained for manual separation; automatic batch splitting is not implemented
 - barcode text must still satisfy filename safety rules: printable characters only, length `4..64`, and characters limited to alphanumeric, dash, and underscore
 
 

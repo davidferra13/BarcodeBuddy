@@ -85,10 +85,25 @@ class BarcodeScanner:
         return candidates[0].to_match()
 
     def scan_image_candidates(self, image: Image.Image) -> list[BarcodeCandidate]:
-        prepared = self._prepare_image(image)
+        raw_candidates = self._scan_image_variant(image)
+        if raw_candidates and (
+            not self.value_patterns
+            or any(candidate.matches_business_rule for candidate in raw_candidates)
+        ):
+            return raw_candidates
 
+        prepared_candidates = self._scan_image_variant(self._prepare_image(image))
+        if prepared_candidates:
+            if not raw_candidates:
+                return prepared_candidates
+            if any(candidate.matches_business_rule for candidate in prepared_candidates):
+                return prepared_candidates
+
+        return raw_candidates
+
+    def _scan_image_variant(self, image: Image.Image) -> list[BarcodeCandidate]:
         for rotation_degrees in (0, 90, 180, 270):
-            rotated = prepared if rotation_degrees == 0 else prepared.rotate(-rotation_degrees, expand=True)
+            rotated = image if rotation_degrees == 0 else image.rotate(-rotation_degrees, expand=True)
 
             if self.primary_formats:
                 candidates = self._build_candidates(

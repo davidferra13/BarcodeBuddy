@@ -108,3 +108,62 @@ def test_install_autostart_passes_config_and_lan_through():
     assert re.search(r"\[switch\]\s*\$Lan", text)
     assert "-Config" in text and "$Config" in text
     assert re.search(r"if\s*\(\s*\$Lan\s*\)\s*\{[^}]*-Lan", text, re.S)
+
+def test_native_launcher_preserves_spaces_and_customer_port(tmp_path):
+    """Execute the real launcher functions through Windows argument parsing."""
+    import json
+    import shutil
+    import subprocess
+    import sys
+    import pytest
+    pwsh = shutil.which("pwsh") or shutil.which("powershell")
+    if not pwsh:
+        pytest.skip("PowerShell unavailable")
+    config = tmp_path / "customer with spaces" / "config.json"
+    config.parent.mkdir()
+    config.write_text(json.dumps({"server_port": 8123}))
+    capture = tmp_path / "capture.py"
+    capture.write_text("import json,sys; print(json.dumps(sys.argv[1:]))")
+    result_file = tmp_path / "result.json"
+    literal = lambda value: "'" + str(value).replace("'", "''") + "'"
+    harness = tmp_path / "probe.ps1"
+    harness.write_text(
+        "$ErrorActionPreference='Stop'\n"
+        "$tokens=$null;$errors=$null\n"
+        "$ast=[System.Management.Automation.Language.Parser]::ParseFile(" + literal(START_APP) + ",[ref]$tokens,[ref]$errors)\n"
+        "if($errors.Count){throw 'Launcher syntax error'}\n"
+        "$functions=$ast.FindAll({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst]},$true)\n"
+        "foreach($name in @('Get-AppPort','Start-App')){\n"
+        "  $function=$functions|Where-Object{$_.Name -eq $name}|Select-Object -First 1\n"
+        "  if(-not $function){throw ('Missing launcher function: '+$name)}\n"
+        "  Invoke-Expression $function.Extent.Text\n"
+        "}\n"
+        "$PyExe=" + literal(sys.executable) + "\n"
+        "$Capture=" + literal(capture) + "\n"
+        "$ResultFile=" + literal(result_file) + "\n"
+        "$PyArgs='';$AppDir=" + literal(ROOT) + ";$AppLog=" + literal(tmp_path/"app.log") + "\n"
+        "$ConfigPath=" + literal(config) + ";$BindHost='127.0.0.1'\n"
+        "$AppPort=Get-AppPort $ConfigPath\n"
+        "function Start-Process {\n"
+        " param($FilePath,$ArgumentList,$WorkingDirectory,$RedirectStandardOutput,$RedirectStandardError,[switch]$PassThru,[switch]$NoNewWindow)\n"
+        " $info=New-Object System.Diagnostics.ProcessStartInfo\n"
+        " $info.FileName=$FilePath;$info.UseShellExecute=$false;$info.RedirectStandardOutput=$true\n"
+        " $quote=[char]34;$info.Arguments=$quote+$Capture+$quote+' '+($ArgumentList -join ' ')\n"
+        " $process=[System.Diagnostics.Process]::Start($info)\n"
+        " $output=$process.StandardOutput.ReadToEnd();$process.WaitForExit()\n"
+        " if($process.ExitCode -ne 0){throw 'Native child failed'}\n"
+        " [System.IO.File]::WriteAllText($ResultFile,$output)\n"
+        " return [pscustomobject]@{Id=$process.Id}\n"
+        "}\n"
+        "Start-App|Out-Null\n",
+        encoding="utf-8",
+    )
+    try:
+        process = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-File", str(harness)],
+                                 capture_output=True, text=True, timeout=45)
+    except subprocess.TimeoutExpired:
+        pytest.skip("PowerShell could not execute the native launcher probe within 45 seconds")
+    assert process.returncode == 0, process.stdout + process.stderr
+    assert json.loads(result_file.read_text()) == [
+        "stats.py", "--config", str(config), "--host", "127.0.0.1", "--port", "8123",
+    ]

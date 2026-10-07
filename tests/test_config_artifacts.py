@@ -129,9 +129,9 @@ class BarcodeBuddyConfigArtifactTests(unittest.TestCase):
 
     def test_runtime_contract_docs_match_verified_barcode_selection_rules(self) -> None:
         contract_fragments = [
-            "`barcode_value_patterns` affect routing priority, but they do not create separate ambiguity or pattern-mismatch states",
+            "`barcode_value_patterns` define eligible routing values; without patterns, all detected values are eligible. More than one distinct eligible value on scanned pages is rejected as `AMBIGUOUS_BARCODE`, preserving the original and candidate evidence for review",
             "after barcode selection, the chosen barcode is rejected as `INVALID_BARCODE_FORMAT` if it fails business-rule matching or filename safety rules",
-            "the best candidate across the scanned document wins deterministically by business-rule match, then largest bounding box area, then earlier page number, then scan order",
+            "when at most one distinct eligible routing value exists, candidate ranking uses business-rule match, then largest bounding box area, then earlier page number, then scan order",
             "- barcode text must still satisfy filename safety rules: printable characters only, length `4..64`, and characters limited to alphanumeric, dash, and underscore",
         ]
         contract_docs = [
@@ -200,15 +200,15 @@ class BarcodeBuddyConfigArtifactTests(unittest.TestCase):
             scan_record_handoff,
         )
         self.assertIn(
-            "the runtime selects one candidate deterministically across the scanned document by business-rule match, then largest bounding box area, then earlier page number, then scan order",
+            "when at most one distinct eligible routing value exists, candidate ranking uses business-rule match, then largest bounding box area, then earlier page number, then scan order",
             scan_record_handoff,
         )
         self.assertIn(
-            "the runtime uses the configured business rules to prioritize candidates rather than to create a separate ambiguity state",
+            "`barcode_value_patterns` define eligible routing values; without patterns, all detected values are eligible. More than one distinct eligible value on scanned pages is rejected as `AMBIGUOUS_BARCODE`, preserving the original and candidate evidence for review",
             scan_record_handoff,
         )
         self.assertIn(
-            "`eligible_candidate_values` and `page_one_eligible_values` are still emitted as evidence fields for the future page, even though they are not current selection overrides",
+            "`eligible_candidate_values` determines ambiguity; it and `page_one_eligible_values` are retained in rejection sidecars and logs for review",
             scan_record_handoff,
         )
 

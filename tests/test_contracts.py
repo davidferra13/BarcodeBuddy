@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.contracts import (
+    ERROR_AMBIGUOUS_BARCODE,
     ERROR_BARCODE_NOT_FOUND,
     ERROR_CODES,
     ERROR_CORRUPT_FILE,
@@ -36,6 +37,7 @@ class TestErrorCodeConstants:
             ERROR_EMPTY_FILE,
             ERROR_FILE_TOO_LARGE,
             ERROR_PROCESSING_TIMEOUT,
+            ERROR_AMBIGUOUS_BARCODE,
             ERROR_BARCODE_NOT_FOUND,
             ERROR_INVALID_BARCODE_FORMAT,
             ERROR_DUPLICATE_FILE,
@@ -44,8 +46,8 @@ class TestErrorCodeConstants:
         }
         assert ERROR_CODES == expected
 
-    def test_exactly_twelve_error_codes(self):
-        assert len(ERROR_CODES) == 12
+    def test_exactly_thirteen_error_codes(self):
+        assert len(ERROR_CODES) == 13
 
     def test_all_codes_are_uppercase_strings(self):
         for code in ERROR_CODES:

@@ -24,10 +24,18 @@ param(
     [switch]$Tunnel
 )
 
+function Get-AppPort {
+    param([string]$Path)
+    $CustomerConfig = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+    $Port = if ($null -ne $CustomerConfig.server_port) { [int]$CustomerConfig.server_port } else { 8080 }
+    if ($Port -lt 1 -or $Port -gt 65535) { throw "Customer server_port must be between 1 and 65535." }
+    return $Port
+}
+
 $AppDir       = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$AppPort      = 8080
 $ConfigPath   = if ([System.IO.Path]::IsPathRooted($Config)) { $Config } else { Join-Path $AppDir $Config }
 $ConfigPath   = [System.IO.Path]::GetFullPath($ConfigPath)
+$AppPort      = Get-AppPort $ConfigPath
 $BindHost     = if ($Lan) { "0.0.0.0" } else { "127.0.0.1" }
 $LogDir       = Join-Path $AppDir "data\logs"
 $AppLog       = Join-Path $LogDir "app-stdout.log"
@@ -56,7 +64,12 @@ if (Test-Path $VenvPy) {
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir | Out-Null }
 
 # Import preflight: fail fast with a readable message instead of a crash loop.
-& $PyExe $PyArgs -c "import stats" 2>&1 | Out-Null
+$PreflightArgs = @()
+if ($PyArgs) { $PreflightArgs += $PyArgs }
+$PreflightArgs += @("-c", "import stats")
+Push-Location $AppDir
+try { & $PyExe @PreflightArgs 2>&1 | Out-Null }
+finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Python preflight failed using $PyExe $PyArgs. Install requirements first:" -ForegroundColor Red
     Write-Host "  $PyExe -m pip install -r requirements.txt" -ForegroundColor Yellow
@@ -79,8 +92,10 @@ function Start-App {
     $argList = @()
     if ($PyArgs) { $argList += $PyArgs }
     $argList += @("stats.py", "--config", $ConfigPath, "--host", $BindHost, "--port", "$AppPort")
+    # Start-Process joins its array into a native command line; protect spaces.
+    $NativeArgs = @($argList | ForEach-Object { [string]([char]34) + $_ + [char]34 })
     $proc = Start-Process -FilePath $PyExe `
-        -ArgumentList $argList `
+        -ArgumentList $NativeArgs `
         -WorkingDirectory $AppDir `
         -RedirectStandardOutput $AppLog `
         -RedirectStandardError  "$AppLog.err" `

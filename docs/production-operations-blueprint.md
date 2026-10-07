@@ -1,6 +1,6 @@
 # Production Operations Blueprint
 
-Last updated: 2026-04-05.
+Last updated: 2026-10-01 (ambiguity contract; other sections retain their recorded scope).
 
 This document is the concrete production-operating blueprint for the current BarcodeBuddy repository. It is written against the code that exists today (v3.0.0), with explicit notes where production controls are still required.
 
@@ -116,9 +116,11 @@ Current barcode validation contract:
 - current runtime accepts filename-safe values matching `^[A-Za-z0-9_-]{4,64}$`
 - optional `barcode_value_patterns` narrow the set of routable values
 - if no barcode is detected, the file is rejected as `BARCODE_NOT_FOUND`
-- the best candidate across the scanned document wins deterministically by business-rule match, then largest bounding box area, then earlier page number, then scan order
-- `barcode_value_patterns` affect routing priority, but they do not create separate ambiguity or pattern-mismatch states
+- when at most one distinct eligible routing value exists, candidate ranking uses business-rule match, then largest bounding box area, then earlier page number, then scan order
+- `barcode_value_patterns` define eligible routing values; without patterns, all detected values are eligible. More than one distinct eligible value on scanned pages is rejected as `AMBIGUOUS_BARCODE`, preserving the original and candidate evidence for review
 - after barcode selection, the chosen barcode is rejected as `INVALID_BARCODE_FORMAT` if it fails business-rule matching or filename safety rules
+- repeated detections of one eligible value remain valid; unrelated values excluded by the routing rule do not cause ambiguity
+- ambiguity detection covers scanned pages only: `scan_all_pages=false` still scans page one only. Mixed-document files are retained for manual separation; automatic batch splitting is not implemented
 - barcode text must still satisfy filename safety rules: printable characters only, length `4..64`, and characters limited to alphanumeric, dash, and underscore
 
 

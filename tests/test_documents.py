@@ -37,6 +37,13 @@ def _make_jpeg(tmp_path: Path, name: str = "test.jpg") -> Path:
     return path
 
 
+def _make_tiff(tmp_path: Path, name: str = "test.tiff", pages: int = 1) -> Path:
+    path = tmp_path / name
+    frames = [Image.new("RGB", (100, 100), (index * 30, 40, 80)) for index in range(pages)]
+    frames[0].save(path, "TIFF", save_all=True, append_images=frames[1:])
+    return path
+
+
 def _make_pdf(tmp_path: Path, name: str = "test.pdf") -> Path:
     import fitz
     path = tmp_path / name
@@ -67,6 +74,9 @@ class TestIsSupportedInput:
     def test_pdf_supported(self, tmp_path):
         assert is_supported_input(_make_pdf(tmp_path)) is True
 
+    def test_tiff_supported(self, tmp_path):
+        assert is_supported_input(_make_tiff(tmp_path)) is True
+
     def test_txt_not_supported(self, tmp_path):
         path = tmp_path / "test.txt"
         path.write_text("hello")
@@ -93,6 +103,9 @@ class TestGetPageCount:
 
     def test_pdf_page_count(self, tmp_path):
         assert get_page_count(_make_pdf(tmp_path)) >= 1
+
+    def test_multi_page_tiff(self, tmp_path):
+        assert get_page_count(_make_tiff(tmp_path, pages=3)) == 3
 
     def test_multi_page_pdf(self, tmp_path):
         import fitz
@@ -124,6 +137,11 @@ class TestIterScanImages:
     def test_jpeg_yields_one_image(self, tmp_path):
         images = list(iter_scan_images(_make_jpeg(tmp_path), max_pages=10, render_dpi=72))
         assert len(images) == 1
+
+    def test_tiff_yields_all_pages(self, tmp_path):
+        images = list(iter_scan_images(_make_tiff(tmp_path, pages=3), max_pages=10, render_dpi=72))
+        assert len(images) == 3
+        assert all(isinstance(image, Image.Image) for image in images)
 
     def test_pdf_yields_pages(self, tmp_path):
         import fitz
@@ -181,6 +199,17 @@ class TestSaveProcessingFileAsPdf:
         assert dst.exists()
         assert dst.stat().st_size == original_size
         assert not src.exists()
+
+    def test_multi_page_tiff_to_pdf_preserves_pages(self, tmp_path):
+        import fitz
+
+        src = _make_tiff(tmp_path, "input.tiff", pages=3)
+        dst = tmp_path / "output" / "result.pdf"
+        save_processing_file_as_pdf(src, dst)
+        assert dst.exists()
+        assert not src.exists()
+        with fitz.open(dst) as document:
+            assert document.page_count == 3
 
     def test_rgba_image_converted(self, tmp_path):
         """RGBA images are flattened to RGB before PDF conversion."""

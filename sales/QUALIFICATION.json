@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "product_key": "barcodebuddy",
+  "implementation_price_usd": 10000,
+  "sites": 1,
+  "workflows": 1,
+  "required_facts": [
+    "recurring_scan_filing_problem",
+    "stable_barcode_identifier",
+    "one_document_per_file",
+    "authorized_buyer",
+    "windows_available",
+    "redacted_samples_available"
+  ],
+  "excluded": [
+    "enterprise_procurement",
+    "no_buying_authority",
+    "erp_required",
+    "mixed_batch_splitting_required"
+  ],
+  "outreach": {
+    "automatedSendingEnabled": false,
+    "approvalRequired": true
+  }
+}

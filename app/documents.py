@@ -20,11 +20,12 @@ except ImportError:  # pragma: no cover - POSIX
     msvcrt = None
 
 
-IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
 PDF_SUFFIXES = {".pdf"}
 SUPPORTED_SUFFIXES = IMAGE_SUFFIXES | PDF_SUFFIXES
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 JPEG_SIGNATURE_PREFIX = b"\xff\xd8\xff"
+TIFF_SIGNATURES = (b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+")
 PDF_SIGNATURE = b"%PDF-"
 SIGNATURE_READ_BYTES = 16
 
@@ -78,6 +79,17 @@ def get_page_count(path: Path) -> int:
     input_type = _probe_input_type(path)
     if input_type in {"jpeg", "png"}:
         return 1
+    if input_type == "tiff":
+        try:
+            with Image.open(path) as image:
+                page_count = int(getattr(image, "n_frames", 1))
+            if page_count < 1:
+                raise DocumentError("TIFF has no pages.")
+            return page_count
+        except Exception as exc:
+            if isinstance(exc, DocumentError):
+                raise
+            raise DocumentError(f"Unable to read TIFF page count for {path.name}") from exc
     if input_type == "pdf":
         try:
             document = fitz.open(path)
@@ -96,9 +108,15 @@ def get_page_count(path: Path) -> int:
 
 def iter_scan_images(path: Path, max_pages: int, render_dpi: int) -> Iterator[Image.Image]:
     input_type = _probe_input_type(path)
-    if input_type in {"jpeg", "png"}:
+    if input_type in {"jpeg", "png", "tiff"}:
         with Image.open(path) as image:
-            yield _normalize_output_image(ImageOps.exif_transpose(image))
+            page_count = int(getattr(image, "n_frames", 1))
+            if page_count > max_pages:
+                raise DocumentError("Image exceeded maximum page limit.")
+            for page_index in range(page_count):
+                image.seek(page_index)
+                frame = ImageOps.exif_transpose(image.copy())
+                yield _normalize_output_image(frame)
         return
 
     if input_type == "pdf":
@@ -145,12 +163,18 @@ def save_processing_file_as_pdf(source_path: Path, destination_path: Path) -> No
             source_path.unlink(missing_ok=True)
             return
 
-        if input_type not in {"jpeg", "png"}:
+        if input_type not in {"jpeg", "png", "tiff"}:
             raise UnsupportedFileTypeError(f"Unsupported input type: {source_path.suffix}")
 
         with Image.open(source_path) as image:
-            normalized = _normalize_output_image(ImageOps.exif_transpose(image))
-            normalized.save(temp_path, "PDF")
+            frames: list[Image.Image] = []
+            for page_index in range(int(getattr(image, "n_frames", 1))):
+                image.seek(page_index)
+                frame = ImageOps.exif_transpose(image.copy())
+                frames.append(_normalize_output_image(frame))
+            if not frames:
+                raise DocumentError("Image has no pages.")
+            frames[0].save(temp_path, "PDF", save_all=True, append_images=frames[1:])
         temp_path.replace(destination_path)
         source_path.unlink(missing_ok=True)
     except Exception:
@@ -191,6 +215,8 @@ def _expected_input_type(suffix: str) -> str | None:
         return "png"
     if suffix in {".jpg", ".jpeg"}:
         return "jpeg"
+    if suffix in {".tif", ".tiff"}:
+        return "tiff"
     return None
 
 
@@ -201,6 +227,8 @@ def _detect_input_type(signature: bytes) -> str | None:
         return "png"
     if signature.startswith(JPEG_SIGNATURE_PREFIX):
         return "jpeg"
+    if any(signature.startswith(tiff_signature) for tiff_signature in TIFF_SIGNATURES):
+        return "tiff"
     return None
 
 

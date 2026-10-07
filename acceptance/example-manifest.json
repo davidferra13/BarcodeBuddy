@@ -1,0 +1,22 @@
+{
+  "customer": "Example Manufacturing",
+  "workflow": "receiving",
+  "cases": [
+    {
+      "id": "packing-slip-001",
+      "file": "samples/packing-slip-001.pdf",
+      "expected": {
+        "status": "success",
+        "barcode": "PO-12345"
+      }
+    },
+    {
+      "id": "unreadable-001",
+      "file": "samples/unreadable-001.pdf",
+      "expected": {
+        "status": "failure",
+        "reason": "BARCODE_NOT_FOUND"
+      }
+    }
+  ]
+}

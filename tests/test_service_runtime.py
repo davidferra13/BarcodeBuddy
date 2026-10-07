@@ -136,12 +136,13 @@ class BarcodeBuddyRuntimeContractTests(unittest.TestCase):
         self.assertEqual(result.stage, "validation")
         self.assertEqual(result.barcode, "BAD 123")
 
-    def test_multiple_eligible_barcodes_resolve_deterministically(self) -> None:
+    def test_multiple_eligible_barcodes_across_pages_reject_for_review(self) -> None:
         service, settings = self._make_service(
             "ambiguous-across-pages",
             barcode_value_patterns=(r"^PO-\d+$",),
         )
         source_path = self._make_source_file(settings.input_path / "ambiguous.pdf", "pdf", pages=2)
+        original_bytes = source_path.read_bytes()
         service.scanner.scan_image_candidates = Mock(
             side_effect=[
                 [self._candidate("PO-100", matches_business_rule=True, area=100.0)],
@@ -151,11 +152,78 @@ class BarcodeBuddyRuntimeContractTests(unittest.TestCase):
 
         result = service.process_file(source_path)
 
-        self.assertEqual(result.status, "success")
-        self.assertEqual(result.stage, "output")
-        self.assertEqual(result.barcode, "PO-200")
+        self._assert_ambiguous_rejection(service, settings, result, original_bytes)
+        self.assertEqual(result.page_count, 2)
+        self.assertEqual(result.raw_detection_count, 2)
         self.assertEqual(result.eligible_candidate_values, ("PO-100", "PO-200"))
         self.assertEqual(result.page_one_eligible_values, ("PO-100",))
+
+    def test_conflicting_barcodes_on_one_page_reject_for_review(self) -> None:
+        service, settings = self._make_service(
+            "ambiguous-one-page",
+            barcode_value_patterns=(r"^PO-\d+$",),
+        )
+        source_path = self._make_source_file(settings.input_path / "ambiguous.png", "png")
+        original_bytes = source_path.read_bytes()
+        service.scanner.scan_image_candidates = Mock(return_value=[
+            self._candidate("PO-100", area=100.0),
+            self._candidate("PO-200", area=400.0),
+            self._candidate("PO-100", area=50.0),
+            self._candidate("SHIP-999", matches_business_rule=False, area=900.0),
+        ])
+
+        result = service.process_file(source_path)
+
+        self._assert_ambiguous_rejection(service, settings, result, original_bytes)
+        self.assertEqual(result.raw_detection_count, 4)
+        self.assertEqual(result.candidate_values, ("PO-100", "PO-200", "SHIP-999"))
+        self.assertEqual(result.eligible_candidate_values, ("PO-100", "PO-200"))
+        self.assertEqual(result.page_one_eligible_values, ("PO-100", "PO-200"))
+
+    def test_repeated_routing_value_and_unrelated_codes_still_file(self) -> None:
+        service, settings = self._make_service(
+            "repeated-with-unrelated",
+            barcode_value_patterns=(r"^PO-\d+$",),
+        )
+        source_path = self._make_source_file(settings.input_path / "unambiguous.png", "png")
+        service.scanner.scan_image_candidates = Mock(return_value=[
+            self._candidate("PO-100", area=100.0),
+            self._candidate("PO-100", area=50.0),
+            self._candidate("SHIP-999", matches_business_rule=False, area=900.0),
+        ])
+
+        result = service.process_file(source_path)
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.stage, "output")
+        self.assertEqual(result.barcode, "PO-100")
+        self.assertEqual(result.eligible_candidate_values, ("PO-100",))
+        self.assertTrue(result.output_path.is_file())
+
+    def _assert_ambiguous_rejection(self, service, settings, result, original_bytes) -> None:
+        self.assertEqual(result.status, "failure")
+        self.assertEqual(result.stage, "validation")
+        self.assertEqual(result.reason, "AMBIGUOUS_BARCODE")
+        self.assertIsNone(result.barcode)
+        self.assertIsNone(result.output_path)
+        self.assertEqual(result.rejected_path.read_bytes(), original_bytes)
+        self.assertEqual(list(settings.output_path.rglob("*.pdf")), [])
+        self.assertFalse(service._journal_path(result.processing_id).exists())
+        sidecar = self._read_json(result.rejected_path.with_suffix(".meta.json"))
+        self.assertEqual(sidecar["error_code"], "AMBIGUOUS_BARCODE")
+        self.assertEqual(sidecar["reason"], "AMBIGUOUS_BARCODE")
+        self.assertEqual(sidecar["stage"], "validation")
+        self.assertNotIn("barcode", sidecar)
+        for key in ("candidate_values", "eligible_candidate_values", "page_one_eligible_values"):
+            self.assertEqual(sidecar[key], list(getattr(result, key)))
+        events = [event for event in self._read_jsonl(settings.log_file)
+                  if event.get("processing_id") == result.processing_id]
+        self.assertEqual(events[-1]["error_code"], "AMBIGUOUS_BARCODE")
+        self.assertEqual(events[-1]["status"], "failure")
+        self.assertEqual(events[-1]["eligible_candidate_values"], list(result.eligible_candidate_values))
+        self.assertFalse(any(event["stage"] == "output" and event["status"] == "success"
+                             for event in events))
+
     def test_page_one_eligible_value_wins_when_later_pages_repeat_same_value(self) -> None:
         service, settings = self._make_service(
             "page-one-authority",
@@ -176,9 +244,10 @@ class BarcodeBuddyRuntimeContractTests(unittest.TestCase):
         self.assertEqual(result.barcode, "PO-100")
         self.assertEqual(result.page_one_eligible_values, ("PO-100",))
 
-    def test_highest_priority_candidate_wins_without_business_rules(self) -> None:
-        service, settings = self._make_service("highest-priority")
+    def test_distinct_barcodes_without_business_rules_reject_for_review(self) -> None:
+        service, settings = self._make_service("no-rules-ambiguity")
         source_path = self._make_source_file(settings.input_path / "multi-page.pdf", "pdf", pages=2)
+        original_bytes = source_path.read_bytes()
         service.scanner.scan_image_candidates = Mock(
             side_effect=[
                 [self._candidate("BOX-001", area=100.0, scan_order=(0.0, 0.0, 0))],
@@ -188,9 +257,9 @@ class BarcodeBuddyRuntimeContractTests(unittest.TestCase):
 
         result = service.process_file(source_path)
 
-        self.assertEqual(result.status, "success")
-        self.assertEqual(result.barcode, "BOX-999")
+        self._assert_ambiguous_rejection(service, settings, result, original_bytes)
         self.assertEqual(result.candidate_values, ("BOX-001", "BOX-999"))
+        self.assertEqual(result.eligible_candidate_values, ("BOX-001", "BOX-999"))
 
     def test_matching_barcode_on_later_page_beats_larger_non_matching_barcode(self) -> None:
         service, settings = self._make_service(

@@ -1,6 +1,6 @@
 # Scan Record Builder Handoff
 
-Last updated: 2026-04-03.
+Last updated: 2026-10-01 (ambiguity contract; other sections retain their recorded scope).
 
 ## 1. Purpose
 
@@ -78,9 +78,9 @@ As of 2026-04-03, the current runtime contract is green and covered by `tests/te
 Current verified behavior:
 
 - when barcode candidates are found but the selected value does not match the configured business rule, the runtime rejects as `INVALID_BARCODE_FORMAT`
-- the runtime selects one candidate deterministically across the scanned document by business-rule match, then largest bounding box area, then earlier page number, then scan order
-- the runtime uses the configured business rules to prioritize candidates rather than to create a separate ambiguity state
-- `eligible_candidate_values` and `page_one_eligible_values` are still emitted as evidence fields for the future page, even though they are not current selection overrides
+- when at most one distinct eligible routing value exists, candidate ranking uses business-rule match, then largest bounding box area, then earlier page number, then scan order
+- `barcode_value_patterns` define eligible routing values; without patterns, all detected values are eligible. More than one distinct eligible value on scanned pages is rejected as `AMBIGUOUS_BARCODE`, preserving the original and candidate evidence for review
+- `eligible_candidate_values` determines ambiguity; it and `page_one_eligible_values` are retained in rejection sidecars and logs for review
 
 Verification command:
 

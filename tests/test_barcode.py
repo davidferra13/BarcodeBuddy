@@ -6,6 +6,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from app.barcode import BarcodeScanner
+from app.barcode_generator import generate_code128
 
 
 class _FakeFormat:
@@ -96,6 +97,17 @@ class BarcodeScannerTests(unittest.TestCase):
         assert match is not None
         self.assertEqual(match.text, "ROTATED-OK")
         self.assertEqual(match.orientation_degrees, 270)
+
+    def test_real_generated_code128_decodes_across_common_scales(self) -> None:
+        scanner = BarcodeScanner(("code128", "auto"), (), upscale_factor=1.0)
+
+        for scale in (1, 2, 3, 4, 6):
+            with self.subTest(scale=scale):
+                expected = f"BB-SCALE-{scale}"
+                match = scanner.scan_image(generate_code128(expected, scale=scale))
+                self.assertIsNotNone(match)
+                assert match is not None
+                self.assertEqual(match.text, expected)
 
 
 if __name__ == "__main__":
