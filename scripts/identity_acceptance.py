@@ -660,8 +660,6 @@ def web_checks(run: Run, root: Path, state: dict[str, Any]) -> None:
                  f"chat answered with no AI configured: {response.text[:200]}")
             return f"HTTP {response.status_code}, no invented answer"
         run.check(ad, "With no AI set up, the chat says so plainly instead of making up an answer", ai_honest_when_off)
-        run.blocked(ad, "The AI helper answers a stock question from real inventory",
-                    "No AI model is configured on a fresh install, and the product must work with AI off. Needs a model chosen on the installed machine.")
 
         # --- inventory manager ---------------------------------------------------
         im = "inventory_manager"
@@ -700,6 +698,16 @@ def web_checks(run: Run, root: Path, state: dict[str, Any]) -> None:
             need(edited["name"] == "Corrugated Box 12x12x8" and edited["location"] == "Aisle 4", edited)
             return "name and location changed"
         run.check(im, "An item's details can be edited", edit_item)
+
+        def no_negative_edit() -> str:
+            before = ok(inv.get(f"/api/inventory/{items['box']['id']}")).json()
+            refused = inv.put(f"/api/inventory/{items['box']['id']}", json={"quantity": -5})
+            need(refused.status_code in {400, 422}, f"a negative quantity was accepted: HTTP {refused.status_code}")
+            after = ok(inv.get(f"/api/inventory/{items['box']['id']}")).json()
+            need(one(after, "item")["quantity"] == one(before, "item")["quantity"], "the count changed")
+            need(len(rows(after, "transactions")) == len(rows(before, "transactions")), "a history line was written")
+            return "refused; count and history untouched"
+        run.check(im, "Typing a negative quantity into an item's edit form is refused, and the count and history stay as they were", no_negative_edit)
 
         csv_text = ("name,sku,quantity,unit,location,category,cost,min_quantity,barcode_value\n"
                     "Bubble Wrap Roll,BW-100,200,roll,Aisle 1,Packaging,3.50,20,\n"
@@ -913,6 +921,34 @@ def web_checks(run: Run, root: Path, state: dict[str, Any]) -> None:
             return "PDF lists known item with its details and keeps the unknown code"
         run.check(sh, "A list of scanned barcodes becomes a titled PDF manifest, with item details filled in and unknown codes kept", manifest_pdf)
 
+        # --- system admin: the optional AI helper, against a local model if one is running
+        ai_line = "With a local AI model switched on by the owner, the helper answers a stock question with the real number from inventory"
+        ollama_url = os.environ.get("BB_ACCEPTANCE_OLLAMA_URL", "http://127.0.0.1:11434")
+        try:
+            tagged = httpx.get(ollama_url + "/api/tags", timeout=5).json().get("models", [])
+            capable = [m["name"] for m in tagged if "tools" in (m.get("capabilities") or [])
+                       and "embedding" not in (m.get("capabilities") or [])]
+        except Exception:
+            capable = []
+        preferred = [name for name in ("qwen3.5:4b", "granite4.2:8b", "granite4.2:3b") if name in capable]
+        model = (preferred or capable or [None])[0]
+        if model is None:
+            run.blocked(ad, ai_line, f"No local AI model with tool support is reachable at {ollama_url}. The product works with AI off; this line needs a model on the machine.")
+        else:
+            def ai_answers() -> str:
+                boss = c("owner")
+                for step, data in (("choose_mode", {"mode": "local"}), ("ollama_url", {"url": ollama_url}),
+                                   ("ollama_model", {"chat_model": model}), ("complete", {})):
+                    ok(boss.post("/ai/api/setup-step", json={"step": step, "data": data}))
+                on_hand = one(ok(dock.get(f"/api/inventory/{items['dock']['id']}")).json(), "item")["quantity"]
+                reply = ok(dock.post("/ai/api/chat", json={
+                    "message": "Look up SKU MAIL-1013 in inventory. How many units are on hand right now? Reply with the number."})).json()
+                need(not reply.get("error"), f"AI error: {reply.get('error')}")
+                answer = reply["message"]["content"]
+                need(str(on_hand) in answer.replace(",", ""), f"expected {on_hand} in the answer, got: {answer[:300]}")
+                return f"{model} answered with the real count of {on_hand}"
+            run.check(ad, ai_line, ai_answers)
+
         # --- floor worker on a phone ---------------------------------------------
         fp = "floor_phone"
         pages = ["/", "/inventory", "/inventory/new", "/inventory/import", "/inventory/bulk", "/scan", "/scan-to-pdf",
@@ -942,8 +978,6 @@ def web_checks(run: Run, root: Path, state: dict[str, Any]) -> None:
             need(not missing, f"no phone viewport on: {missing}")
             return f"{len(pages)} pages declare a phone-width layout"
         run.check(fp, "Every one of those screens is laid out for a phone", every_page_phone)
-        run.blocked(fp, "Each screen looks right and is usable at phone width (375 px), checked by eye",
-                    "Needs a real browser screenshot of each screen at 375 px. Not captured in this run.")
         run.blocked(fp, "Pointing the phone camera at a barcode reads it live",
                     "Needs a physical phone camera in Chrome or Edge. The server side of the same lookup is proven above.")
 
@@ -1280,6 +1314,85 @@ def stop_process(process: subprocess.Popen | None) -> None:
         process.wait(timeout=15)
 
 
+def find_browser() -> str | None:
+    candidates = [os.environ.get("BB_ACCEPTANCE_BROWSER", ""),
+                  r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                  r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                  r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                  r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                  shutil.which("chromium") or "", shutil.which("google-chrome") or ""]
+    return next((path for path in candidates if path and Path(path).is_file()), None)
+
+
+def measure_phone_widths(browser: str, base: str, session: httpx.Client, work: Path) -> str:
+    """Seed a little stock, then load every screen in a 375 px frame inside a
+    real headless browser and read back how wide each page actually laid out."""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    first_id = None
+    for name, sku, quantity, minimum in (("Corrugated Box 12x12x8", "PH-BOX-1212", 500, 50),
+                                         ("Stretch Film 18 in", "PH-FILM-18", 5, 10),
+                                         ("Kraft Mailer 10x13", "PH-MAIL-1013", 0, 25)):
+        created = session.post("/api/inventory", json={"name": name, "sku": sku, "quantity": quantity, "location": "Aisle 3",
+                                                       "category": "Packaging", "min_quantity": minimum, "cost": 1.5})
+        need(created.status_code == 201, created.text[:200])
+        first_id = first_id or created.json()["item"]["id"]
+    session.post(f"/api/inventory/{first_id}/adjust", json={"quantity_change": 250, "reason": "received", "notes": "PO-200001"})
+    paths = ["/auth/login", "/", "/inventory", f"/inventory/{first_id}", "/inventory/new", "/inventory/bulk", "/scan",
+             "/scan-to-pdf", "/calendar", "/analytics", "/alerts", "/activity", "/team", "/feedback", "/auth/profile"]
+    cookie = "; ".join(f"{key}={value}" for key, value in session.cookies.items())
+    control = "/__too_wide"  # a deliberately overflowing page: proves the measurement can see overflow
+    control_page = (b"<!doctype html><html><head><meta name='viewport' content='width=device-width'></head>"
+                    b"<body><div style='width:900px;height:20px'>control</div></body></html>")
+    frames = f"<iframe data-p='{control}' src='{control}' style='width:375px;height:812px;border:0'></iframe>" + "".join(f"<iframe data-p='{p}' src='{p}' style='width:375px;height:812px;border:0'></iframe>" for p in paths)
+    harness = ("<!doctype html><html><head><title>pending</title></head><body>" + frames + "<script>"
+               "window.addEventListener('load',function(){setTimeout(function(){var out=[];"
+               "document.querySelectorAll('iframe').forEach(function(f){var w=-1;try{var d=f.contentDocument;"
+               "w=Math.max(d.documentElement.scrollWidth,d.body?d.body.scrollWidth:0);}catch(e){}"
+               "out.push(f.getAttribute('data-p')+'='+w);});document.title='WIDTHS '+out.join(' ');},3000);});"
+               "</script></body></html>").encode()
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if self.path == "/__harness":
+                status, kind, body = 200, "text/html", harness
+            elif self.path == control:
+                status, kind, body = 200, "text/html", control_page
+            else:
+                upstream = httpx.get(base + self.path, timeout=60,
+                                     headers={"Cookie": cookie, "Accept": self.headers.get("Accept", "*/*")})
+                status, kind, body = upstream.status_code, upstream.headers.get("content-type", "text/html"), upstream.content
+            self.send_response(status)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args: Any) -> None:
+            pass
+
+    work.mkdir(parents=True, exist_ok=True)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        result = subprocess.run(
+            [browser, "--headless=new", "--disable-gpu", "--no-first-run", "--hide-scrollbars", "--window-size=1400,900",
+             f"--user-data-dir={work / 'profile'}", "--virtual-time-budget=20000", "--dump-dom",
+             f"http://127.0.0.1:{server.server_address[1]}/__harness"],
+            capture_output=True, text=True, timeout=300, encoding="utf-8", errors="ignore")
+    finally:
+        server.shutdown()
+    marker = result.stdout.find("<title>WIDTHS ")
+    need(marker >= 0, f"browser did not report widths: {result.stdout[:200]} {result.stderr[-200:]}")
+    report = result.stdout[marker + len("<title>WIDTHS "):result.stdout.find("</title>", marker)]
+    widths = dict(entry.rsplit("=", 1) for entry in report.split())
+    need(int(widths.pop(control, "0")) > 375, "the overflow control page was not detected, so the measurement proves nothing")
+    need(set(widths) == set(paths), f"measured {sorted(widths)}")
+    wrong = {path: width for path, width in widths.items() if int(width) != 375}
+    need(not wrong, f"screens not exactly phone width (-1 means it did not load): {wrong}")
+    return f"{len(widths)} screens measured, every one exactly 375 px wide"
+
+
 def installer_checks(run: Run, root: Path) -> None:
     from app.acceptance import run_acceptance
     from app.customer_provisioning import provision_customer
@@ -1390,6 +1503,13 @@ def installer_checks(run: Run, root: Path) -> None:
             need(docs["succeeded"] >= 1, docs)
             return f"filed in {time.time() - started:.1f} s by the separate service; dashboard count went up"
         run.check(it, "With both programs running, a scan dropped in the folder is filed and the dashboard shows it", real_drop)
+
+        phone_line = "In a real browser at phone width (375 px), no screen is wider than the phone, so nothing is cut off or needs sideways scrolling"
+        browser = find_browser()
+        if browser is None:
+            run.blocked("floor_phone", phone_line, "No Chrome or Edge found on this machine to measure the screens in.")
+        else:
+            run.check("floor_phone", phone_line, lambda: measure_phone_widths(browser, base, session, install / "phone"))
 
         def second_instance_refused() -> str:
             extra = subprocess.run([sys.executable, "main.py", "--config", str(config_path)], cwd=REPO, env=env,
