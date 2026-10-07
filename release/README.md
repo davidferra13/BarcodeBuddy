@@ -10,6 +10,8 @@ Use a fresh evidence directory outside the source checkout. The gate runs compil
 
 Every mandatory gate must pass. Missing, failed or timed-out evidence leaves ready=false and returns a nonzero exit code. Parser-unavailable skips stay explicit in the hashed launcher log.
 
+To release the installable product on its own, add --product-only and leave out --acquisition-repo. Every product gate is still required; only the Built To Own repository gate is left out, and the receipt says release_kind: product-only.
+
 For a particular customer, additionally pass --customer-config and --customer-manifest together. Product reference readiness and customer acceptance are distinct. The receipt never declares a buyer deployed.
 
 Keep receipts and logs private. They bind to the tested Git revision and contain hashes instead of document payloads. Commit changes before the final gate; do not change source while it runs.

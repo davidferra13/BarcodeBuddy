@@ -29,7 +29,8 @@ if (-not (Test-Path $VenvPy)) {
 }
 
 if ($CreatedVenv -or $InstallDependencies) {
-    & $VenvPy -m pip install -r (Join-Path $AppDir "requirements.txt")
+    # constraints.txt pins the exact versions this release was tested with.
+    & $VenvPy -m pip install -r (Join-Path $AppDir "requirements.txt") -c (Join-Path $AppDir "constraints.txt")
     if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
 }
 $Cli = Join-Path $AppDir "scripts\provision_customer.py"

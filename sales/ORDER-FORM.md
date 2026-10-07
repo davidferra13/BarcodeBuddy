@@ -46,7 +46,7 @@ This Order Form and the BarcodeBuddy Software License and Installation Agreement
 - You own your installed copy, your documents, your database and your backups.
 - The license is perpetual. It keeps working whether or not you buy support.
 - The software stays the Licensor's. It may not be resold, shared or run for other companies.
-- The system runs on your computer. Nothing is sent outside your network unless you turn on an optional AI provider yourself.
+- The system runs on your computer. Nothing is sent outside your network unless you turn on an optional AI provider, alert webhook or public tunnel yourself.
 
 ## Signatures
 

@@ -1873,10 +1873,39 @@ def _render_daily_row(day: dict[str, Any], max_total: int) -> str:
     )
 
 
+# Plain words for the reasons a scan is set aside, shown next to the code so an
+# operator knows what to do without looking the code up.
+REJECTION_LABELS = {
+    "BARCODE_NOT_FOUND": "No barcode found",
+    "INVALID_BARCODE_FORMAT": "Barcode is not a record number for this workflow",
+    "AMBIGUOUS_BARCODE": "More than one record number",
+    "DUPLICATE_FILE": "Already filed",
+    "FILE_LOCKED": "File was still being written",
+    "EMPTY_FILE": "Empty file",
+    "FILE_TOO_LARGE": "File too large",
+    "PROCESSING_TIMEOUT": "Too many pages or took too long",
+    "UNSUPPORTED_FORMAT": "File type not supported",
+    "CORRUPT_FILE": "File could not be opened",
+    "FILE_MISSING": "File disappeared before filing",
+    "RECOVERY_FAILED": "Could not recover after a restart",
+    "UNEXPECTED_ERROR": "Unexpected error",
+}
+
+
 def _render_recent_row(event: dict[str, Any]) -> str:
     status = event["status"]
-    detail = _escape(event["barcode"] or event["error_code"] or event["reason"] or "-")
+    reason_code = event["error_code"] or (event["reason"] if status == "failure" else None)
+    reason_label = REJECTION_LABELS.get(reason_code or "", reason_code) if status == "failure" else None
     detail_suffix = []
+    if reason_label:
+        # A rejected scan can still carry a readable barcode (a duplicate, or a
+        # number that is not a record number). The reason leads; the barcode follows.
+        detail = _escape(reason_label)
+        detail_suffix.append(reason_code)
+        if event["barcode"]:
+            detail_suffix.append(event["barcode"])
+    else:
+        detail = _escape(event["barcode"] or event["error_code"] or event["reason"] or "-")
     if event["barcode_format"]:
         detail_suffix.append(event["barcode_format"])
     if event["pages"] is not None:
@@ -1888,11 +1917,18 @@ def _render_recent_row(event: dict[str, Any]) -> str:
     suffix = " | ".join(detail_suffix)
     if suffix:
         detail = f'{detail}<br><span class="detail">{_escape(suffix)}</span>'
+    file_cell = f"<strong>{_escape(event['original_filename'])}</strong>"
+    # The outcome also goes under the file name, so it is visible on a phone
+    # where the detail column sits off screen.
+    if reason_label:
+        file_cell += f'<br><span class="detail">{_escape(reason_label)}</span>'
+    elif status == "success" and event["barcode"]:
+        file_cell += f'<br><span class="detail">Filed as {_escape(event["barcode"])}</span>'
 
     return (
         "<tr>"
         f"<td>{_escape(_format_display_timestamp(event['timestamp']))}</td>"
-        f"<td><strong>{_escape(event['original_filename'])}</strong></td>"
+        f"<td>{file_cell}</td>"
         f'<td><span class="pill {status}"><span class="pill-dot"></span>{_escape(status)}</span></td>'
         f"<td>{detail}</td>"
         f"<td>{_escape(_format_duration(event['duration_ms']))}</td>"

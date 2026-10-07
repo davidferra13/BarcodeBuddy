@@ -59,9 +59,9 @@ After that, support is optional and is bought separately as shown on the Order F
 
 ## 8. Data, security and AI features
 
-The Software runs on Customer's own computer. By default it serves its web screens only on that computer, and it does not send Customer Data anywhere. Customer is responsible for that computer, its network, its access controls and its backups; the Software includes backup and restore tools for that purpose.
+The Software runs on Customer's own computer. By default it serves its web screens only on that computer, and it does not send Customer Data anywhere. It sends data outside Customer's network only through features Customer turns on itself: a cloud AI provider, an alert webhook address, or a public tunnel. Customer is responsible for that computer, its network, its access controls and its backups; the Software includes backup and restore tools for that purpose.
 
-Optional AI features are off by default. If Customer turns on a cloud AI provider, the text Customer sends goes to that provider under Customer's own account and that provider's terms.
+Optional AI features are off by default. If Customer turns on a cloud AI provider, the text Customer sends goes to that provider under Customer's own account and that provider's terms. If Customer sets an alert webhook, alert details go to the address Customer chose.
 
 ## 9. Warranty
 
@@ -75,7 +75,7 @@ Neither party is liable for indirect, incidental, special or consequential damag
 
 ## 11. Third-party components
 
-The Software uses open-source libraries that are installed under their own licenses. Those licenses govern those libraries. A list is provided with the Software.
+The Software uses open-source libraries that are installed under their own licenses. Those licenses govern those libraries. They are listed in THIRD-PARTY-NOTICES.md, delivered with the Software.
 
 ## 12. Termination
 

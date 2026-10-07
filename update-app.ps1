@@ -51,7 +51,7 @@ Write-Host "      $pullResult" -ForegroundColor Green
 
 # ── Step 5: Update dependencies ──────────────────────────────────────
 Write-Host "[3/5] Updating dependencies..." -ForegroundColor Cyan
-pip install -r requirements.txt --quiet 2>&1 | Out-Null
+pip install -r requirements.txt -c constraints.txt --quiet 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[!] pip install failed. Check requirements.txt." -ForegroundColor Red
     exit 1
