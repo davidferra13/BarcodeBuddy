@@ -178,3 +178,14 @@ Each entry follows this format:
 - Commits: cf4efae (merge), 2c35217 (tag v3.1.0; main fast-forwarded from 756caea)
 - Build state on departure: green on a clean machine (release gate ready, 491 passed, 1 skipped); see docs/build-state.md
 - Notes: docs/session-digests/2026-10-07-filing-release-3.1.0.md
+
+
+## 2026-10-07 — native Windows install of v3.1.0
+
+- Agent: Claude (Fable 5.1)
+- Task: Owner said "Do it" to proving the tag on Windows. Clean clone of v3.1.0 on the developer PC, pinned install, demo acceptance, live two-process run, restart, backup and restore.
+- Status: completed with one open defect. Multi-page scans whose later pages have no barcode exceed the 15 s per-file budget (about 6.4 s per such page at 300 DPI on an idle machine; 4 pages always time out). Fix needs approval because it touches processor.py or barcode.py.
+- Files touched: docs/build-state.md, docs/session-log.md (no product code)
+- Commits: docs only, on top of 8e7e45d
+- Build state on departure: unchanged code; Windows install, acceptance 9 of 9, live run 8 of 9 (03 PROCESSING_TIMEOUT under load), restart recovery and backup restore all recorded in docs/build-state.md
+- Notes: Windows PowerShell still hangs on this PC, so the .ps1 launchers remain unexecuted here; python.org Python 3.12 on this PC is broken (no standard library)
