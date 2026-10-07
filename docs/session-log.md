@@ -167,3 +167,14 @@ Each entry follows this format:
 - Commits: input b720fd8, f5a32c8 and f6f260f; resulting commit recorded in the integration receipt.
 - Build state on departure: 474 passed, 2 skipped, 1 warning, 70 subtests passed in 439.94s (0:07:19); compilation and isolated live runtime passed.
 - Notes: Full scanner and protected processor method ASTs preserved apart from the watcher wait keyword. Auth/database bytes match the branding parent. Native PowerShell skips, installed hardware/reboot/acceptance and repository publication remain open. No peer tree or customer data was changed.
+
+
+## 2026-10-07 — BarcodeBuddy 3.1.0 (tag v3.1.0)
+
+- Agent: Claude (Fable 5.1)
+- Task: Owner said "Do it" to replacing the AGPL PDF library and fixing the sidebar label. Merged the other agent's Windows fixes that landed after 3.0.0, moved PDF reading to PDFium and report writing to ReportLab, added a license guard test, relabeled the sidebar, restored the word the offer check needs.
+- Status: completed (released); Windows-native install, real scanner and real customer documents still owed
+- Files touched: app/documents.py, app/scan_to_pdf.py, app/layout.py, app/__init__.py, app/release_backup.py (merge resolution), requirements.txt, constraints.txt, pyproject.toml, THIRD-PARTY-NOTICES.md, sales/LICENSE-AGREEMENT.md, sales/OFFER.md, release/RELEASE-NOTES.md, README.md, Dockerfile, five docs, scripts/factory_acceptance.py, scripts/identity_acceptance.py, tests (documents, documents_view, scan_to_pdf, service_runtime, native_resource_defaults, release_backup, new dependency_licenses)
+- Commits: cf4efae (merge), 2c35217 (tag v3.1.0; main fast-forwarded from 756caea)
+- Build state on departure: green on a clean machine (release gate ready, 491 passed, 1 skipped); see docs/build-state.md
+- Notes: docs/session-digests/2026-10-07-filing-release-3.1.0.md

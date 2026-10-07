@@ -96,3 +96,10 @@ This file describes the last known state. Uncommitted changes since the last upd
 - Live run on the installed copy (`main.py` + `stats.py` as INSTALL.md describes): 4 good scans dropped in the input folder filed in 10 s; 5 problem scans set aside in 7 s with BARCODE_NOT_FOUND x2, INVALID_BARCODE_FORMAT, AMBIGUOUS_BARCODE, DUPLICATE_FILE; both processes restarted and a new scan filed in 3 s; `customer_backup.py create` while running, `verify`, `extract`: 5 PDFs, 5 rejected files, database integrity ok, owner account present.
 - Screens at 1440 and 375 px (sign-in, overview, Documents): page width equals viewport, no script errors.
 - Not run here: Windows PowerShell 5.1 on Windows, a real scanner, real customer documents.
+
+## 2026-10-07 (Claude, Fable 5.1): v3.1.0 = `2c35217`, verified on a clean machine
+- Where: fresh clone of `2c35217` on a clean Linux machine, fresh Python 3.12 venv from `-r requirements.txt -c constraints.txt` (installed set identical to constraints.txt; PyMuPDF not installed), PowerShell 7.4.6 on PATH.
+- `scripts/release_gate.py --product-only`: **ready: true**, product_version 3.1.0, revision 2c35217f65bbb438fc1e543aa67dd067942039e0. All nine product gates passed; tests 491 passed, 1 skipped (Windows drive semantics), 70 subtests, 209 s. acquisition not run by design.
+- Demo kit: 9 of 9. Live run on the installed copy: 4 filed in 10 s, 5 set aside in 7 s (BARCODE_NOT_FOUND x2, INVALID_BARCODE_FORMAT, AMBIGUOUS_BARCODE, DUPLICATE_FILE), restart then a new scan filed in 3 s, backup while running verified and restored with documents and database intact.
+- Windows wheels exist for every pin (`pip download --platform win_amd64 --python-version 3.12 --only-binary=:all:`).
+- Not run here: Windows PowerShell 5.1 on Windows, a real scanner, real customer documents.
