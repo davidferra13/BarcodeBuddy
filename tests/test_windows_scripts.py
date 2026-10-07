@@ -167,3 +167,42 @@ def test_native_launcher_preserves_spaces_and_customer_port(tmp_path):
     assert json.loads(result_file.read_text()) == [
         "stats.py", "--config", str(config), "--host", "127.0.0.1", "--port", "8123",
     ]
+
+
+def test_start_app_starts_and_supervises_ingestion_by_default():
+    """The web app alone files nothing; the launcher must also run main.py and restart it."""
+    text = _read(START_APP)
+    assert re.search(r"\[switch\]\s*\$NoIngestion", text)
+    assert "function Start-Ingestion" in text
+    assert '"main.py", "--config", $ConfigPath' in text, "ingestion must use the same customer config"
+    assert re.search(
+        r"if\s*\(\s*-not\s+\$NoIngestion\s*\)\s*\{\s*\$ingestProc\s*=\s*Start-Ingestion", text
+    ), "ingestion must start unless -NoIngestion is passed"
+    watch_loop = text[text.index("while ($true)"):]
+    assert re.search(
+        r"\$ingestProc\s+-and\s+\$ingestProc\.HasExited[^}]*\$ingestProc\s*=\s*Start-Ingestion",
+        watch_loop,
+        re.S,
+    ), "a dead ingestion process must be restarted by the watch loop"
+
+
+def test_install_autostart_passes_ingestion_and_hostname_through():
+    text = _read(INSTALL_AUTOSTART)
+    assert re.search(r"if\s*\(\s*\$NoIngestion\s*\)\s*\{[^}]*-NoIngestion", text, re.S)
+    assert re.search(r"if\s*\(\s*\$PublicHostname\s*\)\s*\{[^}]*-PublicHostname", text, re.S)
+
+
+def test_core_carries_no_customer_identity():
+    """One customer's hostname or name must never ship inside another customer's install."""
+    lowered_names = ("danpack",)
+    for path in (START_APP, INSTALL_AUTOSTART, ROOT / "provision-customer.ps1", ROOT / "app" / "ai_tools.py"):
+        text = _read(path).lower()
+        for name in lowered_names:
+            assert name not in text, f"{path.name} still names a customer"
+    launcher = _read(START_APP)
+    assert re.search(r"\[string\]\s*\$PublicHostname", launcher)
+    assert "BARCODEBUDDY_PUBLIC_HOSTNAME" in launcher
+    assert re.search(r"\$TunnelEnabled\s+-and\s+\$PublicHostname\s+-and", launcher), (
+        "a named tunnel must require an explicitly supplied hostname"
+    )
+    assert "Resolve-DnsName $PublicHostname" in launcher
