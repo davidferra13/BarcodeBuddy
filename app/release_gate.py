@@ -20,17 +20,25 @@ from app.customer_provisioning import provision_customer
 from app.release_backup import create_backup, verified_extract
 
 MANDATORY_GATES = ("compile", "tests", "launcher", "config", "security", "acceptance", "backup", "git", "customer_package", "acquisition")
+# A product release proves the software a buyer installs. The acquisition gate
+# verifies the Built To Own sales/factory repository, a separate product with
+# its own release line, so it is not required to release this one. The default
+# (full) release still requires it and still fails closed without it.
+PRODUCT_GATES = tuple(name for name in MANDATORY_GATES if name != "acquisition")
 
 
-def build_receipt(gates: dict, metadata: dict) -> dict:
-    missing = [name for name in MANDATORY_GATES if name not in gates]
-    failed = [name for name in MANDATORY_GATES if name in gates and gates[name].get("passed") is not True]
+def build_receipt(gates: dict, metadata: dict, *, product_only: bool = False) -> dict:
+    required = PRODUCT_GATES if product_only else MANDATORY_GATES
+    missing = [name for name in required if name not in gates]
+    failed = [name for name in required if name in gates and gates[name].get("passed") is not True]
     metadata = dict(metadata)
     customer = metadata.get("customer_acceptance")
     metadata["customer_ready"] = not missing and not failed and isinstance(customer, dict) and customer.get("passed") is True
     return {
         "schema_version": "1.0", "product": "BarcodeBuddy", "product_version": __version__,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "release_kind": "product-only" if product_only else "full",
+        "required_gates": list(required),
         "ready": not missing and not failed,
         "missing_gates": missing, "failed_gates": failed,
         "metadata": metadata, "gates": gates,
@@ -281,7 +289,7 @@ def run_acquisition_gate(repo: Path, report_dir: Path, *, timeout_s: float = 600
 
 def run_release_gate(repo: Path, report_dir: Path, *, acquisition_repo: Path | None = None,
                      customer_config: Path | None = None, customer_manifest: Path | None = None,
-                     timeout_s: float = 600) -> dict:
+                     timeout_s: float = 600, product_only: bool = False) -> dict:
     repo = repo.resolve()
     report_dir = report_dir.resolve()
     if report_dir.is_relative_to(repo):
@@ -315,17 +323,21 @@ def run_release_gate(repo: Path, report_dir: Path, *, acquisition_repo: Path | N
         })
     required = ["docs/customer/INSTALL.md", "docs/customer/ACCEPTANCE.md", "docs/customer/OPERATIONS.md",
                 "docs/customer/ADMIN-RECOVERY.md", "docs/customer/SECURITY.md", "sales/OFFER.md",
-                "sales/DISCOVERY.md", "sales/SAMPLE-REQUEST.md", "sales/STATEMENT-OF-WORK.md", "sales/QUALIFICATION.json"]
+                "sales/DISCOVERY.md", "sales/SAMPLE-REQUEST.md", "sales/STATEMENT-OF-WORK.md", "sales/QUALIFICATION.json",
+                "sales/LICENSE-AGREEMENT.md", "sales/ORDER-FORM.md", "sales/DEMO.md", "scripts/make_demo_kit.py"]
     missing = [name for name in required if not (repo/name).is_file()]
     gates["customer_package"] = {"passed": not missing, "missing": missing}
     if acquisition_repo is not None:
         gates["acquisition"] = _attempt(lambda: run_acquisition_gate(acquisition_repo, report_dir, timeout_s=timeout_s))
+    elif product_only:
+        gates["acquisition"] = {"passed": None, "not_run": "Product-only release: the Built To Own repository is released and verified on its own line."}
     else:
         gates["acquisition"] = {"passed": False, "error": "Built To Own verification target not supplied"}
     gates["git"] = verify_git_identity(source_before, capture_git_identity(repo))
     revision = gates["git"]["revision"]
     receipt = build_receipt(gates, {"revision": revision, "customer_acceptance": customer_result,
-                                  "customer_ready": customer_result is not None and customer_result.get("passed") is True})
+                                  "customer_ready": customer_result is not None and customer_result.get("passed") is True},
+                            product_only=product_only)
     path = report_dir/"release-receipt.json"
     path.write_text(json.dumps(receipt, indent=2)+"\n", encoding="utf-8")
     return receipt

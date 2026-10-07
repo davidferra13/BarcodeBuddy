@@ -15,13 +15,16 @@ def main():
     parser.add_argument("--customer-config")
     parser.add_argument("--customer-manifest")
     parser.add_argument("--timeout-seconds", type=float, default=600)
+    parser.add_argument("--product-only", action="store_true",
+        help="Release the installable product without requiring the Built To Own repository gate. "
+             "The receipt records release_kind=product-only.")
     args = parser.parse_args()
     try:
         receipt = run_release_gate(ROOT, Path(args.report_dir),
             acquisition_repo=Path(args.acquisition_repo) if args.acquisition_repo else None,
             customer_config=Path(args.customer_config) if args.customer_config else None,
             customer_manifest=Path(args.customer_manifest) if args.customer_manifest else None,
-            timeout_s=args.timeout_seconds)
+            timeout_s=args.timeout_seconds, product_only=args.product_only)
     except (OSError, ValueError) as error:
         print(json.dumps({"ready": False, "error": str(error)}), file=sys.stderr)
         return 1

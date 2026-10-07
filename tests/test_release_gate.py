@@ -34,6 +34,33 @@ def test_release_receipt_requires_literal_true_status():
     assert api().build_receipt(gates, {"revision": "abc"})["ready"] is False
 
 
+def test_full_release_still_requires_acquisition():
+    gates = {name: {"passed": True} for name in api().PRODUCT_GATES}
+    gates["acquisition"] = {"passed": None, "not_run": "product-only"}
+    receipt = api().build_receipt(gates, {"revision": "abc"})
+    assert receipt["release_kind"] == "full"
+    assert receipt["ready"] is False
+    assert receipt["failed_gates"] == ["acquisition"]
+
+
+def test_product_only_release_requires_every_product_gate_and_says_so():
+    product = api().PRODUCT_GATES
+    assert "acquisition" not in product
+    assert set(product) == set(api().MANDATORY_GATES) - {"acquisition"}
+    gates = {name: {"passed": True} for name in product}
+    receipt = api().build_receipt(gates, {"revision": "abc"}, product_only=True)
+    assert receipt["ready"] is True
+    assert receipt["release_kind"] == "product-only"
+    assert receipt["required_gates"] == list(product)
+    for name in product:
+        broken = {key: dict(value) for key, value in gates.items()}
+        broken[name]["passed"] = False
+        failed = api().build_receipt(broken, {"revision": "abc"}, product_only=True)
+        assert failed["ready"] is False and failed["failed_gates"] == [name]
+        partial = {key: value for key, value in gates.items() if key != name}
+        assert api().build_receipt(partial, {"revision": "abc"}, product_only=True)["missing_gates"] == [name]
+
+
 def test_command_gate_records_real_failure_and_timeout(tmp_path):
     failed = api().run_command([sys.executable, "-c", "raise SystemExit(7)"], Path.cwd(), tmp_path / "failed.log", timeout_s=10)
     assert failed["passed"] is False
