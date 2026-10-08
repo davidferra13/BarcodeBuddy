@@ -2,7 +2,7 @@
 
 Provides three input methods:
 1. Manual text entry (type/paste barcode values)
-2. Camera scanning (browser BarcodeDetector API)
+2. Camera scanning (browser detector with the existing server decoder fallback)
 3. Image/document upload (decode barcodes from uploaded images or PDFs)
 
 Session data lives client-side (localStorage). The server handles:
@@ -406,6 +406,11 @@ _PAGE_CSS = """<style>
 .stp-tab-content.active { display: block; }
 .stp-cam-box { background: #000; border-radius: 10px; overflow: hidden; position: relative; min-height: 240px; }
 .stp-cam-box video { width: 100%; display: block; }
+.stp-cam-guide { position: absolute; inset: 24% 12%; border: 2px solid #fff;
+  border-radius: 8px; box-shadow: 0 0 0 999px rgba(0,0,0,0.18); pointer-events: none; }
+.stp-cam-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.stp-cam-controls select { min-width: 0; }
+.stp-storage-status { color: var(--failure); font-size: 12px; margin-top: 8px; }
 @media (max-width: 900px) {
   .stp-grid { grid-template-columns: 1fr; }
 }
@@ -419,9 +424,9 @@ _PAGE_HTML = """
   <div>
     <div class="panel stp-input-panel">
       <div class="stp-tabs">
-        <button class="stp-tab active" onclick="switchTab('manual')">Manual Entry</button>
-        <button class="stp-tab" onclick="switchTab('camera')">Camera</button>
-        <button class="stp-tab" onclick="switchTab('upload')">Upload File</button>
+        <button class="stp-tab active" onclick="switchTab('manual', this)">Manual Entry</button>
+        <button class="stp-tab" onclick="switchTab('camera', this)">Camera</button>
+        <button class="stp-tab" onclick="switchTab('upload', this)">Upload File</button>
       </div>
 
       <!-- Manual Tab -->
@@ -437,16 +442,18 @@ _PAGE_HTML = """
       <div class="stp-tab-content" id="tab-camera">
         <div class="stp-cam-box" id="stp-cam-box">
           <video id="stp-vid" autoplay playsinline></video>
+          <div class="stp-cam-guide" id="stp-cam-guide" aria-hidden="true"></div>
           <div id="stp-cam-ph" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.5)">
             <svg width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1"><path d="M2 4V2h4"/><path d="M14 2h4v2"/><path d="M2 16v2h4"/><path d="M14 18h4v-2"/></svg>
             <div style="margin-top:8px;font-size:13px">Click Start to begin</div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <div class="stp-cam-controls">
           <button class="btn btn-primary btn-sm" id="stp-cam-btn" onclick="toggleStpCam()">Start Camera</button>
           <select id="stp-cam-sel" style="padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--text);font-size:12px;flex:1"></select>
-          <span id="stp-cam-stat" style="font-size:12px;color:var(--muted)">Ready</span>
+          <span id="stp-cam-stat" role="status" style="font-size:12px;color:var(--muted)">Ready</span>
         </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">Keep the barcode inside the guide. If your browser cannot decode it, frames are processed by this BarcodeBuddy server.</div>
       </div>
 
       <!-- Upload Tab -->
@@ -498,6 +505,7 @@ _PAGE_HTML = """
     <div class="form-section-title" style="margin:0;border:0;padding:0">Scan Session</div>
     <div style="font-size:12px;color:var(--muted)" id="stp-session-info">No barcodes scanned yet</div>
   </div>
+  <div class="stp-storage-status" id="stp-storage-status" role="status"></div>
   <div style="overflow-x:auto">
     <table class="stp-session-table" id="stp-table">
       <thead><tr>
@@ -519,19 +527,47 @@ _PAGE_HTML = """
 
 _PAGE_JS = """<script>
 // ── Session state (persisted to localStorage) ──
-let session = JSON.parse(localStorage.getItem('stp_session') || '[]');
+let session = [], stpStorageWritable = true, stpStorageNotice = '';
+let savedSession = null;
+try {
+  savedSession = localStorage.getItem('stp_session');
+  const saved = JSON.parse(savedSession || '[]');
+  if (!Array.isArray(saved) || !saved.every(s => s && typeof s.code === 'string'
+      && ['format', 'name', 'sku', 'location', 'scanned_at'].every(k => s[k] == null || typeof s[k] === 'string'))) {
+    throw new Error('Invalid saved session');
+  }
+  session = saved;
+} catch (e) {
+  // Preserve unreadable saved bytes before allowing a new session to replace them.
+  stpStorageWritable = false;
+  if (savedSession !== null) {
+    try {
+      let key = 'stp_session_recovery_' + Date.now();
+      while (localStorage.getItem(key) !== null) key += '_';
+      localStorage.setItem(key, savedSession);
+      stpStorageWritable = true;
+      stpStorageNotice = 'Saved session was unreadable. A recovery copy is preserved; you can start a new session.';
+    } catch (backupError) {}
+  }
+  if (!stpStorageWritable) stpStorageNotice = 'Saved session could not be read or backed up. New scans stay in this tab; export a PDF before leaving.';
+}
 let stpStream = null, stpScanning = false, stpLastCode = '', stpLastTime = 0;
+let stpStarting = false, stpGeneration = 0, stpTimer = null, stpDetector = null, stpDecodeRequest = null;
 
 function saveSession() {
-  localStorage.setItem('stp_session', JSON.stringify(session));
+  if (stpStorageWritable) {
+    try { localStorage.setItem('stp_session', JSON.stringify(session)); }
+    catch (e) { stpStorageNotice = 'Scans are not saved to this browser. Export a PDF before leaving this tab.'; }
+  }
   renderTable();
 }
 
 // ── Tab switching ──
-function switchTab(name) {
+function switchTab(name, button) {
+  if (name !== 'camera') stopStpCam();
   document.querySelectorAll('.stp-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.stp-tab-content').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
+  button.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
 }
 
@@ -572,16 +608,15 @@ function addEntry(code, format, name, location) {
 }
 
 async function enrichLast() {
-  const idx = session.length - 1;
-  const entry = session[idx];
+  const entry = session[session.length - 1];
   if (!entry) return;
   try {
     const r = await apiCall('POST', '/api/scan-to-pdf/enrich', { codes: [entry.code] });
-    if (r.ok && r.data.items && r.data.items[0] && r.data.items[0].found) {
+    if (session.includes(entry) && r.ok && r.data.items && r.data.items[0] && r.data.items[0].found) {
       const item = r.data.items[0];
-      session[idx].name = item.name || '';
-      session[idx].sku = item.sku || '';
-      session[idx].location = item.location || '';
+      entry.name = item.name || '';
+      entry.sku = item.sku || '';
+      entry.location = item.location || '';
       saveSession();
     }
   } catch (e) {}
@@ -589,31 +624,51 @@ async function enrichLast() {
 
 // ── Camera scanning ──
 async function toggleStpCam() {
-  if (stpScanning) { stopStpCam(); return; }
-  try {
-    const devs = await navigator.mediaDevices.enumerateDevices();
-    const cams = devs.filter(d => d.kind === 'videoinput');
-    const sel = document.getElementById('stp-cam-sel');
-    sel.innerHTML = cams.map((c, i) => '<option value="' + c.deviceId + '">' + (c.label || 'Camera ' + (i+1)) + '</option>').join('');
-    await startStpCam(cams[0]?.deviceId);
-  } catch (e) {
-    document.getElementById('stp-cam-stat').textContent = 'Denied: ' + e.message;
-  }
+  if (stpScanning || stpStarting) { stopStpCam(); return; }
+  await startStpCam(document.getElementById('stp-cam-sel').value);
 }
 
 async function startStpCam(did) {
-  const constraints = { video: { deviceId: did ? { exact: did } : undefined, facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
-  stpStream = await navigator.mediaDevices.getUserMedia(constraints);
-  document.getElementById('stp-vid').srcObject = stpStream;
-  stpScanning = true;
+  const generation = ++stpGeneration;
+  stpStarting = true;
   document.getElementById('stp-cam-btn').textContent = 'Stop Camera';
-  document.getElementById('stp-cam-ph').style.display = 'none';
-  document.getElementById('stp-cam-stat').textContent = 'Scanning...';
-  stpScanLoop();
+  document.getElementById('stp-cam-stat').textContent = 'Starting camera...';
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera requires HTTPS or localhost. Use Upload File or Manual Entry.');
+    const video = { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } };
+    if (did) video.deviceId = { exact: did };
+    const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    if (generation !== stpGeneration) { stream.getTracks().forEach(t => t.stop()); return; }
+    stpStream = stream;
+    const v = document.getElementById('stp-vid');
+    v.srcObject = stream;
+    await v.play();
+    if (generation !== stpGeneration) return;
+    stpScanning = true; stpStarting = false; stpLastCode = ''; stpLastTime = 0;
+    stpDetector = null;
+    try { if ('BarcodeDetector' in window) stpDetector = new BarcodeDetector(); } catch (e) {}
+    document.getElementById('stp-cam-ph').style.display = 'none';
+    stpScanLoop(generation);
+    // Labels become available after camera permission. Build options as text, not HTML.
+    navigator.mediaDevices.enumerateDevices().then(devs => {
+      if (generation !== stpGeneration) return;
+      const sel = document.getElementById('stp-cam-sel');
+      const selected = stream.getVideoTracks()[0]?.getSettings().deviceId || did;
+      sel.replaceChildren(...devs.filter(d => d.kind === 'videoinput').map((d, i) => new Option(d.label || 'Camera ' + (i + 1), d.deviceId)));
+      if (selected) sel.value = selected;
+    }).catch(() => {});
+  } catch (e) {
+    if (generation !== stpGeneration) return;
+    stopStpCam();
+    document.getElementById('stp-cam-stat').textContent = 'Camera unavailable: ' + e.message + ' You can retry, upload a file, or enter a barcode.';
+  }
 }
 
 function stopStpCam() {
-  stpScanning = false;
+  ++stpGeneration;
+  stpScanning = false; stpStarting = false;
+  clearTimeout(stpTimer); stpTimer = null;
+  stpDecodeRequest?.abort(); stpDecodeRequest = null;
   if (stpStream) { stpStream.getTracks().forEach(t => t.stop()); stpStream = null; }
   document.getElementById('stp-vid').srcObject = null;
   document.getElementById('stp-cam-btn').textContent = 'Start Camera';
@@ -621,16 +676,39 @@ function stopStpCam() {
   document.getElementById('stp-cam-stat').textContent = 'Stopped';
 }
 
-async function stpScanLoop() {
-  if (!stpScanning) return;
+async function stpScanLoop(generation) {
+  if (!stpScanning || generation !== stpGeneration) return;
   const v = document.getElementById('stp-vid');
-  if (v.readyState === v.HAVE_ENOUGH_DATA && 'BarcodeDetector' in window) {
+  if (v.readyState >= v.HAVE_CURRENT_DATA && v.videoWidth) {
     try {
-      const det = new BarcodeDetector();
       const canvas = document.createElement('canvas');
-      canvas.width = v.videoWidth; canvas.height = v.videoHeight;
-      canvas.getContext('2d').drawImage(v, 0, 0);
-      const barcodes = await det.detect(canvas);
+      const scale = Math.min(1, 1280 / v.videoWidth);
+      canvas.width = Math.round(v.videoWidth * scale); canvas.height = Math.round(v.videoHeight * scale);
+      canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+      let barcodes = [];
+      if (stpDetector) {
+        try { barcodes = await stpDetector.detect(canvas); }
+        catch (e) { stpDetector = null; }
+      }
+      if (!stpDetector) {
+        document.getElementById('stp-cam-stat').textContent = 'Scanning with BarcodeBuddy server...';
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+        if (!blob || generation !== stpGeneration) return;
+        const form = new FormData(); form.append('file', blob, 'camera.jpg');
+        const controller = new AbortController(); stpDecodeRequest = controller;
+        const deadline = setTimeout(() => controller.abort(), 10000);
+        try {
+          const response = await fetch('/api/scan-to-pdf/decode', { method: 'POST', body: form, signal: controller.signal });
+          if (!response.ok) throw new Error('Decoder unavailable (' + response.status + ')');
+          const data = await response.json();
+          barcodes = data.barcodes.map(b => ({ rawValue: b.value, format: b.format }));
+        } finally {
+          clearTimeout(deadline);
+          if (stpDecodeRequest === controller) stpDecodeRequest = null;
+        }
+      }
+      if (!stpScanning || generation !== stpGeneration) return;
+      document.getElementById('stp-cam-stat').textContent = stpDetector ? 'Scanning...' : 'Scanning with BarcodeBuddy server...';
       if (barcodes.length > 0 && barcodes[0].rawValue) {
         const code = barcodes[0].rawValue;
         const now = Date.now();
@@ -640,14 +718,17 @@ async function stpScanLoop() {
           addEntry(code, barcodes[0].format || 'Camera');
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      if (generation === stpGeneration) document.getElementById('stp-cam-stat').textContent = 'Scan failed; retrying. Upload File and Manual Entry are available.';
+    }
   }
-  setTimeout(stpScanLoop, 400);
+  if (stpScanning && generation === stpGeneration) stpTimer = setTimeout(() => stpScanLoop(generation), stpDetector ? 400 : 1200);
 }
 
 document.getElementById('stp-cam-sel').addEventListener('change', async e => {
   if (stpScanning) { stopStpCam(); await startStpCam(e.target.value); }
 });
+window.addEventListener('pagehide', stopStpCam);
 
 // ── File upload ──
 const dropzone = document.getElementById('stp-dropzone');
@@ -700,8 +781,10 @@ async function handleUpload(files) {
     status.textContent = 'Upload failed';
     toast('Upload failed: ' + e.message, 'error');
   }
-  // Reset file input so same file can be re-selected
-  document.getElementById('stp-file').value = '';
+  finally {
+    // Early errors and barcode-free uploads must also allow the same file to be retried.
+    document.getElementById('stp-file').value = '';
+  }
 }
 
 // ── PDF generation ──
@@ -747,6 +830,7 @@ async function generatePdf() {
 
 // ── Table rendering ──
 function renderTable() {
+  document.getElementById('stp-storage-status').textContent = stpStorageNotice;
   const tbody = document.getElementById('stp-tbody');
   const empty = document.getElementById('stp-empty');
   const count = document.getElementById('stp-count');
